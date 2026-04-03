@@ -26,7 +26,7 @@ class AppController:
         self.excel_path = r"C:\Users\fgibil1a\OneDrive - Legrand France\Development\Engineering Workload_Data\Engineering_Workload_Sync.xlsx"
 
         self.day_width = 25
-        self.row_height = 28
+        self.row_height = 36
         self.current_plan_df = pd.DataFrame()
 
         self.initial_scroll_done = False
@@ -52,11 +52,16 @@ class AppController:
         plan_df = self.model.get_planning_data()
         if plan_df.empty: return
 
+        # ==========================================
+        # NEW: Save the FULL data for the Dashboard before filtering!
+        # ==========================================
+        full_dashboard_df = plan_df.copy()
+
+        # Now apply the Gantt dropdown filters to plan_df
         req_filter = self.view.filter_req.currentText()
         if req_filter != "All Reqs":
             plan_df = plan_df[plan_df['REQUIRMENT'].str.contains(req_filter, case=False, na=False)]
 
-        # FIXED: Active means anything EXCEPT Complete
         status_filter = self.view.filter_status.currentText()
         if status_filter == "Active":
             plan_df = plan_df[plan_df['STATUS'].str.strip().str.upper() != 'COMPLETE']
@@ -84,6 +89,11 @@ class AppController:
         self.view.info_table.blockSignals(False)
 
         self.draw_gantt_canvas(self.current_plan_df)
+
+        # ==========================================
+        # NEW: Pass the FULL dataset to the dashboard!
+        # ==========================================
+        self.view.dash_screen.update_dashboard(full_dashboard_df)
 
         if maintain_state and selected_id:
             self.restore_selection(selected_id)
@@ -154,12 +164,8 @@ class AppController:
             current_date = day_zero + pd.tseries.offsets.BusinessDay(i)
 
             if current_date == today:
-                h_highlight = self.view.header_scene.addRect(current_x, 0, self.day_width, 45, QPen(Qt.NoPen),
-                                                             QColor(255, 255, 255, 15))
-                h_highlight.setZValue(-1)
-                g_highlight = self.view.gantt_scene.addRect(current_x, 0, self.day_width, total_height, QPen(Qt.NoPen),
-                                                            QColor(255, 255, 255, 15))
-                g_highlight.setZValue(-1)
+                self.view.gantt_scene.addRect(current_x, 0, self.day_width, total_height + 2000,
+                                              QPen(Qt.NoPen), QColor(255, 255, 255, 25))
                 today_x = current_x
 
             if current_date.month != current_month:
@@ -172,11 +178,8 @@ class AppController:
             if current_date.weekday() == 0:
                 week_pen = QPen(QColor("#666666"), 2)
                 self.view.header_scene.addLine(current_x, 25, current_x, 45, week_pen)
-                self.view.gantt_scene.addLine(current_x, 0, current_x, total_height, week_pen)
             else:
-                dot_pen = QPen(QColor("#3E3E42"))
-                dot_pen.setStyle(Qt.DotLine)
-                self.view.gantt_scene.addLine(current_x, 0, current_x, total_height, dot_pen)
+                pass
 
             d_text = self.view.header_scene.addText(str(current_date.day))
             d_text.setDefaultTextColor(QColor("#888888"))
@@ -187,8 +190,7 @@ class AppController:
 
         for index, row in df.iterrows():
             y = index * self.row_height
-            self.view.gantt_scene.addLine(0, y + self.row_height, current_x, y + self.row_height,
-                                          QPen(QColor("#252526")))
+
 
             status = str(row.get('STATUS', '')).strip().upper()
             raw_start = str(row.get('ENG START DATE', '')).strip()
@@ -214,7 +216,13 @@ class AppController:
                     days = 3
 
             start_dt = pd.to_datetime(start_str) if start_str else pd.NaT
+            due_dt = pd.to_datetime(row.get('ENG DUE DATE', '')) if str(row.get('ENG DUE DATE', '')) else pd.NaT
+
             width = days * self.day_width
+
+            due_x_offset = -1
+            if pd.notna(start_dt) and pd.notna(due_dt):
+                due_x_offset = self.get_business_day_offset(start_dt, due_dt) * self.day_width
 
             if pd.notna(start_dt):
                 offset = self.get_business_day_offset(day_zero, start_dt)
@@ -222,7 +230,7 @@ class AppController:
             else:
                 x = 0
 
-            block = GanttBlock(row.to_dict(), x, y + 4, width, self.row_height - 8, self.day_width)
+            block = GanttBlock(row.to_dict(), x, y + 4, width, self.row_height - 8, self.day_width, due_x_offset)
 
             block.block_dropped.connect(self.handle_block_dropped)
             block.assignee_changed.connect(self.handle_right_click_assign)
@@ -246,20 +254,40 @@ class AppController:
                 self.refresh_tables(maintain_state=True)
 
     def handle_block_dropped(self, smart_id, new_x, new_width):
+        # 1. Calculate the new dates and days based on the pixel drop location
         days_from_zero = int(new_x / self.day_width)
         new_date = self.day_zero + pd.tseries.offsets.BusinessDay(days_from_zero)
         new_date_str = f"{new_date.month}/{new_date.day}/{new_date.year}"
 
         new_days = str(int(new_width / self.day_width))
 
+        # 2. Find the current assignee
         assignee = ""
         if not self.current_plan_df.empty:
             match = self.current_plan_df[self.current_plan_df['SMART_ID'] == smart_id]
             if not match.empty:
                 assignee = str(match.iloc[0]['ASSIGNED TO'])
 
+        # 3. Update the database
         self.model.update_job_details(smart_id, assignee, new_days, new_date_str)
-        self.refresh_tables(maintain_state=True)
+
+        # 4. SILENT UPDATE: Update our current DataFrame so it holds the new truth
+        if not self.current_plan_df.empty:
+            idx = self.current_plan_df.index[self.current_plan_df['SMART_ID'] == smart_id].tolist()
+            if idx:
+                self.current_plan_df.at[idx[0], 'EST START DATE'] = new_date_str
+                self.current_plan_df.at[idx[0], 'EST DAYS'] = new_days
+
+        # 5. Update the KPI panel if this item is currently selected
+        selected_items = self.view.gantt_scene.selectedItems()
+        if selected_items and selected_items[0].data.get('SMART_ID') == smart_id:
+            # Update the block's internal data dictionary
+            selected_items[0].data['EST START DATE'] = new_date_str
+            selected_items[0].data['EST DAYS'] = new_days
+            # Refresh just the side panel
+            self.populate_kpi_inspector(selected_items[0].data)
+
+        # Notice we removed self.refresh_tables()! The block is already visually updated.
 
     def populate_kpi_inspector(self, data):
         self.view.inp_smart_id.setText(str(data.get('SMART_ID', '')))
@@ -344,3 +372,47 @@ class AppController:
 
         self.model.update_job_details(smart_id, assignee, est_days, current_start_date)
         self.refresh_tables(maintain_state=True)
+
+    def handle_table_cell_entered(self, row, col):
+        # 1. Turn off the previous block's glow
+        if self.last_hovered_block:
+            self.last_hovered_block.set_external_hover(False)
+            self.last_hovered_block = None
+
+        # 2. Find the new block and turn its glow on
+        if not self.current_plan_df.empty and row < len(self.current_plan_df):
+            smart_id = self.current_plan_df.iloc[row]['SMART_ID']
+            for item in self.view.gantt_scene.items():
+                if isinstance(item, GanttBlock) and item.data.get('SMART_ID') == smart_id:
+                    item.set_external_hover(True)
+                    self.last_hovered_block = item
+                    break
+
+    def handle_block_hover_in(self, smart_id):
+        if self.current_plan_df.empty: return
+        idx = self.current_plan_df.index[self.current_plan_df['SMART_ID'] == smart_id].tolist()
+        if idx:
+            row = idx[0]
+            # Don't overwrite the background if the row is actively selected
+            selected_rows = [r.row() for r in self.view.info_table.selectionModel().selectedRows()]
+            if row in selected_rows: return
+
+            for col in range(self.view.info_table.columnCount()):
+                item = self.view.info_table.item(row, col)
+                if item:
+                    item.setBackground(QColor("#3E3E42"))
+
+    def handle_block_hover_out(self, smart_id):
+        if self.current_plan_df.empty: return
+        idx = self.current_plan_df.index[self.current_plan_df['SMART_ID'] == smart_id].tolist()
+        if idx:
+            row = idx[0]
+            # Don't clear the background if the row is actively selected
+            selected_rows = [r.row() for r in self.view.info_table.selectionModel().selectedRows()]
+            if row in selected_rows: return
+
+            for col in range(self.view.info_table.columnCount()):
+                item = self.view.info_table.item(row, col)
+                if item:
+                    # Reset to transparent
+                    item.setBackground(QColor(0, 0, 0, 0))

@@ -50,7 +50,10 @@ class DataManager:
                     "SMART_ID" TEXT PRIMARY KEY,
                     "ASSIGNED TO" TEXT,
                     "EST DAYS" TEXT,
-                    "EST START DATE" TEXT
+                    "EST START DATE" TEXT,
+                    "EST ESD VARIANCE" TEXT,
+                    "EST ENG VARIANCE" TEXT,
+                    "COMPLETION VARIANCE" TEXT
                 )
             ''')
             conn.commit()
@@ -110,7 +113,8 @@ class DataManager:
 
         # Define how we aggregate the grouped data (take the first instance of these fields)
         agg_funcs = {
-            'SMART_ID': 'first',  # Keep one Smart ID to use as a database key
+            'SMART_ID': 'first',
+            'TYPE': 'first',
             'REQUIRMENT': 'first',
             'PROJECT NAME': 'first',
             'QUOTE NO': 'first',
@@ -133,12 +137,12 @@ class DataManager:
         df['EST ESD VARIANCE'] = df.apply(lambda row: self.calc_variance(row['EST END DATE'], row['ESD']), axis=1)
         df['EST ENG VARIANCE'] = df.apply(lambda row: self.calc_variance(row['EST END DATE'], row['ENG DUE DATE']),
                                           axis=1)
-        df['COMPLETION VARIANCE'] = df.apply(lambda row: self.calc_variance(row['EST END DATE'], row['COMPLETE DATE']),
+        df['COMPLETION VARIANCE'] = df.apply(lambda row: self.calc_variance(row['COMPLETE DATE'], row['ENG DUE DATE']),
                                              axis=1)
 
         # 3. Final Columns for UI
         planning_headers = [
-            "PROJECT_ID", "SMART_ID", "REQUIRMENT", "QUOTE NO", "PROJECT NAME", "STATUS",
+            "PROJECT_ID", "SMART_ID", "TYPE", "REQUIRMENT", "QUOTE NO", "PROJECT NAME", "STATUS",
             "ASSIGNED TO", "ENG START DATE", "EST START DATE", "EST DAYS", "EST END DATE",
             "ESD", "ENG DUE DATE", "COMPLETE DATE",
             "EST ESD VARIANCE", "EST ENG VARIANCE", "COMPLETION VARIANCE"
@@ -238,11 +242,32 @@ class DataManager:
     def update_job_details(self, smart_id, assignee, est_days, start_date):
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
+
+            # 1. Fetch the raw target dates to calculate variances on the fly
+            cursor.execute('SELECT "ESD", "ENG DUE DATE", "COMPLETE DATE" FROM raw_workload WHERE "SMART_ID" = ?',
+                           (smart_id,))
+            raw_row = cursor.fetchone()
+
+            esd_var = ""
+            eng_var = ""
+            comp_var = ""
+
+            if raw_row:
+                esd, eng_due, complete = raw_row
+                # Temporarily calculate end date to find variances
+                temp_row = {'EST START DATE': start_date, 'EST DAYS': est_days}
+                end_date = self.calc_end_date(temp_row)
+
+                esd_var = self.calc_variance(end_date, esd)
+                eng_var = self.calc_variance(end_date, eng_due)
+                comp_var = self.calc_variance(end_date, complete)
+
             cursor.execute('''
                 UPDATE my_planning_data 
-                SET "ASSIGNED TO" = ?, "EST DAYS" = ?, "EST START DATE" = ?
+                SET "ASSIGNED TO" = ?, "EST DAYS" = ?, "EST START DATE" = ?,
+                    "EST ESD VARIANCE" = ?, "EST ENG VARIANCE" = ?, "COMPLETION VARIANCE" = ?
                 WHERE "SMART_ID" = ?
-            ''', (assignee, est_days, start_date, smart_id))
+            ''', (assignee, est_days, start_date, esd_var, eng_var, comp_var, smart_id))
             conn.commit()
 
     def format_date(self, value):
@@ -255,8 +280,17 @@ class DataManager:
 
     def calc_end_date(self, row):
         try:
-            start = pd.to_datetime(row['EST START DATE'])
-            days = int(float(row['EST DAYS']))
+            start_str = str(row.get('EST START DATE', '')).strip()
+            # If there is absolutely no start date, we can't forecast an end date
+            if not start_str or start_str.lower() == 'nan':
+                return ""
+
+            start = pd.to_datetime(start_str)
+
+            days_str = str(row.get('EST DAYS', '')).strip()
+            # If no days are estimated, match the Gantt chart visual default of 3 days
+            days = int(float(days_str)) if days_str and days_str.lower() != 'nan' else 3
+
             end = start + BusinessDay(days)
             return f"{end.month}/{end.day}/{end.year}"
         except:
@@ -265,7 +299,15 @@ class DataManager:
     def calc_variance(self, end_date, target_date):
         try:
             if not end_date or not target_date: return ""
-            delta = (pd.to_datetime(target_date) - pd.to_datetime(end_date)).days
+
+            end_dt = pd.to_datetime(end_date)
+            target_dt = pd.to_datetime(target_date)
+
+            if target_dt >= end_dt:
+                delta = len(pd.bdate_range(end_dt, target_dt)) - 1
+            else:
+                delta = -(len(pd.bdate_range(target_dt, end_dt)) - 1)
+
             return f"{delta} days"
         except:
             return ""
