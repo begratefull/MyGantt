@@ -7,13 +7,14 @@ class GanttBlock(QGraphicsObject):
     block_dropped = Signal(str, float, float)
     assignee_changed = Signal(str, str)
 
-    def __init__(self, project_data, x, y, width, height, day_width):
+    def __init__(self, project_data, x, y, width, height, day_width, due_x_offset=-1):
         super().__init__()
         self.setPos(x, y)
         self.data = project_data
 
         self.day_width = day_width
         self.rect = QRectF(0, 0, width, height)
+        self.due_x_offset = due_x_offset
 
         self.setAcceptHoverEvents(True)
         self.setFlag(QGraphicsItem.ItemIsSelectable)
@@ -85,6 +86,15 @@ class GanttBlock(QGraphicsObject):
             painter.setPen(Qt.NoPen)
 
         painter.drawRoundedRect(self.rect, 4, 4)
+
+        if self.due_x_offset >= 0:
+            # Reverted to a striking red line
+            due_pen = QPen(QColor("#FF5252"), 3)
+            painter.setPen(due_pen)
+
+            # Draw the line inside the block bounds
+            marker_x = min(max(0, self.due_x_offset), self.rect.width())
+            painter.drawLine(int(marker_x), 0, int(marker_x), int(self.rect.height()))
 
         assignee = str(self.data.get('ASSIGNED TO', '')).strip()
         if assignee:
