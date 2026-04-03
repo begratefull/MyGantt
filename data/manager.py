@@ -75,12 +75,12 @@ class DataManager:
             return df.fillna("")
 
     def get_planning_data(self):
-        """Creates the Planning Table by blending Raw Data over Manual Data."""
+        """Creates the Planning Table by blending Raw Data and grouping by Project."""
         with sqlite3.connect(self.db_path) as conn:
             query = '''
                 SELECT 
                     r."SMART_ID", r."TYPE", r."ORDER NUMBER", r."QUOTE NO", 
-                    r."PROJECT NAME", r."STATUS", r."ESD", r."ENG DUE DATE", r."COMPLETE DATE",
+                    r."PROJECT NAME", r."STATUS", r."ESD", r."ENG DUE DATE", r."COMPLETE DATE", r."REQUIRMENT",
                     r."ASSIGNED TO" AS RAW_ASSIGNED, r."ENG START DATE" AS RAW_START,
                     p."ASSIGNED TO" AS MAN_ASSIGNED, p."EST DAYS", p."EST START DATE" AS MAN_START
                 FROM raw_workload r
@@ -91,28 +91,55 @@ class DataManager:
         if df.empty:
             return df
 
-        # THE OVERRIDE BLEND: If the Boss's sheet has data, use it! Otherwise, use your manual input.
+        # THE OVERRIDE BLEND
         df['ASSIGNED TO'] = df.apply(
             lambda r: r['RAW_ASSIGNED'] if str(r['RAW_ASSIGNED']).strip() else r['MAN_ASSIGNED'], axis=1)
+        # Keep BOTH start dates visible/available!
+        df['ENG START DATE'] = df['RAW_START']
         df['EST START DATE'] = df.apply(lambda r: r['RAW_START'] if str(r['RAW_START']).strip() else r['MAN_START'],
                                         axis=1)
 
-        # 1. Calculate End Dates
+        # 1. Calculate End Dates using the blended Start Date
         df['EST END DATE'] = df.apply(self.calc_end_date, axis=1)
 
-        # 2. Calculate Variances
+        # ==========================================
+        # NEW: GROUP BY PROJECT (Collapse Line Items)
+        # ==========================================
+        # Create a Project ID (Use Order No if exists, else Quote No)
+        df['PROJECT_ID'] = df.apply(lambda x: x['ORDER NUMBER'] if x['ORDER NUMBER'] else x['QUOTE NO'], axis=1)
+
+        # Define how we aggregate the grouped data (take the first instance of these fields)
+        agg_funcs = {
+            'SMART_ID': 'first',  # Keep one Smart ID to use as a database key
+            'REQUIRMENT': 'first',
+            'PROJECT NAME': 'first',
+            'QUOTE NO': 'first',
+            'ORDER NUMBER': 'first',
+            'STATUS': 'first',
+            'ESD': 'first',
+            'ENG DUE DATE': 'first',
+            'ASSIGNED TO': 'first',
+            'ENG START DATE': 'first',
+            'EST START DATE': 'first',
+            'EST DAYS': 'first',
+            'EST END DATE': 'first',
+            'COMPLETE DATE': 'first'
+        }
+
+        # Collapse the dataframe!
+        df = df.groupby('PROJECT_ID', as_index=False).agg(agg_funcs)
+
+        # 2. Calculate Variances (After grouping)
         df['EST ESD VARIANCE'] = df.apply(lambda row: self.calc_variance(row['EST END DATE'], row['ESD']), axis=1)
         df['EST ENG VARIANCE'] = df.apply(lambda row: self.calc_variance(row['EST END DATE'], row['ENG DUE DATE']),
                                           axis=1)
-
-        # NEW: Calculate Actual Completion Variance (Only populates if both dates exist)
         df['COMPLETION VARIANCE'] = df.apply(lambda row: self.calc_variance(row['EST END DATE'], row['COMPLETE DATE']),
                                              axis=1)
 
-        # 3. Reorder Columns (Variances sent to the far right)
+        # 3. Final Columns for UI
         planning_headers = [
-            "SMART_ID", "TYPE", "ORDER NUMBER", "QUOTE NO", "PROJECT NAME", "STATUS",
-            "ASSIGNED TO", "EST START DATE", "EST DAYS", "EST END DATE",
+            "PROJECT_ID", "SMART_ID", "REQUIRMENT", "QUOTE NO", "PROJECT NAME", "STATUS",
+            "ASSIGNED TO", "ENG START DATE", "EST START DATE", "EST DAYS", "EST END DATE",
             "ESD", "ENG DUE DATE", "COMPLETE DATE",
             "EST ESD VARIANCE", "EST ENG VARIANCE", "COMPLETION VARIANCE"
         ]
