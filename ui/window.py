@@ -135,10 +135,12 @@ class MyGanttWindow(QMainWindow):
         """
         self.filter_req = QComboBox()
         self.filter_req.addItems(["All Reqs", "Production", "Approval", "Quote"])
+        self.filter_req.setCurrentText("Production")
         self.filter_req.setStyleSheet(combo_style)
 
         self.filter_status = QComboBox()
         self.filter_status.addItems(["All Status", "Active", "Complete"])
+        self.filter_status.setCurrentText("Active")
         self.filter_status.setStyleSheet(combo_style)
 
         gantt_header_layout.addWidget(self.filter_req)
@@ -274,6 +276,10 @@ class MyGanttWindow(QMainWindow):
 
         self.inp_est_days = QLineEdit()
         self.inp_assignee = QLineEdit()
+
+        self.inp_assignee = QComboBox()
+        self.inp_assignee.addItems(["", "Adam T", "David M", "Andy C", "Matt M"])
+        self.inp_assignee.setStyleSheet(combo_style)
 
         self.kpi_req = QLabel("--")
         self.kpi_esd = QLabel("--")

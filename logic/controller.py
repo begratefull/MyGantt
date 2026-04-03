@@ -1,8 +1,21 @@
 from PySide6.QtGui import QGuiApplication, QPen, QColor, QFont
 from PySide6.QtWidgets import QTableWidgetItem
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, QThread, Signal
 import pandas as pd
 from ui.gantt_components import GanttBlock
+
+
+class SyncWorker(QThread):
+    finished = Signal(bool, str)
+
+    def __init__(self, model, excel_path):
+        super().__init__()
+        self.model = model
+        self.excel_path = excel_path
+
+    def run(self):
+        success, error_msg = self.model.sync_from_excel(self.excel_path)
+        self.finished.emit(success, error_msg)
 
 
 class AppController:
@@ -16,23 +29,23 @@ class AppController:
         self.row_height = 28
         self.current_plan_df = pd.DataFrame()
 
-        # Prevents snapping back to today every time you sync or filter!
         self.initial_scroll_done = False
 
         self.refresh_tables()
 
         self.view.sync_btn.clicked.connect(self.handle_sync)
-        self.view.filter_req.currentTextChanged.connect(self.refresh_tables)
-        self.view.filter_status.currentTextChanged.connect(self.refresh_tables)
+
+        self.view.filter_req.currentTextChanged.connect(lambda text: self.refresh_tables(maintain_state=False))
+        self.view.filter_status.currentTextChanged.connect(lambda text: self.refresh_tables(maintain_state=False))
 
         self.view.gantt_scene.selectionChanged.connect(self.handle_block_selection)
         self.view.info_table.itemSelectionChanged.connect(self.handle_table_selection)
         self.view.save_edit_btn.clicked.connect(self.handle_save_edit)
-
-        # NEW: Listen for clicks on the empty void of the Gantt chart!
         self.view.gantt_view.empty_clicked.connect(self.clear_all_selections)
 
-    def refresh_tables(self):
+    def refresh_tables(self, maintain_state=False):
+        selected_id = self.view.inp_smart_id.text() if maintain_state and not self.view.kpi_panel.isHidden() else None
+
         raw_df = self.model.get_raw_data()
         self.view.display_dataframe(self.view.raw_table, raw_df)
 
@@ -43,18 +56,26 @@ class AppController:
         if req_filter != "All Reqs":
             plan_df = plan_df[plan_df['REQUIRMENT'].str.contains(req_filter, case=False, na=False)]
 
+        # FIXED: Active means anything EXCEPT Complete
         status_filter = self.view.filter_status.currentText()
         if status_filter == "Active":
-            plan_df = plan_df[plan_df['STATUS'].str.upper() != 'COMPLETE']
+            plan_df = plan_df[plan_df['STATUS'].str.strip().str.upper() != 'COMPLETE']
         elif status_filter == "Complete":
-            plan_df = plan_df[plan_df['STATUS'].str.upper() == 'COMPLETE']
+            plan_df = plan_df[plan_df['STATUS'].str.strip().str.upper() == 'COMPLETE']
 
-        plan_df['SORT_DATE'] = pd.to_datetime(plan_df['ENG START DATE'].replace('', pd.NaT)).combine_first(
-            pd.to_datetime(plan_df['EST START DATE'].replace('', pd.NaT))).combine_first(
-            pd.to_datetime(plan_df['ENG DUE DATE'].replace('', pd.NaT)))
+        if maintain_state and not self.current_plan_df.empty:
+            current_ids = self.current_plan_df['SMART_ID'].tolist()
+            plan_df = plan_df.set_index('SMART_ID')
+            valid_ids = [uid for uid in current_ids if uid in plan_df.index]
+            new_ids = [uid for uid in plan_df.index if uid not in current_ids]
+            plan_df = plan_df.loc[valid_ids + new_ids].reset_index()
+        else:
+            plan_df['SORT_DATE'] = pd.to_datetime(plan_df['ENG START DATE'].replace('', pd.NaT)).combine_first(
+                pd.to_datetime(plan_df['EST START DATE'].replace('', pd.NaT))).combine_first(
+                pd.to_datetime(plan_df['ENG DUE DATE'].replace('', pd.NaT)))
 
-        plan_df = plan_df.sort_values(by=['STATUS', 'SORT_DATE'], ascending=[True, True])
-        plan_df = plan_df.drop(columns=['SORT_DATE'])
+            plan_df = plan_df.sort_values(by=['STATUS', 'SORT_DATE'], ascending=[True, True])
+            plan_df = plan_df.drop(columns=['SORT_DATE'])
 
         self.current_plan_df = plan_df.reset_index(drop=True)
 
@@ -63,7 +84,29 @@ class AppController:
         self.view.info_table.blockSignals(False)
 
         self.draw_gantt_canvas(self.current_plan_df)
-        self.view.kpi_panel.hide()
+
+        if maintain_state and selected_id:
+            self.restore_selection(selected_id)
+        else:
+            self.view.kpi_panel.hide()
+
+    def restore_selection(self, smart_id):
+        try:
+            row_idx = self.current_plan_df[self.current_plan_df['SMART_ID'] == smart_id].index[0]
+            self.view.info_table.blockSignals(True)
+            self.view.info_table.selectRow(row_idx)
+            self.view.info_table.blockSignals(False)
+        except IndexError:
+            pass
+
+        self.view.gantt_scene.blockSignals(True)
+        for item in self.view.gantt_scene.items():
+            if isinstance(item, GanttBlock) and item.data.get('SMART_ID') == smart_id:
+                item.setSelected(True)
+                break
+        self.view.gantt_scene.blockSignals(False)
+
+        self.view.kpi_panel.show()
 
     def populate_left_table(self, df):
         table = self.view.info_table
@@ -90,9 +133,11 @@ class AppController:
         day_zero = all_starts.min() if not all_starts.isna().all() else pd.Timestamp.today().normalize()
         day_zero = day_zero - pd.Timedelta(days=day_zero.weekday())
 
+        self.day_zero = day_zero
+
         total_business_days = 120
         total_width = total_business_days * self.day_width
-        total_height = max(len(df) * self.row_height, 800)  # Ensures lines draw all the way down
+        total_height = max(len(df) * self.row_height, 800)
 
         self.view.header_scene.setSceneRect(0, 0, total_width, 45)
         self.view.gantt_scene.setSceneRect(0, 0, total_width, total_height)
@@ -102,19 +147,16 @@ class AppController:
 
         current_x = 0
         current_month = -1
-
         today = pd.Timestamp.today().normalize()
         today_x = -1
 
         for i in range(total_business_days):
             current_date = day_zero + pd.tseries.offsets.BusinessDay(i)
 
-            # HIGHLIGHT TODAY!
             if current_date == today:
                 h_highlight = self.view.header_scene.addRect(current_x, 0, self.day_width, 45, QPen(Qt.NoPen),
                                                              QColor(255, 255, 255, 15))
                 h_highlight.setZValue(-1)
-
                 g_highlight = self.view.gantt_scene.addRect(current_x, 0, self.day_width, total_height, QPen(Qt.NoPen),
                                                             QColor(255, 255, 255, 15))
                 g_highlight.setZValue(-1)
@@ -148,41 +190,86 @@ class AppController:
             self.view.gantt_scene.addLine(0, y + self.row_height, current_x, y + self.row_height,
                                           QPen(QColor("#252526")))
 
+            status = str(row.get('STATUS', '')).strip().upper()
             raw_start = str(row.get('ENG START DATE', '')).strip()
             est_start = str(row.get('EST START DATE', '')).strip()
-            start_str = raw_start if raw_start else est_start
-            start_dt = pd.to_datetime(start_str) if start_str else pd.NaT
-
+            comp_date = str(row.get('COMPLETE DATE', '')).strip()
             est_days_str = str(row.get('EST DAYS', '')).strip()
-            days = float(est_days_str) if est_days_str else 3
+
+            start_str = raw_start if raw_start else est_start
+
+            # FIXED: Status is strictly COMPLETE
+            if status == 'COMPLETE':
+                start_dt = pd.to_datetime(start_str) if start_str else pd.NaT
+                end_dt = pd.to_datetime(comp_date) if comp_date else pd.NaT
+                if pd.notna(start_dt) and pd.notna(end_dt):
+                    days = self.get_business_day_offset(start_dt, end_dt)
+                    days = max(1, days)
+                else:
+                    days = 1
+            else:
+                if est_days_str:
+                    days = float(est_days_str)
+                else:
+                    days = 3
+
+            start_dt = pd.to_datetime(start_str) if start_str else pd.NaT
             width = days * self.day_width
 
             if pd.notna(start_dt):
                 offset = self.get_business_day_offset(day_zero, start_dt)
                 x = offset * self.day_width
-                block = GanttBlock(row.to_dict(), x, y + 4, width, self.row_height - 8)
-                self.view.gantt_scene.addItem(block)
+            else:
+                x = 0
 
-        # SCROLL TO TODAY (Only on initial launch!)
+            block = GanttBlock(row.to_dict(), x, y + 4, width, self.row_height - 8, self.day_width)
+
+            block.block_dropped.connect(self.handle_block_dropped)
+            block.assignee_changed.connect(self.handle_right_click_assign)
+
+            self.view.gantt_scene.addItem(block)
+
         if not self.initial_scroll_done and today_x >= 0:
-            # TWEAK: Calculate exactly how far into the week we are and step back to Monday
             days_from_monday = today.weekday()
             monday_x = today_x - (days_from_monday * self.day_width)
-
-            # Step back 1 more day (25px) as a visual padding buffer
             scroll_x = max(0, monday_x - self.day_width)
-
-            from PySide6.QtCore import QTimer
             QTimer.singleShot(0, lambda: self.view.gantt_view.horizontalScrollBar().setValue(scroll_x))
             self.initial_scroll_done = True
 
+    def handle_right_click_assign(self, smart_id, new_assignee):
+        if not self.current_plan_df.empty:
+            match = self.current_plan_df[self.current_plan_df['SMART_ID'] == smart_id]
+            if not match.empty:
+                est_days = str(match.iloc[0]['EST DAYS'])
+                start_date = str(match.iloc[0]['EST START DATE'])
+                self.model.update_job_details(smart_id, new_assignee, est_days, start_date)
+                self.refresh_tables(maintain_state=True)
+
+    def handle_block_dropped(self, smart_id, new_x, new_width):
+        days_from_zero = int(new_x / self.day_width)
+        new_date = self.day_zero + pd.tseries.offsets.BusinessDay(days_from_zero)
+        new_date_str = f"{new_date.month}/{new_date.day}/{new_date.year}"
+
+        new_days = str(int(new_width / self.day_width))
+
+        assignee = ""
+        if not self.current_plan_df.empty:
+            match = self.current_plan_df[self.current_plan_df['SMART_ID'] == smart_id]
+            if not match.empty:
+                assignee = str(match.iloc[0]['ASSIGNED TO'])
+
+        self.model.update_job_details(smart_id, assignee, new_days, new_date_str)
+        self.refresh_tables(maintain_state=True)
 
     def populate_kpi_inspector(self, data):
         self.view.inp_smart_id.setText(str(data.get('SMART_ID', '')))
         project_name = str(data.get('PROJECT NAME', 'Unknown'))
         self.view.kpi_title.setText(f"Job: {project_name[:15]}...")
         self.view.kpi_req.setText(str(data.get('REQUIRMENT', '--')))
-        self.view.inp_assignee.setText(str(data.get('ASSIGNED TO', '')))
+
+        assignee = str(data.get('ASSIGNED TO', '')).strip()
+        self.view.inp_assignee.setCurrentText(assignee)
+
         self.view.inp_est_days.setText(str(data.get('EST DAYS', '')))
         self.view.kpi_eng_due.setText(str(data.get('ENG DUE DATE', '--')))
         self.view.kpi_esd.setText(str(data.get('ESD', '--')))
@@ -190,7 +277,6 @@ class AppController:
         self.view.kpi_esd_var.setText(str(data.get('EST ESD VARIANCE', '--')))
 
     def clear_all_selections(self):
-        """Called when clicking the empty background of the Gantt chart."""
         self.view.info_table.blockSignals(True)
         self.view.info_table.clearSelection()
         self.view.info_table.blockSignals(False)
@@ -198,7 +284,6 @@ class AppController:
         self.view.gantt_scene.blockSignals(True)
         self.view.gantt_scene.clearSelection()
         self.view.gantt_scene.blockSignals(False)
-
         self.view.kpi_panel.hide()
 
     def handle_block_selection(self):
@@ -232,18 +317,23 @@ class AppController:
     def handle_sync(self):
         self.view.sync_btn.setText("Syncing Data...")
         self.view.sync_btn.setEnabled(False)
-        QGuiApplication.processEvents()
-        success, error_msg = self.model.sync_from_excel(self.excel_path)
-        if not success:
-            self.view.show_warning("Sync Error", f"Could not sync data:\n\n{error_msg}")
-        else:
-            self.refresh_tables()
+
+        self.sync_worker = SyncWorker(self.model, self.excel_path)
+        self.sync_worker.finished.connect(self.on_sync_finished)
+        self.sync_worker.start()
+
+    def on_sync_finished(self, success, error_msg):
         self.view.sync_btn.setText("Sync Workload")
         self.view.sync_btn.setEnabled(True)
 
+        if not success:
+            self.view.show_warning("Sync Error", f"Could not sync data:\n\n{error_msg}")
+        else:
+            self.refresh_tables(maintain_state=False)
+
     def handle_save_edit(self):
         smart_id = self.view.inp_smart_id.text()
-        assignee = self.view.inp_assignee.text()
+        assignee = self.view.inp_assignee.currentText()
         est_days = self.view.inp_est_days.text()
 
         current_start_date = ""
@@ -253,4 +343,4 @@ class AppController:
                 current_start_date = match.iloc[0]['EST START DATE']
 
         self.model.update_job_details(smart_id, assignee, est_days, current_start_date)
-        self.refresh_tables()
+        self.refresh_tables(maintain_state=True)
