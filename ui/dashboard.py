@@ -133,7 +133,7 @@ class DashboardWidget(QWidget):
         }
 
         # Group by Assignee AND Requirement
-        grouped = active_df.groupby(['ASSIGNED TO', 'REQUIRMENT']).size()
+        grouped = active_df.groupby(['ASSIGNED TO', 'REQUIREMENT']).size()
 
         for (eng, req), count in grouped.items():
             if not eng or str(eng).strip() == '': continue
@@ -168,7 +168,7 @@ class DashboardWidget(QWidget):
 
         stacked_series = QStackedBarSeries()
 
-        requirements = active_df['REQUIRMENT'].replace('', 'Uncategorized').unique().tolist()
+        requirements = active_df['REQUIREMENT'].replace('', 'Uncategorized').unique().tolist()
         types = active_df['TYPE'].replace('', 'Unknown').unique().tolist()
 
         # Build a colored bar segment for each Type across all requirements
@@ -182,14 +182,14 @@ class DashboardWidget(QWidget):
 
             for req in requirements:
                 # Count jobs that match BOTH this Type and this Requirement
-                count = len(active_df[(active_df['TYPE'] == t_name) & (active_df['REQUIRMENT'] == req)])
+                count = len(active_df[(active_df['TYPE'] == t_name) & (active_df['REQUIREMENT'] == req)])
                 bar_set.append(count)
 
             stacked_series.append(bar_set)
 
         # Find the highest stacked bar to set the Y-axis height
         for req in requirements:
-            total_for_req = len(active_df[active_df['REQUIRMENT'] == req])
+            total_for_req = len(active_df[active_df['REQUIREMENT'] == req])
             if total_for_req > max_stack_val: max_stack_val = total_for_req
 
         self.type_chart.addSeries(stacked_series)

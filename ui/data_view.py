@@ -1,5 +1,4 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QTableWidget, QAbstractItemView, \
-    QPushButton
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QTableWidget, QAbstractItemView, QPushButton
 
 
 class DataViewWidget(QWidget):

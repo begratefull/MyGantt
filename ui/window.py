@@ -1,5 +1,3 @@
-# ui/window.py
-
 import os
 from PySide6.QtWidgets import (QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout,
                                QWidget, QMessageBox, QTableWidgetItem, QHeaderView, QStackedWidget, QFrame)
@@ -16,6 +14,10 @@ class MyGanttWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("MyGantt")
         self.resize(1500, 1000)
+
+        # --- Initialize Status Bar ---
+        self.statusBar().showMessage("Ready")
+        self.statusBar().setStyleSheet("color: #AAAAAA; background-color: #1E1E1E; border-top: 1px solid #3E3E42;")
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -92,12 +94,21 @@ class MyGanttWindow(QMainWindow):
         self.inp_smart_id = self.gantt_screen.inp_smart_id
         self.inp_est_days = self.gantt_screen.inp_est_days
         self.inp_assignee = self.gantt_screen.inp_assignee
+
+        # New Mappings Here!
+        self.kpi_order = self.gantt_screen.kpi_order
+        self.kpi_quote = self.gantt_screen.kpi_quote
+
         self.kpi_req = self.gantt_screen.kpi_req
         self.kpi_esd = self.gantt_screen.kpi_esd
         self.kpi_eng_due = self.gantt_screen.kpi_eng_due
         self.kpi_eng_var = self.gantt_screen.kpi_eng_var
         self.kpi_esd_var = self.gantt_screen.kpi_esd_var
-        self.save_edit_btn = self.gantt_screen.save_edit_btn
+
+    def show_status(self, message, timeout=4000):
+        """Helper to display messages in the bottom status bar.
+        Timeout is in milliseconds (4000 = 4 seconds). 0 means it stays until cleared."""
+        self.statusBar().showMessage(message, timeout)
 
     # Helper method for the controller
     def display_dataframe(self, table_widget, df):

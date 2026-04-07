@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
                                QComboBox, QSplitter, QTableWidget, QAbstractItemView,
-                               QGraphicsView, QGraphicsScene, QFormLayout, QLineEdit, QPushButton)
+                               QGraphicsView, QGraphicsScene, QFormLayout, QLineEdit)
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPainter, QColor, QPen
 
@@ -67,7 +67,7 @@ class GanttScreenWidget(QWidget):
 
         self.filter_req = QComboBox()
         self.filter_req.addItems(["All Reqs", "Production", "Approval", "Quote"])
-        self.filter_req.setCurrentText("Production")
+        self.filter_req.setCurrentText("All Reqs")
 
         self.filter_status = QComboBox()
         self.filter_status.addItems(["All Status", "Active", "Complete"])
@@ -167,18 +167,27 @@ class GanttScreenWidget(QWidget):
         self.inp_assignee = QComboBox()
         self.inp_assignee.addItems(["", "Adam T", "David M", "Andy C", "Matt M"])
 
+        # New Labels!
+        self.kpi_order = QLabel("--")
+        self.kpi_quote = QLabel("--")
+
         self.kpi_req = QLabel("--")
         self.kpi_esd = QLabel("--")
         self.kpi_eng_due = QLabel("--")
         self.kpi_eng_var = QLabel("--")
         self.kpi_esd_var = QLabel("--")
 
+        self.kpi_order.setObjectName("KpiValue")
+        self.kpi_quote.setObjectName("KpiValue")
         self.kpi_req.setObjectName("KpiLabel")
         self.kpi_esd.setObjectName("KpiValue")
         self.kpi_eng_due.setObjectName("KpiValue")
         self.kpi_eng_var.setObjectName("KpiValue")
         self.kpi_esd_var.setObjectName("KpiValue")
 
+        # Added to layout
+        form_layout.addRow("Order No:", self.kpi_order)
+        form_layout.addRow("Quote No:", self.kpi_quote)
         form_layout.addRow("Requirement:", self.kpi_req)
         form_layout.addRow("Est. Days:", self.inp_est_days)
         form_layout.addRow("Assign To:", self.inp_assignee)
@@ -194,10 +203,6 @@ class GanttScreenWidget(QWidget):
         form_layout.addRow("ESD Variance:", self.kpi_esd_var)
 
         kpi_layout.addLayout(form_layout)
-
-        self.save_edit_btn = QPushButton("Save Estimate")
-        self.save_edit_btn.setObjectName("PrimaryButton")
-        kpi_layout.addWidget(self.save_edit_btn)
         kpi_layout.addStretch()
 
         gantt_body_layout.addWidget(self.unified_gantt_card, 1)

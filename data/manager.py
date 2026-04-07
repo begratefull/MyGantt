@@ -2,6 +2,10 @@ import pandas as pd
 import sqlite3
 import os
 import shutil
+import numpy as np
+import uuid
+import re
+from typing import Dict, Any
 from pandas.tseries.offsets import BusinessDay
 
 
@@ -10,24 +14,27 @@ class DataManager:
         base_path = os.path.dirname(__file__)
         self.db_path = os.path.join(base_path, "gantt_data.db")
 
-        # Mapped from Boss's Excel to our Clean Raw Data
+        # --- BULLETPROOF HEADER MAPPING ---
+        # These keys have all spaces, \n, and special characters stripped out!
         self.raw_header_mapping = {
-            "ORDER NUMBER": "ORDER NUMBER",
-            "LINE\nITEM": "LINE ITEM",
+            "ORDERNUMBER": "ORDER NUMBER",
+            "LINEITEM": "LINE ITEM",
             "PRIORITY": "PRIORITY",
-            "DATE TO ENG": "DATE TO ENG",
-            "SHIP TO NUMBER\n(PROJECT)": "PROJECT NAME",
-            "INTERGRATION REFERENCE NUMBER\n(QUOTE #)": "QUOTE NO",
-            "SALES CONTACT": "SALES CONTACT",
+            "DATETOENG": "DATE TO ENG",
+            "SHIPTONUMBERPROJECT": "PROJECT NAME",
+            "INTERGRATIONREFERENCENUMBERQUOTE": "QUOTE NO",  # Matches the typo in the file
+            "INTEGRATIONREFERENCENUMBERQUOTE": "QUOTE NO",  # Fallback if they fix the spelling later
+            "SALESCONTACT": "SALES CONTACT",
             "TYPE": "TYPE",
-            "CONFIGURED STRING\n(LUMINARIE SPECIFICATION)": "LUMINARIE SPECIFICATION",
-            "SELL $": "SELL $",
-            "ASSIGNED TO": "ASSIGNED TO",  # NEW: Added for Real-World Override
-            "ENG START DATE": "ENG START DATE",  # NEW: Added for Real-World Override
-            "DUE DATE": "ENG DUE DATE",
-            "COMPLETE DATE": "COMPLETE DATE",
-            "SHIP DATE": "ESD",
-            "REQUIRMENT": "REQUIRMENT",
+            "CONFIGUREDSTRINGLUMINARIESPECIFICATION": "LUMINARIE SPECIFICATION",
+            "SELL": "SELL $",
+            "ASSIGNEDTO": "RAW_ASSIGNED",
+            "ENGSTARTDATE": "RAW_START_DATE",
+            "DUEDATE": "ENG DUE DATE",
+            "COMPLETEDATE": "COMPLETE DATE",
+            "SHIPDATE": "ESD",
+            "REQUIREMENT": "REQUIREMENT",
+            "REQUIRMENT": "REQUIREMENT",
             "STATUS": "STATUS"
         }
 
@@ -35,9 +42,13 @@ class DataManager:
         self.init_db()
 
     def init_db(self):
+        """Initializes the strict two-layer database architecture."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            raw_cols = ", ".join([f'"{h}" TEXT' for h in self.raw_header_mapping.values()])
+
+            unique_cols = list(dict.fromkeys(self.raw_header_mapping.values()))
+            raw_cols = ", ".join([f'"{h}" TEXT' for h in unique_cols])
+
             cursor.execute(f'''
                 CREATE TABLE IF NOT EXISTS raw_workload (
                     "SMART_ID" TEXT PRIMARY KEY,
@@ -46,110 +57,123 @@ class DataManager:
             ''')
 
             cursor.execute('''
-                CREATE TABLE IF NOT EXISTS my_planning_data (
+                CREATE TABLE IF NOT EXISTS user_overrides (
                     "SMART_ID" TEXT PRIMARY KEY,
-                    "ASSIGNED TO" TEXT,
-                    "EST DAYS" TEXT,
-                    "EST START DATE" TEXT,
-                    "EST ESD VARIANCE" TEXT,
-                    "EST ENG VARIANCE" TEXT,
-                    "COMPLETION VARIANCE" TEXT
+                    "MAN_ASSIGNED" TEXT,
+                    "MAN_EST_DAYS" TEXT,
+                    "MAN_START_DATE" TEXT
                 )
             ''')
             conn.commit()
 
-    def generate_smart_id(self, row):
+    @staticmethod
+    def generate_smart_id(row):
+        """Generates a crash-proof unique ID for every line item."""
         order = str(row.get('ORDER NUMBER', '')).strip()
         quote = str(row.get('QUOTE NO', '')).strip()
         line = str(row.get('LINE ITEM', '')).strip()
 
-        if order and order.upper() != 'NAN':
+        if order and order.upper() not in ['NAN', '']:
             base = order
-        elif quote and quote.upper() != 'NAN':
+        elif quote and quote.upper() not in ['NAN', '']:
             base = quote
         else:
-            base = "UNKNOWN"
+            short_hash = uuid.uuid4().hex[:6].upper()
+            base = f"UNK-{short_hash}"
 
-        return f"{base}-{line}"
+        if line and line.upper() not in ['NAN', '']:
+            return f"{base}-{line}"
+        return base
 
-    def get_raw_data(self):
+    def _get_raw_df(self):
         with sqlite3.connect(self.db_path) as conn:
-            df = pd.read_sql_query('SELECT * FROM raw_workload', conn)
-            return df.fillna("")
+            return pd.read_sql_query('SELECT * FROM raw_workload', conn).fillna("")
 
-    def get_planning_data(self):
-        """Creates the Planning Table by blending Raw Data and grouping by Project."""
+    def _get_saved_overrides_df(self):
         with sqlite3.connect(self.db_path) as conn:
-            query = '''
-                SELECT 
-                    r."SMART_ID", r."TYPE", r."ORDER NUMBER", r."QUOTE NO", 
-                    r."PROJECT NAME", r."STATUS", r."ESD", r."ENG DUE DATE", r."COMPLETE DATE", r."REQUIRMENT",
-                    r."ASSIGNED TO" AS RAW_ASSIGNED, r."ENG START DATE" AS RAW_START,
-                    p."ASSIGNED TO" AS MAN_ASSIGNED, p."EST DAYS", p."EST START DATE" AS MAN_START
-                FROM raw_workload r
-                LEFT JOIN my_planning_data p ON r."SMART_ID" = p."SMART_ID"
-            '''
-            df = pd.read_sql_query(query, conn).fillna("")
+            return pd.read_sql_query('SELECT * FROM user_overrides', conn).fillna("")
 
-        if df.empty:
-            return df
+    def get_application_data(self, staged_edits=None):
+        """
+        The Master Data Compiler.
+        Blends Layer 1 (Raw), Layer 2 (Saved DB), and Layer 2.5 (Unsaved Staged Edits).
+        """
+        raw_df = self._get_raw_df()
+        over_df = self._get_saved_overrides_df()
 
-        # THE OVERRIDE BLEND
+        if raw_df.empty:
+            return raw_df
+
+        df = pd.merge(raw_df, over_df, on="SMART_ID", how="left").fillna("")
+
+        if staged_edits:
+            staged_df = pd.DataFrame.from_dict(staged_edits, orient='index')
+            staged_df.index.name = 'SMART_ID'
+            staged_df = staged_df.reset_index()
+
+            df = df.set_index('SMART_ID')
+            staged_df = staged_df.set_index('SMART_ID')
+            df.update(staged_df)
+            df = df.reset_index()
+
         df['ASSIGNED TO'] = df.apply(
-            lambda r: r['RAW_ASSIGNED'] if str(r['RAW_ASSIGNED']).strip() else r['MAN_ASSIGNED'], axis=1)
-        # Keep BOTH start dates visible/available!
-        df['ENG START DATE'] = df['RAW_START']
-        df['EST START DATE'] = df.apply(lambda r: r['RAW_START'] if str(r['RAW_START']).strip() else r['MAN_START'],
-                                        axis=1)
+            lambda r: r['MAN_ASSIGNED'] if str(r.get('MAN_ASSIGNED', '')).strip() else r['RAW_ASSIGNED'], axis=1)
 
-        # 1. Calculate End Dates using the blended Start Date
-        df['EST END DATE'] = df.apply(self.calc_end_date, axis=1)
+        df['ENG START DATE'] = df['RAW_START_DATE']
+        df['EST START DATE'] = df.apply(
+            lambda r: r['MAN_START_DATE'] if str(r.get('MAN_START_DATE', '')).strip() else r['RAW_START_DATE'], axis=1)
 
-        # ==========================================
-        # NEW: GROUP BY PROJECT (Collapse Line Items)
-        # ==========================================
-        # Create a Project ID (Use Order No if exists, else Quote No)
+        df['EST DAYS'] = df['MAN_EST_DAYS'].replace('', '5')
+
         df['PROJECT_ID'] = df.apply(lambda x: x['ORDER NUMBER'] if x['ORDER NUMBER'] else x['QUOTE NO'], axis=1)
 
-        # Define how we aggregate the grouped data (take the first instance of these fields)
         agg_funcs = {
-            'SMART_ID': 'first',
-            'TYPE': 'first',
-            'REQUIRMENT': 'first',
-            'PROJECT NAME': 'first',
-            'QUOTE NO': 'first',
-            'ORDER NUMBER': 'first',
-            'STATUS': 'first',
-            'ESD': 'first',
-            'ENG DUE DATE': 'first',
-            'ASSIGNED TO': 'first',
-            'ENG START DATE': 'first',
-            'EST START DATE': 'first',
-            'EST DAYS': 'first',
-            'EST END DATE': 'first',
-            'COMPLETE DATE': 'first'
+            'SMART_ID': 'first', 'TYPE': 'first', 'REQUIREMENT': 'first', 'PROJECT NAME': 'first',
+            'QUOTE NO': 'first', 'ORDER NUMBER': 'first', 'STATUS': 'first', 'ESD': 'first',
+            'ENG DUE DATE': 'first', 'COMPLETE DATE': 'first', 'ASSIGNED TO': 'first',
+            'ENG START DATE': 'first', 'EST START DATE': 'first', 'EST DAYS': 'first'
         }
-
-        # Collapse the dataframe!
         df = df.groupby('PROJECT_ID', as_index=False).agg(agg_funcs)
 
-        # 2. Calculate Variances (After grouping)
-        df['EST ESD VARIANCE'] = df.apply(lambda row: self.calc_variance(row['EST END DATE'], row['ESD']), axis=1)
-        df['EST ENG VARIANCE'] = df.apply(lambda row: self.calc_variance(row['EST END DATE'], row['ENG DUE DATE']),
+        df['EST END DATE'] = df.apply(self.calc_end_date, axis=1)
+        df['EST ESD VARIANCE'] = df.apply(lambda r: self.calc_variance(r.get('EST END DATE'), r.get('ESD')), axis=1)
+        df['EST ENG VARIANCE'] = df.apply(lambda r: self.calc_variance(r.get('EST END DATE'), r.get('ENG DUE DATE')),
                                           axis=1)
-        df['COMPLETION VARIANCE'] = df.apply(lambda row: self.calc_variance(row['COMPLETE DATE'], row['ENG DUE DATE']),
-                                             axis=1)
+        df['COMPLETION VARIANCE'] = df.apply(
+            lambda r: self.calc_variance(r.get('COMPLETE DATE'), r.get('ENG DUE DATE')), axis=1)
 
-        # 3. Final Columns for UI
         planning_headers = [
-            "PROJECT_ID", "SMART_ID", "TYPE", "REQUIRMENT", "QUOTE NO", "PROJECT NAME", "STATUS",
+            "PROJECT_ID", "SMART_ID", "TYPE", "REQUIREMENT", "QUOTE NO", "ORDER NUMBER", "PROJECT NAME", "STATUS",
             "ASSIGNED TO", "ENG START DATE", "EST START DATE", "EST DAYS", "EST END DATE",
             "ESD", "ENG DUE DATE", "COMPLETE DATE",
             "EST ESD VARIANCE", "EST ENG VARIANCE", "COMPLETION VARIANCE"
         ]
         return df[planning_headers]
 
+    def commit_overrides(self, staged_edits_dict: Dict[str, Dict[str, Any]]):
+        if not staged_edits_dict or not isinstance(staged_edits_dict, dict):
+            return
+
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+
+            for smart_id, edit_data in staged_edits_dict.items():
+                assignee = edit_data.get('MAN_ASSIGNED', '')
+                est_days = edit_data.get('MAN_EST_DAYS', '')
+                start_date = edit_data.get('MAN_START_DATE', '')
+
+                cursor.execute('''
+                    INSERT INTO user_overrides ("SMART_ID", "MAN_ASSIGNED", "MAN_EST_DAYS", "MAN_START_DATE")
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT("SMART_ID") DO UPDATE SET
+                        "MAN_ASSIGNED" = CASE WHEN excluded."MAN_ASSIGNED" != '' THEN excluded."MAN_ASSIGNED" ELSE user_overrides."MAN_ASSIGNED" END,
+                        "MAN_EST_DAYS" = CASE WHEN excluded."MAN_EST_DAYS" != '' THEN excluded."MAN_EST_DAYS" ELSE user_overrides."MAN_EST_DAYS" END,
+                        "MAN_START_DATE" = CASE WHEN excluded."MAN_START_DATE" != '' THEN excluded."MAN_START_DATE" ELSE user_overrides."MAN_START_DATE" END
+                ''', (smart_id, assignee, est_days, start_date))
+            conn.commit()
+
     def sync_from_excel(self, file_path):
+        """Syncs the Raw Excel Data using a dynamic regex column normalizer."""
         temp_path = "temp_sync_shadow.xlsx"
         step = "Initializing sync"
         try:
@@ -168,138 +192,124 @@ class DataManager:
 
             header_idx = -1
             for idx, row in df.head(50).iterrows():
-                row_vals = [str(cell).upper() for cell in row]
-                if "ORDER NUMBER" in row_vals:
+                if "ORDER NUMBER" in [str(cell).upper() for cell in row]:
                     header_idx = idx
                     break
 
-            if header_idx == -1: return False, "Could not find 'ORDER NUMBER' header row in the Excel sheet."
+            if header_idx == -1: return False, "Could not find 'ORDER NUMBER' header row."
 
+            # Set raw column names
             df.columns = [str(c).strip() for c in df.iloc[header_idx]]
             df = df.iloc[header_idx + 1:].reset_index(drop=True)
 
+            # =========================================================
+            # NEW DATA NORMALIZATION ENGINE
+            # =========================================================
+            actual_cols = list(df.columns)
+            rename_dict = {}
+
+            for actual_col in actual_cols:
+                # Strip ALL non-alphanumeric characters (spaces, \n, $, (), _ etc.)
+                norm_col = re.sub(r'[\W_]+', '', str(actual_col).upper())
+
+                # If the normalized column matches our dictionary, map it!
+                if norm_col in self.raw_header_mapping:
+                    rename_dict[actual_col] = self.raw_header_mapping[norm_col]
+
+            # Rename columns based on our found mappings
+            df = df.rename(columns=rename_dict)
+            # =========================================================
+
             end_idx = -1
             for idx, row in df.iterrows():
-                row_vals = [str(cell).upper() for cell in row]
-                if "END OF LINE" in row_vals:
+                if "END OF LINE" in [str(cell).upper() for cell in row]:
                     end_idx = idx
                     break
-
             if end_idx != -1: df = df.iloc[:end_idx]
 
-            mapping = getattr(self, 'raw_header_mapping', {}) or {}
-            raw_cols = list(df.columns) if hasattr(df, 'columns') and df.columns is not None else []
-            columns_to_keep = [col for col in raw_cols if col in mapping]
-            df = df[columns_to_keep].rename(columns=mapping)
+            # Filter to keep only columns we explicitly mapped
+            unique_expected_cols = list(dict.fromkeys(self.raw_header_mapping.values()))
+            columns_to_keep = [c for c in df.columns if c in unique_expected_cols]
+            df = df[columns_to_keep]
 
-            valid_teams = getattr(self, 'valid_types', ['MOD', 'CUS', 'PART-MC']) or ['MOD', 'CUS', 'PART-MC']
             if 'TYPE' in df.columns:
-                df = df[df['TYPE'].isin(valid_teams)]
+                df = df[df['TYPE'].isin(self.valid_types)]
 
             df['SMART_ID'] = df.apply(self.generate_smart_id, axis=1)
-
             counts = df.groupby('SMART_ID').cumcount()
             df['SMART_ID'] = df['SMART_ID'] + counts.apply(lambda x: f"_{x}" if x > 0 else "")
 
-            # ADDED: ENG START DATE format standardizing
-            date_cols = ["DATE TO ENG", "ENG START DATE", "ENG DUE DATE", "COMPLETE DATE", "ESD"]
-            for col in date_cols:
+            for col in ["DATE TO ENG", "RAW_START_DATE", "ENG DUE DATE", "COMPLETE DATE", "ESD"]:
                 if col in df.columns: df[col] = df[col].apply(self.format_date)
 
-            for expected_col in mapping.values():
+            for expected_col in unique_expected_cols:
                 if expected_col not in df.columns: df[expected_col] = ""
 
-            final_cols = ["SMART_ID"] + list(mapping.values())
+            final_cols = ["SMART_ID"] + unique_expected_cols
             df = df[final_cols]
 
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                cursor.execute('DELETE FROM raw_workload')
+
+                cursor.execute('DROP TABLE IF EXISTS raw_workload')
+
+                raw_cols_def = ", ".join([f'"{h}" TEXT' for h in unique_expected_cols])
+                cursor.execute(f'''
+                    CREATE TABLE raw_workload (
+                        "SMART_ID" TEXT PRIMARY KEY,
+                        {raw_cols_def}
+                    )
+                ''')
+
+                col_names_str = ", ".join([f'"{c}"' for c in final_cols])
                 placeholders = ", ".join(["?"] * len(final_cols))
+
                 records = list(df.itertuples(index=False, name=None))
                 if records:
-                    cursor.executemany(f"INSERT INTO raw_workload VALUES ({placeholders})", records)
-                    cursor.execute('''
-                        INSERT OR IGNORE INTO my_planning_data ("SMART_ID", "ASSIGNED TO", "EST DAYS", "EST START DATE")
-                        SELECT "SMART_ID", '', '', '' FROM raw_workload
-                    ''')
+                    cursor.executemany(f"INSERT INTO raw_workload ({col_names_str}) VALUES ({placeholders})", records)
                 conn.commit()
             return True, ""
 
         except Exception as e:
             import traceback
-            error_str = f"CRASHED AT STEP:\n>>> {step} <<<\n\nError: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
-            print("\n" + "!" * 60 + "\n🚨 DATABASE SYNC ERROR 🚨\n" + "!" * 60 + f"\n{error_str}\n" + "!" * 60 + "\n")
-            return False, "Sync failed! Please check your PyCharm console for the full error text."
-
+            error_str = f"Error at {step}: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+            print(error_str)
+            return False, "Sync failed! Check console."
         finally:
             if os.path.exists(temp_path):
                 try:
                     os.remove(temp_path)
-                except:
+                except Exception:
                     pass
 
-    def update_job_details(self, smart_id, assignee, est_days, start_date):
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-
-            # 1. Fetch the raw target dates to calculate variances on the fly
-            cursor.execute('SELECT "ESD", "ENG DUE DATE", "COMPLETE DATE" FROM raw_workload WHERE "SMART_ID" = ?',
-                           (smart_id,))
-            raw_row = cursor.fetchone()
-
-            esd_var = ""
-            eng_var = ""
-            comp_var = ""
-
-            if raw_row:
-                esd, eng_due, complete = raw_row
-                # Temporarily calculate end date to find variances
-                temp_row = {'EST START DATE': start_date, 'EST DAYS': est_days}
-                end_date = self.calc_end_date(temp_row)
-
-                esd_var = self.calc_variance(end_date, esd)
-                eng_var = self.calc_variance(end_date, eng_due)
-                comp_var = self.calc_variance(end_date, complete)
-
-            cursor.execute('''
-                UPDATE my_planning_data 
-                SET "ASSIGNED TO" = ?, "EST DAYS" = ?, "EST START DATE" = ?,
-                    "EST ESD VARIANCE" = ?, "EST ENG VARIANCE" = ?, "COMPLETION VARIANCE" = ?
-                WHERE "SMART_ID" = ?
-            ''', (assignee, est_days, start_date, esd_var, eng_var, comp_var, smart_id))
-            conn.commit()
-
-    def format_date(self, value):
+    @staticmethod
+    def format_date(value):
         if pd.isna(value) or str(value).strip() in ["", "nan"]: return ""
         try:
             dt = pd.to_datetime(value)
             return f"{dt.month}/{dt.day}/{dt.year}"
-        except:
+        except Exception:
             return str(value)
 
-    def calc_end_date(self, row):
+    @staticmethod
+    def calc_end_date(row):
         try:
             start_str = str(row.get('EST START DATE', '')).strip()
-            # If there is absolutely no start date, we can't forecast an end date
-            if not start_str or start_str.lower() == 'nan':
-                return ""
+            if not start_str or start_str.lower() == 'nan': return ""
 
             start = pd.to_datetime(start_str)
-
             days_str = str(row.get('EST DAYS', '')).strip()
-            # If no days are estimated, match the Gantt chart visual default of 3 days
-            days = int(float(days_str)) if days_str and days_str.lower() != 'nan' else 3
+            days = int(float(days_str)) if days_str and days_str.lower() != 'nan' else 5
 
             end = start + BusinessDay(days)
             return f"{end.month}/{end.day}/{end.year}"
-        except:
+        except Exception:
             return ""
 
-    def calc_variance(self, end_date, target_date):
+    @staticmethod
+    def calc_variance(end_date, target_date):
         try:
             if not end_date or not target_date: return ""
-
             end_dt = pd.to_datetime(end_date)
             target_dt = pd.to_datetime(target_date)
 
@@ -307,7 +317,6 @@ class DataManager:
                 delta = len(pd.bdate_range(end_dt, target_dt)) - 1
             else:
                 delta = -(len(pd.bdate_range(target_dt, end_dt)) - 1)
-
             return f"{delta} days"
-        except:
+        except Exception:
             return ""
