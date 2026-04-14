@@ -1,12 +1,19 @@
-import pandas as pd
-import sqlite3
+import hashlib
 import os
-import shutil
-import numpy as np
-import uuid
 import re
+import shutil
+import sqlite3
+import logging
+import numpy as np
 from typing import Dict, Any
-from pandas.tseries.offsets import BusinessDay
+
+import pandas as pd
+
+logging.basicConfig(
+    filename='mygantt_errors.log',
+    level=logging.ERROR,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 
 class DataManager:
@@ -15,15 +22,14 @@ class DataManager:
         self.db_path = os.path.join(base_path, "gantt_data.db")
 
         # --- BULLETPROOF HEADER MAPPING ---
-        # These keys have all spaces, \n, and special characters stripped out!
         self.raw_header_mapping = {
             "ORDERNUMBER": "ORDER NUMBER",
             "LINEITEM": "LINE ITEM",
             "PRIORITY": "PRIORITY",
             "DATETOENG": "DATE TO ENG",
             "SHIPTONUMBERPROJECT": "PROJECT NAME",
-            "INTERGRATIONREFERENCENUMBERQUOTE": "QUOTE NO",  # Matches the typo in the file
-            "INTEGRATIONREFERENCENUMBERQUOTE": "QUOTE NO",  # Fallback if they fix the spelling later
+            "INTERGRATIONREFERENCENUMBERQUOTE": "QUOTE NO",
+            "INTEGRATIONREFERENCENUMBERQUOTE": "QUOTE NO",
             "SALESCONTACT": "SALES CONTACT",
             "TYPE": "TYPE",
             "CONFIGUREDSTRINGLUMINARIESPECIFICATION": "LUMINARIE SPECIFICATION",
@@ -78,7 +84,11 @@ class DataManager:
         elif quote and quote.upper() not in ['NAN', '']:
             base = quote
         else:
-            short_hash = uuid.uuid4().hex[:6].upper()
+            project = str(row.get('PROJECT NAME', '')).strip()
+            req = str(row.get('REQUIREMENT', '')).strip()
+            fallback_str = f"{project}-{req}"
+
+            short_hash = hashlib.md5(fallback_str.encode('utf-8')).hexdigest()[:6].upper()
             base = f"UNK-{short_hash}"
 
         if line and line.upper() not in ['NAN', '']:
@@ -127,26 +137,75 @@ class DataManager:
 
         df['PROJECT_ID'] = df.apply(lambda x: x['ORDER NUMBER'] if x['ORDER NUMBER'] else x['QUOTE NO'], axis=1)
 
+        df['LINE_COUNT'] = 1
+
         agg_funcs = {
             'SMART_ID': 'first', 'TYPE': 'first', 'REQUIREMENT': 'first', 'PROJECT NAME': 'first',
             'QUOTE NO': 'first', 'ORDER NUMBER': 'first', 'STATUS': 'first', 'ESD': 'first',
             'ENG DUE DATE': 'first', 'COMPLETE DATE': 'first', 'ASSIGNED TO': 'first',
-            'ENG START DATE': 'first', 'EST START DATE': 'first', 'EST DAYS': 'first'
+            'ENG START DATE': 'first', 'EST START DATE': 'first', 'EST DAYS': 'first',
+            'LINE_COUNT': 'sum'
         }
         df = df.groupby('PROJECT_ID', as_index=False).agg(agg_funcs)
 
-        df['EST END DATE'] = df.apply(self.calc_end_date, axis=1)
-        df['EST ESD VARIANCE'] = df.apply(lambda r: self.calc_variance(r.get('EST END DATE'), r.get('ESD')), axis=1)
-        df['EST ENG VARIANCE'] = df.apply(lambda r: self.calc_variance(r.get('EST END DATE'), r.get('ENG DUE DATE')),
-                                          axis=1)
-        df['COMPLETION VARIANCE'] = df.apply(
-            lambda r: self.calc_variance(r.get('COMPLETE DATE'), r.get('ENG DUE DATE')), axis=1)
+        # =========================================================
+        # FIXED: VECTORIZED DATE & VARIANCE CALCULATIONS
+        # By formatting and converting the numpy arrays to pure lists,
+        # we completely sidestep Pandas' index-alignment bugs!
+        # =========================================================
+
+        starts_dt = pd.to_datetime(df['EST START DATE'], errors='coerce')
+        est_days_num = pd.to_numeric(df['EST DAYS'], errors='coerce').fillna(5).astype(int)
+
+        esd_dt = pd.to_datetime(df['ESD'], errors='coerce')
+        eng_due_dt = pd.to_datetime(df['ENG DUE DATE'], errors='coerce')
+        comp_date_dt = pd.to_datetime(df['COMPLETE DATE'], errors='coerce')
+
+        # 1. Calculate EST END DATE
+        df['EST END DATE'] = ""
+        valid_starts = starts_dt.notna()
+        if valid_starts.any():
+            starts_np = starts_dt[valid_starts].values.astype('datetime64[D]')
+            days_np = est_days_num[valid_starts].values
+            ends_np = np.busday_offset(starts_np, days_np)
+
+            # Convert to a pure list of strings so pandas just places them in order
+            formatted_ends = pd.to_datetime(ends_np).strftime('%m/%d/%Y').tolist()
+            df.loc[valid_starts, 'EST END DATE'] = formatted_ends
+
+        # 2. Bulletproof Vectorized Variance Helper
+        def calc_var_vectorized(start_dates, target_dates):
+            # Create a full array of empty strings matching the exact size of df
+            result_array = np.full(len(df), "", dtype=object)
+
+            valid = start_dates.notna() & target_dates.notna()
+            if valid.any():
+                s_np = start_dates[valid].values.astype('datetime64[D]')
+                t_np = target_dates[valid].values.astype('datetime64[D]')
+
+                # busday_count(start, target): target > start is early (+), target < start is late (-)
+                diff = np.busday_count(s_np, t_np)
+
+                # Format into a pure list and insert via the boolean mask
+                formatted_diff = [f"{int(d)} days" for d in diff]
+                result_array[valid] = formatted_diff
+
+            return result_array
+
+        ends_dt = pd.to_datetime(df['EST END DATE'], errors='coerce')
+
+        # 3. Apply variances instantly!
+        df['EST ESD VARIANCE'] = calc_var_vectorized(ends_dt, esd_dt)
+        df['EST ENG VARIANCE'] = calc_var_vectorized(ends_dt, eng_due_dt)
+        df['COMPLETION VARIANCE'] = calc_var_vectorized(comp_date_dt, eng_due_dt)
+
+        # =========================================================
 
         planning_headers = [
             "PROJECT_ID", "SMART_ID", "TYPE", "REQUIREMENT", "QUOTE NO", "ORDER NUMBER", "PROJECT NAME", "STATUS",
             "ASSIGNED TO", "ENG START DATE", "EST START DATE", "EST DAYS", "EST END DATE",
             "ESD", "ENG DUE DATE", "COMPLETE DATE",
-            "EST ESD VARIANCE", "EST ENG VARIANCE", "COMPLETION VARIANCE"
+            "EST ESD VARIANCE", "EST ENG VARIANCE", "COMPLETION VARIANCE", "LINE_COUNT"
         ]
         return df[planning_headers]
 
@@ -173,7 +232,6 @@ class DataManager:
             conn.commit()
 
     def sync_from_excel(self, file_path):
-        """Syncs the Raw Excel Data using a dynamic regex column normalizer."""
         temp_path = "temp_sync_shadow.xlsx"
         step = "Initializing sync"
         try:
@@ -198,27 +256,18 @@ class DataManager:
 
             if header_idx == -1: return False, "Could not find 'ORDER NUMBER' header row."
 
-            # Set raw column names
             df.columns = [str(c).strip() for c in df.iloc[header_idx]]
             df = df.iloc[header_idx + 1:].reset_index(drop=True)
 
-            # =========================================================
-            # NEW DATA NORMALIZATION ENGINE
-            # =========================================================
             actual_cols = list(df.columns)
             rename_dict = {}
 
             for actual_col in actual_cols:
-                # Strip ALL non-alphanumeric characters (spaces, \n, $, (), _ etc.)
                 norm_col = re.sub(r'[\W_]+', '', str(actual_col).upper())
-
-                # If the normalized column matches our dictionary, map it!
                 if norm_col in self.raw_header_mapping:
                     rename_dict[actual_col] = self.raw_header_mapping[norm_col]
 
-            # Rename columns based on our found mappings
             df = df.rename(columns=rename_dict)
-            # =========================================================
 
             end_idx = -1
             for idx, row in df.iterrows():
@@ -227,7 +276,6 @@ class DataManager:
                     break
             if end_idx != -1: df = df.iloc[:end_idx]
 
-            # Filter to keep only columns we explicitly mapped
             unique_expected_cols = list(dict.fromkeys(self.raw_header_mapping.values()))
             columns_to_keep = [c for c in df.columns if c in unique_expected_cols]
             df = df[columns_to_keep]
@@ -250,7 +298,6 @@ class DataManager:
 
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-
                 cursor.execute('DROP TABLE IF EXISTS raw_workload')
 
                 raw_cols_def = ", ".join([f'"{h}" TEXT' for h in unique_expected_cols])
@@ -273,8 +320,8 @@ class DataManager:
         except Exception as e:
             import traceback
             error_str = f"Error at {step}: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
-            print(error_str)
-            return False, "Sync failed! Check console."
+            logging.error(error_str)
+            return False, "Sync failed! Check error log."
         finally:
             if os.path.exists(temp_path):
                 try:
@@ -290,33 +337,3 @@ class DataManager:
             return f"{dt.month}/{dt.day}/{dt.year}"
         except Exception:
             return str(value)
-
-    @staticmethod
-    def calc_end_date(row):
-        try:
-            start_str = str(row.get('EST START DATE', '')).strip()
-            if not start_str or start_str.lower() == 'nan': return ""
-
-            start = pd.to_datetime(start_str)
-            days_str = str(row.get('EST DAYS', '')).strip()
-            days = int(float(days_str)) if days_str and days_str.lower() != 'nan' else 5
-
-            end = start + BusinessDay(days)
-            return f"{end.month}/{end.day}/{end.year}"
-        except Exception:
-            return ""
-
-    @staticmethod
-    def calc_variance(end_date, target_date):
-        try:
-            if not end_date or not target_date: return ""
-            end_dt = pd.to_datetime(end_date)
-            target_dt = pd.to_datetime(target_date)
-
-            if target_dt >= end_dt:
-                delta = len(pd.bdate_range(end_dt, target_dt)) - 1
-            else:
-                delta = -(len(pd.bdate_range(target_dt, end_dt)) - 1)
-            return f"{delta} days"
-        except Exception:
-            return ""

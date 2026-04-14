@@ -1,8 +1,53 @@
 from PySide6.QtWidgets import QGraphicsObject, QGraphicsItem, QMenu
-from PySide6.QtGui import QBrush, QColor, QPen, QPainter, QFontMetrics
-from PySide6.QtCore import Qt, QRectF, Signal, QTimer
+from PySide6.QtGui import QBrush, QColor, QPen, QPainter, QFontMetrics, QPolygonF
+from PySide6.QtCore import Qt, QRectF, Signal, QTimer, QPointF
+
+TEAM_CONFIG = {
+    "ADAM": "#2E7D32",  # Bold Green
+    "DAVID": "#C62828",  # Bold Red
+    "DAVE": "#C62828",  # Bold Red (Alias)
+    "ANDY": "#1565C0",  # Bold Blue
+    "MATT": "#EF6C00",  # True Orange
+}
 
 
+# =====================================================================
+# Standalone Due Date Marker
+# =====================================================================
+class DueDateMarker(QGraphicsItem):
+    def __init__(self, x, y, height):
+        super().__init__()
+        self.setPos(x, y)
+        # Bounding rect for a triangle that is 12px wide and 12px tall
+        self.rect = QRectF(-6, 0, 12, 12)
+        # Give it a higher Z-Value so it renders on top of the grid and ghost blocks
+        self.setZValue(5)
+
+    def boundingRect(self):
+        return self.rect
+
+    def paint(self, painter, option, widget=None):
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # A bright, warning-yellow color
+        painter.setBrush(QBrush(QColor("#FFD54F")))
+
+        # Adding a subtle dark border helps it pop against the grid
+        painter.setPen(QPen(QColor("#252526"), 1))
+
+        # Define the 3 points of a downward-pointing triangle
+        triangle = QPolygonF([
+            QPointF(-6, 0),  # Top Left
+            QPointF(6, 0),  # Top Right
+            QPointF(0, 12)  # Bottom Center
+        ])
+
+        painter.drawPolygon(triangle)
+
+
+# =====================================================================
+# Gantt Block (Task Representation)
+# =====================================================================
 class GanttBlock(QGraphicsObject):
     block_dropped = Signal(str, float, float)
     assignee_changed = Signal(str, str)
@@ -14,6 +59,7 @@ class GanttBlock(QGraphicsObject):
 
         self.day_width = day_width
         self.rect = QRectF(0, 0, width, height)
+
         self.due_x_offset = due_x_offset
 
         self.setAcceptHoverEvents(True)
@@ -25,17 +71,11 @@ class GanttBlock(QGraphicsObject):
         est_start = str(self.data.get('EST START DATE', '')).strip()
         est_days = str(self.data.get('EST DAYS', '')).strip()
 
-        # Reverted to rich, bold solids and fixed the fuzzy matching
-        if 'ADAM' in assignee:
-            self.base_color = QColor("#2E7D32")  # Bold Green
-        elif 'DAVID' in assignee or 'DAVE' in assignee:
-            self.base_color = QColor("#C62828")  # Bold Red
-        elif 'ANDY' in assignee:
-            self.base_color = QColor("#1565C0")  # Bold Blue
-        elif 'MATT' in assignee:
-            self.base_color = QColor("#EF6C00")  # True Orange
-        else:
-            self.base_color = QColor("#888888")  # Grey
+        self.base_color = QColor("#888888")  # Default Grey
+        for name, hex_color in TEAM_CONFIG.items():
+            if name in assignee:
+                self.base_color = QColor(hex_color)
+                break
 
         # With heavy transparency over a dark canvas, white text is required for contrast
         self.text_color = QColor("#FFFFFF")
@@ -87,15 +127,6 @@ class GanttBlock(QGraphicsObject):
 
         painter.drawRoundedRect(self.rect, 4, 4)
 
-        if self.due_x_offset >= 0:
-            # Reverted to a striking red line
-            due_pen = QPen(QColor("#FF5252"), 3)
-            painter.setPen(due_pen)
-
-            # Draw the line inside the block bounds
-            marker_x = min(max(0, self.due_x_offset), self.rect.width())
-            painter.drawLine(int(marker_x), 0, int(marker_x), int(self.rect.height()))
-
         assignee = str(self.data.get('ASSIGNED TO', '')).strip()
         if assignee:
             painter.setPen(QPen(self.text_color))
@@ -120,7 +151,7 @@ class GanttBlock(QGraphicsObject):
 
         assign_menu = menu.addMenu("Assign To...")
 
-        engineers = ["Adam T", "David M", "Andy C", "Matt M", "Unassigned"]
+        engineers = [name.capitalize() for name in TEAM_CONFIG.keys() if name not in ["DAVE"]] + ["Unassigned"]
         for eng in engineers:
             action = assign_menu.addAction(eng)
             action.triggered.connect(lambda checked=False, e=eng: self.change_assignee(e))
