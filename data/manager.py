@@ -21,7 +21,6 @@ class DataManager:
         base_path = os.path.dirname(__file__)
         self.db_path = os.path.join(base_path, "gantt_data.db")
 
-        # --- BULLETPROOF HEADER MAPPING ---
         self.raw_header_mapping = {
             "ORDERNUMBER": "ORDER NUMBER",
             "LINEITEM": "LINE ITEM",
@@ -48,10 +47,8 @@ class DataManager:
         self.init_db()
 
     def init_db(self):
-        """Initializes the strict two-layer database architecture."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-
             unique_cols = list(dict.fromkeys(self.raw_header_mapping.values()))
             raw_cols = ", ".join([f'"{h}" TEXT' for h in unique_cols])
 
@@ -74,7 +71,6 @@ class DataManager:
 
     @staticmethod
     def generate_smart_id(row):
-        """Generates a crash-proof unique ID for every line item."""
         order = str(row.get('ORDER NUMBER', '')).strip()
         quote = str(row.get('QUOTE NO', '')).strip()
         line = str(row.get('LINE ITEM', '')).strip()
@@ -86,13 +82,10 @@ class DataManager:
         else:
             project = str(row.get('PROJECT NAME', '')).strip()
             req = str(row.get('REQUIREMENT', '')).strip()
-            fallback_str = f"{project}-{req}"
-
-            short_hash = hashlib.md5(fallback_str.encode('utf-8')).hexdigest()[:6].upper()
+            short_hash = hashlib.md5(f"{project}-{req}".encode('utf-8')).hexdigest()[:6].upper()
             base = f"UNK-{short_hash}"
 
-        if line and line.upper() not in ['NAN', '']:
-            return f"{base}-{line}"
+        if line and line.upper() not in ['NAN', '']: return f"{base}-{line}"
         return base
 
     def _get_raw_df(self):
@@ -104,15 +97,10 @@ class DataManager:
             return pd.read_sql_query('SELECT * FROM user_overrides', conn).fillna("")
 
     def get_application_data(self, staged_edits=None):
-        """
-        The Master Data Compiler.
-        Blends Layer 1 (Raw), Layer 2 (Saved DB), and Layer 2.5 (Unsaved Staged Edits).
-        """
         raw_df = self._get_raw_df()
         over_df = self._get_saved_overrides_df()
 
-        if raw_df.empty:
-            return raw_df
+        if raw_df.empty: return raw_df
 
         df = pd.merge(raw_df, over_df, on="SMART_ID", how="left").fillna("")
 
@@ -128,94 +116,77 @@ class DataManager:
 
         df['ASSIGNED TO'] = df.apply(
             lambda r: r['MAN_ASSIGNED'] if str(r.get('MAN_ASSIGNED', '')).strip() else r['RAW_ASSIGNED'], axis=1)
-
         df['ENG START DATE'] = df['RAW_START_DATE']
         df['EST START DATE'] = df.apply(
             lambda r: r['MAN_START_DATE'] if str(r.get('MAN_START_DATE', '')).strip() else r['RAW_START_DATE'], axis=1)
-
         df['EST DAYS'] = df['MAN_EST_DAYS'].replace('', '5')
 
-        df['PROJECT_ID'] = df.apply(lambda x: x['ORDER NUMBER'] if x['ORDER NUMBER'] else x['QUOTE NO'], axis=1)
-
+        df['PROJECT_ID'] = df.apply(
+            lambda x: str(x['ORDER NUMBER']).strip() if str(x['ORDER NUMBER']).strip() else str(x['QUOTE NO']).strip(),
+            axis=1)
+        df['PROJECT_ID'] = df.apply(lambda x: x['PROJECT_ID'] if x['PROJECT_ID'] else x['SMART_ID'], axis=1)
         df['LINE_COUNT'] = 1
 
+        # NOTE: Added SELL $ to the aggregator
         agg_funcs = {
-            'SMART_ID': 'first', 'TYPE': 'first', 'REQUIREMENT': 'first', 'PROJECT NAME': 'first',
+            'SMART_ID': 'first', 'TYPE': 'first', 'PROJECT NAME': 'first',
             'QUOTE NO': 'first', 'ORDER NUMBER': 'first', 'STATUS': 'first', 'ESD': 'first',
             'ENG DUE DATE': 'first', 'COMPLETE DATE': 'first', 'ASSIGNED TO': 'first',
             'ENG START DATE': 'first', 'EST START DATE': 'first', 'EST DAYS': 'first',
+            'DATE TO ENG': 'first', 'SELL $': 'first',
             'LINE_COUNT': 'sum'
         }
-        df = df.groupby('PROJECT_ID', as_index=False).agg(agg_funcs)
-
-        # =========================================================
-        # FIXED: VECTORIZED DATE & VARIANCE CALCULATIONS
-        # By formatting and converting the numpy arrays to pure lists,
-        # we completely sidestep Pandas' index-alignment bugs!
-        # =========================================================
+        # FIXED: Grouping by BOTH Project ID and Requirement so quotes don't get swallowed by Prod!
+        df = df.groupby(['PROJECT_ID', 'REQUIREMENT'], as_index=False).agg(agg_funcs)
 
         starts_dt = pd.to_datetime(df['EST START DATE'], errors='coerce')
         est_days_num = pd.to_numeric(df['EST DAYS'], errors='coerce').fillna(5).astype(int)
-
         esd_dt = pd.to_datetime(df['ESD'], errors='coerce')
         eng_due_dt = pd.to_datetime(df['ENG DUE DATE'], errors='coerce')
         comp_date_dt = pd.to_datetime(df['COMPLETE DATE'], errors='coerce')
+        date_to_eng_dt = pd.to_datetime(df['DATE TO ENG'], errors='coerce')
 
-        # 1. Calculate EST END DATE
         df['EST END DATE'] = ""
         valid_starts = starts_dt.notna()
         if valid_starts.any():
             starts_np = starts_dt[valid_starts].values.astype('datetime64[D]')
             days_np = est_days_num[valid_starts].values
             ends_np = np.busday_offset(starts_np, days_np)
+            df.loc[valid_starts, 'EST END DATE'] = pd.to_datetime(ends_np).strftime('%m/%d/%Y').tolist()
 
-            # Convert to a pure list of strings so pandas just places them in order
-            formatted_ends = pd.to_datetime(ends_np).strftime('%m/%d/%Y').tolist()
-            df.loc[valid_starts, 'EST END DATE'] = formatted_ends
+        ends_dt = pd.to_datetime(df['EST END DATE'], errors='coerce')
 
-        # 2. Bulletproof Vectorized Variance Helper
         def calc_var_vectorized(start_dates, target_dates):
-            # Create a full array of empty strings matching the exact size of df
             result_array = np.full(len(df), "", dtype=object)
-
             valid = start_dates.notna() & target_dates.notna()
             if valid.any():
                 s_np = start_dates[valid].values.astype('datetime64[D]')
                 t_np = target_dates[valid].values.astype('datetime64[D]')
-
-                # busday_count(start, target): target > start is early (+), target < start is late (-)
                 diff = np.busday_count(s_np, t_np)
-
-                # Format into a pure list and insert via the boolean mask
-                formatted_diff = [f"{int(d)} days" for d in diff]
-                result_array[valid] = formatted_diff
-
+                result_array[valid] = [f"{int(d)} days" for d in diff]
             return result_array
 
-        ends_dt = pd.to_datetime(df['EST END DATE'], errors='coerce')
-
-        # 3. Apply variances instantly!
         df['EST ESD VARIANCE'] = calc_var_vectorized(ends_dt, esd_dt)
         df['EST ENG VARIANCE'] = calc_var_vectorized(ends_dt, eng_due_dt)
         df['COMPLETION VARIANCE'] = calc_var_vectorized(comp_date_dt, eng_due_dt)
 
-        # =========================================================
+        df['QUEUE_DAYS'] = calc_var_vectorized(date_to_eng_dt, starts_dt)
+        comp_or_est_end_dt = comp_date_dt.combine_first(ends_dt)
+        df['PROCESS_DAYS'] = calc_var_vectorized(starts_dt, comp_or_est_end_dt)
 
         planning_headers = [
             "PROJECT_ID", "SMART_ID", "TYPE", "REQUIREMENT", "QUOTE NO", "ORDER NUMBER", "PROJECT NAME", "STATUS",
-            "ASSIGNED TO", "ENG START DATE", "EST START DATE", "EST DAYS", "EST END DATE",
+            "ASSIGNED TO", "DATE TO ENG", "ENG START DATE", "EST START DATE", "EST DAYS", "EST END DATE",
             "ESD", "ENG DUE DATE", "COMPLETE DATE",
-            "EST ESD VARIANCE", "EST ENG VARIANCE", "COMPLETION VARIANCE", "LINE_COUNT"
+            "EST ESD VARIANCE", "EST ENG VARIANCE", "COMPLETION VARIANCE",
+            "QUEUE_DAYS", "PROCESS_DAYS", "SELL $", "LINE_COUNT"
         ]
         return df[planning_headers]
 
     def commit_overrides(self, staged_edits_dict: Dict[str, Dict[str, Any]]):
-        if not staged_edits_dict or not isinstance(staged_edits_dict, dict):
-            return
-
+        if not staged_edits_dict or not isinstance(staged_edits_dict, dict): return
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-
             for smart_id, edit_data in staged_edits_dict.items():
                 assignee = edit_data.get('MAN_ASSIGNED', '')
                 est_days = edit_data.get('MAN_EST_DAYS', '')
@@ -245,8 +216,7 @@ class DataManager:
                 if isinstance(val, float) and val.is_integer(): return str(int(val))
                 return str(val).strip()
 
-            for col in list(df.columns):
-                df[col] = df[col].map(clean_cell)
+            for col in list(df.columns): df[col] = df[col].map(clean_cell)
 
             header_idx = -1
             for idx, row in df.head(50).iterrows():
@@ -259,10 +229,8 @@ class DataManager:
             df.columns = [str(c).strip() for c in df.iloc[header_idx]]
             df = df.iloc[header_idx + 1:].reset_index(drop=True)
 
-            actual_cols = list(df.columns)
             rename_dict = {}
-
-            for actual_col in actual_cols:
+            for actual_col in list(df.columns):
                 norm_col = re.sub(r'[\W_]+', '', str(actual_col).upper())
                 if norm_col in self.raw_header_mapping:
                     rename_dict[actual_col] = self.raw_header_mapping[norm_col]
@@ -280,8 +248,7 @@ class DataManager:
             columns_to_keep = [c for c in df.columns if c in unique_expected_cols]
             df = df[columns_to_keep]
 
-            if 'TYPE' in df.columns:
-                df = df[df['TYPE'].isin(self.valid_types)]
+            if 'TYPE' in df.columns: df = df[df['TYPE'].isin(self.valid_types)]
 
             df['SMART_ID'] = df.apply(self.generate_smart_id, axis=1)
             counts = df.groupby('SMART_ID').cumcount()
@@ -301,26 +268,19 @@ class DataManager:
                 cursor.execute('DROP TABLE IF EXISTS raw_workload')
 
                 raw_cols_def = ", ".join([f'"{h}" TEXT' for h in unique_expected_cols])
-                cursor.execute(f'''
-                    CREATE TABLE raw_workload (
-                        "SMART_ID" TEXT PRIMARY KEY,
-                        {raw_cols_def}
-                    )
-                ''')
+                cursor.execute(f'''CREATE TABLE raw_workload ("SMART_ID" TEXT PRIMARY KEY, {raw_cols_def})''')
 
                 col_names_str = ", ".join([f'"{c}"' for c in final_cols])
                 placeholders = ", ".join(["?"] * len(final_cols))
-
                 records = list(df.itertuples(index=False, name=None))
-                if records:
-                    cursor.executemany(f"INSERT INTO raw_workload ({col_names_str}) VALUES ({placeholders})", records)
+                if records: cursor.executemany(f"INSERT INTO raw_workload ({col_names_str}) VALUES ({placeholders})",
+                                               records)
                 conn.commit()
             return True, ""
 
         except Exception as e:
             import traceback
-            error_str = f"Error at {step}: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
-            logging.error(error_str)
+            logging.error(f"Error at {step}: {str(e)}\n\nTraceback:\n{traceback.format_exc()}")
             return False, "Sync failed! Check error log."
         finally:
             if os.path.exists(temp_path):

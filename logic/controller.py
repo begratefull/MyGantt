@@ -7,7 +7,6 @@ from PySide6.QtGui import QPen, QColor, QFont, QShortcut, QKeySequence
 from PySide6.QtWidgets import QTableWidgetItem, QFileDialog
 
 from logic.history import HistoryManager
-# Notice we are importing the new DueDateMarker here!
 from ui.gantt_components import GanttBlock, DueDateMarker
 
 
@@ -24,11 +23,7 @@ class SyncWorker(QThread):
         self.finished.emit(success, error_msg)
 
 
-# =====================================================================
-# NEW: Background Data Thread (Keeps the UI smooth while dragging blocks)
-# =====================================================================
 class DataRefreshWorker(QThread):
-    # Emits (raw_df, plan_df, full_dashboard_df)
     data_ready = Signal(object, object, object)
 
     def __init__(self, model, staged_edits, req_filter, status_filter, maintain_ids):
@@ -41,20 +36,15 @@ class DataRefreshWorker(QThread):
 
     def run(self):
         try:
-            # 1. Update Raw Data Table
             raw_df = self.model._get_raw_df()
-
-            # 2. Get the blended Application Data
             plan_df = self.model.get_application_data(self.staged_edits)
 
             if plan_df.empty:
                 self.data_ready.emit(raw_df, plan_df, plan_df)
                 return
 
-            # Save FULL data for the Dashboard before filtering
             full_dashboard_df = plan_df.copy()
 
-            # Apply the Gantt dropdown filters to plan_df
             if self.req_filter != "All Reqs":
                 plan_df = plan_df[plan_df['REQUIREMENT'].str.contains(self.req_filter, case=False, na=False)]
 
@@ -63,7 +53,6 @@ class DataRefreshWorker(QThread):
             elif self.status_filter == "Complete":
                 plan_df = plan_df[plan_df['STATUS'].str.strip().str.upper() == 'COMPLETE']
 
-            # Maintain sorting/state
             if self.maintain_ids is not None:
                 current_ids = self.maintain_ids
                 plan_df = plan_df.set_index('SMART_ID')
@@ -105,8 +94,9 @@ class AppController:
         self.setup_shortcuts()
         self.refresh_tables()
 
-        # Connect UI Elements
-        self.view.sync_btn.clicked.connect(self.handle_sync)
+        # Wire up the new Sidebar Sync button!
+        self.view.nav_sync_btn.clicked.connect(self.handle_sync)
+
         self.view.filter_req.currentTextChanged.connect(lambda text: self.refresh_tables(maintain_state=False))
         self.view.filter_status.currentTextChanged.connect(lambda text: self.refresh_tables(maintain_state=False))
 
@@ -114,7 +104,6 @@ class AppController:
         self.view.info_table.itemSelectionChanged.connect(self.handle_table_selection)
         self.view.gantt_view.empty_clicked.connect(self.clear_all_selections)
 
-        # Auto-stage edits when the user interacts with the KPI panel
         self.view.inp_est_days.editingFinished.connect(self.handle_stage_edit)
         self.view.inp_assignee.activated.connect(self.handle_stage_edit)
 
@@ -123,8 +112,7 @@ class AppController:
             with open(self.config_file, 'r') as f:
                 config = json.load(f)
                 path = config.get('excel_path', '')
-                if os.path.exists(path):
-                    return path
+                if os.path.exists(path): return path
         return self.prompt_for_excel()
 
     def prompt_for_excel(self):
@@ -132,18 +120,15 @@ class AppController:
             self.view, "Select Engineering Workload Excel File", "", "Excel Files (*.xlsx *.xls)"
         )
         if file_path:
-            with open(self.config_file, 'w') as f:
-                json.dump({'excel_path': file_path}, f)
+            with open(self.config_file, 'w') as f: json.dump({'excel_path': file_path}, f)
             return file_path
         return ""
 
     def setup_shortcuts(self):
         self.shortcut_undo = QShortcut(QKeySequence("Ctrl+Z"), self.view)
         self.shortcut_undo.activated.connect(self.handle_undo)
-
         self.shortcut_redo = QShortcut(QKeySequence("Ctrl+Y"), self.view)
         self.shortcut_redo.activated.connect(self.handle_redo)
-
         self.shortcut_save = QShortcut(QKeySequence("Ctrl+S"), self.view)
         self.shortcut_save.activated.connect(self.handle_global_save)
 
@@ -166,12 +151,7 @@ class AppController:
         else:
             self.view.show_status("No unsaved changes.", 3000)
 
-    # =====================================================================
-    # MULTITHREADED REFRESH LOGIC
-    # =====================================================================
     def refresh_tables(self, maintain_state=False):
-        """Kicks off the background thread to crunch Pandas data."""
-        # Capture the UI state before handing off to the thread
         self.selected_id_to_restore = self.view.inp_smart_id.text() if maintain_state and not self.view.kpi_panel.isHidden() else None
         self.is_maintaining_state = maintain_state
 
@@ -181,21 +161,16 @@ class AppController:
         maintain_ids = self.current_plan_df[
             'SMART_ID'].tolist() if maintain_state and not self.current_plan_df.empty else None
 
-        # Clean up old worker if it exists
         if self.refresh_worker and self.refresh_worker.isRunning():
             self.refresh_worker.data_ready.disconnect()
 
-        # Start the new worker
         self.refresh_worker = DataRefreshWorker(self.model, staged_edits, req_filter, status_filter, maintain_ids)
         self.refresh_worker.data_ready.connect(self.on_data_refreshed)
         self.refresh_worker.start()
 
     def on_data_refreshed(self, raw_df, plan_df, full_dashboard_df):
-        """Receives data from the background thread and draws the UI."""
         self.view.display_dataframe(self.view.raw_table, raw_df)
-
         if plan_df.empty: return
-
         self.current_plan_df = plan_df
 
         self.view.info_table.blockSignals(True)
@@ -209,8 +184,6 @@ class AppController:
             self.restore_selection(self.selected_id_to_restore)
         else:
             self.view.kpi_panel.hide()
-
-    # =====================================================================
 
     def restore_selection(self, smart_id):
         try:
@@ -227,7 +200,6 @@ class AppController:
                 item.setSelected(True)
                 break
         self.view.gantt_scene.blockSignals(False)
-
         self.view.kpi_panel.show()
 
     def populate_left_table(self, df):
@@ -254,7 +226,6 @@ class AppController:
             pd.to_datetime(df['EST START DATE'].replace('', pd.NaT)))
         day_zero = all_starts.min() if not all_starts.isna().all() else pd.Timestamp.today().normalize()
         day_zero = day_zero - pd.Timedelta(days=day_zero.weekday())
-
         self.day_zero = day_zero
 
         total_business_days = 120
@@ -266,18 +237,14 @@ class AppController:
 
         font_month = QFont("Segoe UI", 9, QFont.Bold)
         font_day = QFont("Segoe UI", 8)
-
-        current_x = 0
-        current_month = -1
+        current_x, current_month, today_x = 0, -1, -1
         today = pd.Timestamp.today().normalize()
-        today_x = -1
 
         for i in range(total_business_days):
             current_date = day_zero + pd.tseries.offsets.BusinessDay(i)
-
             if current_date == today:
-                self.view.gantt_scene.addRect(current_x, 0, self.day_width, total_height + 2000,
-                                              QPen(Qt.NoPen), QColor(255, 255, 255, 25))
+                self.view.gantt_scene.addRect(current_x, 0, self.day_width, total_height + 2000, QPen(Qt.NoPen),
+                                              QColor(255, 255, 255, 25))
                 today_x = current_x
 
             if current_date.month != current_month:
@@ -288,19 +255,16 @@ class AppController:
                 m_text.setPos(current_x + 2, 0)
 
             if current_date.weekday() == 0:
-                week_pen = QPen(QColor("#666666"), 2)
-                self.view.header_scene.addLine(current_x, 25, current_x, 45, week_pen)
+                self.view.header_scene.addLine(current_x, 25, current_x, 45, QPen(QColor("#666666"), 2))
 
             d_text = self.view.header_scene.addText(str(current_date.day))
             d_text.setDefaultTextColor(QColor("#888888"))
             d_text.setFont(font_day)
             d_text.setPos(current_x + 2, 20)
-
             current_x += self.day_width
 
         for index, row in df.iterrows():
             y = index * self.row_height
-
             status = str(row.get('STATUS', '')).strip().upper()
             raw_start = str(row.get('ENG START DATE', '')).strip()
             est_start = str(row.get('EST START DATE', '')).strip()
@@ -308,7 +272,6 @@ class AppController:
             est_days_str = str(row.get('EST DAYS', '')).strip()
 
             start_str = raw_start if raw_start else est_start
-
             if status == 'COMPLETE':
                 start_dt = pd.to_datetime(start_str) if start_str else pd.NaT
                 end_dt = pd.to_datetime(comp_date) if comp_date else pd.NaT
@@ -325,29 +288,19 @@ class AppController:
             width = days * self.day_width
             x = self.get_business_day_offset(day_zero, start_dt) * self.day_width if pd.notna(start_dt) else 0
 
-            # -------------------------------------------------------------
-            # NEW: Clean Gantt Block Instantiation (No more due_x_offset)
-            # -------------------------------------------------------------
             block = GanttBlock(row.to_dict(), x, y + 4, width, self.row_height - 8, self.day_width)
             block.block_dropped.connect(self.handle_block_dropped)
             block.assignee_changed.connect(self.handle_right_click_assign)
             self.view.gantt_scene.addItem(block)
 
-            # -------------------------------------------------------------
-            # NEW: Draw the Independent Due Date Marker for the Row
-            # -------------------------------------------------------------
             if pd.notna(due_dt):
                 due_offset = self.get_business_day_offset(day_zero, due_dt)
                 due_x = due_offset * self.day_width
                 if due_x >= 0:
-                    # Place the marker exactly on the line for that due date
-                    marker = DueDateMarker(due_x, y, self.row_height)
-                    self.view.gantt_scene.addItem(marker)
+                    self.view.gantt_scene.addItem(DueDateMarker(due_x, y, self.row_height))
 
         if not self.initial_scroll_done and today_x >= 0:
-            days_from_monday = today.weekday()
-            monday_x = today_x - (days_from_monday * self.day_width)
-            scroll_x = max(0, monday_x - self.day_width)
+            scroll_x = max(0, today_x - (today.weekday() * self.day_width) - self.day_width)
             QTimer.singleShot(0, lambda: self.view.gantt_view.horizontalScrollBar().setValue(scroll_x))
             self.initial_scroll_done = True
 
@@ -357,20 +310,15 @@ class AppController:
         self.view.show_status("Assignee updated. Press Ctrl+S to save.", 3000)
 
     def handle_block_dropped(self, smart_id, new_x, new_width):
-        days_from_zero = int(new_x / self.day_width)
-        new_date = self.day_zero + pd.tseries.offsets.BusinessDay(days_from_zero)
-        new_date_str = f"{new_date.month}/{new_date.day}/{new_date.year}"
-        new_days = str(int(new_width / self.day_width))
-
-        self.history.stage_edit(smart_id, {'MAN_START_DATE': new_date_str, 'MAN_EST_DAYS': new_days})
+        new_date = self.day_zero + pd.tseries.offsets.BusinessDay(int(new_x / self.day_width))
+        self.history.stage_edit(smart_id, {'MAN_START_DATE': f"{new_date.month}/{new_date.day}/{new_date.year}",
+                                           'MAN_EST_DAYS': str(int(new_width / self.day_width))})
         self.refresh_tables(maintain_state=True)
         self.view.show_status("Schedule adjusted. Press Ctrl+S to save.", 3000)
 
     def populate_kpi_inspector(self, data):
         self.view.inp_smart_id.setText(str(data.get('SMART_ID', '')))
-        project_name = str(data.get('PROJECT NAME', 'Unknown'))
-        self.view.kpi_title.setText(f"Job: {project_name[:15]}...")
-
+        self.view.kpi_title.setText(f"Job: {str(data.get('PROJECT NAME', 'Unknown'))[:15]}...")
         self.view.kpi_order.setText(str(data.get('ORDER NUMBER', '--')))
         self.view.kpi_quote.setText(str(data.get('QUOTE NO', '--')))
         self.view.kpi_req.setText(str(data.get('REQUIREMENT', '--')))
@@ -393,40 +341,32 @@ class AppController:
         self.view.info_table.blockSignals(True)
         self.view.info_table.clearSelection()
         self.view.info_table.blockSignals(False)
-
         self.view.gantt_scene.blockSignals(True)
         self.view.gantt_scene.clearSelection()
         self.view.gantt_scene.blockSignals(False)
         self.view.kpi_panel.hide()
 
     def handle_block_selection(self):
-        selected_items = self.view.gantt_scene.selectedItems()
-        if not selected_items:
+        selected = self.view.gantt_scene.selectedItems()
+        if not selected:
             self.view.kpi_panel.hide()
             return
-
         self.view.info_table.blockSignals(True)
         self.view.info_table.clearSelection()
         self.view.info_table.blockSignals(False)
-
-        # Check if the selected item is a GanttBlock (and not our new DueDateMarker!)
-        if hasattr(selected_items[0], 'data'):
-            self.populate_kpi_inspector(selected_items[0].data)
+        if hasattr(selected[0], 'data'):
+            self.populate_kpi_inspector(selected[0].data)
             self.view.kpi_panel.show()
 
     def handle_table_selection(self):
-        selected_rows = self.view.info_table.selectionModel().selectedRows()
-        if not selected_rows or self.current_plan_df.empty:
+        selected = self.view.info_table.selectionModel().selectedRows()
+        if not selected or self.current_plan_df.empty:
             self.view.kpi_panel.hide()
             return
-
         self.view.gantt_scene.blockSignals(True)
         self.view.gantt_scene.clearSelection()
         self.view.gantt_scene.blockSignals(False)
-
-        row_idx = selected_rows[0].row()
-        row_data = self.current_plan_df.iloc[row_idx].to_dict()
-        self.populate_kpi_inspector(row_data)
+        self.populate_kpi_inspector(self.current_plan_df.iloc[selected[0].row()].to_dict())
         self.view.kpi_panel.show()
 
     def handle_sync(self):
@@ -437,8 +377,7 @@ class AppController:
             self.view.show_warning("Sync Aborted", "No valid Excel file was selected.")
             return
 
-        self.view.sync_btn.setText("Syncing Data...")
-        self.view.sync_btn.setEnabled(False)
+        self.view.nav_sync_btn.setEnabled(False)
         self.view.show_status("Syncing workload data from Excel...", 0)
 
         self.sync_worker = SyncWorker(self.model, self.excel_path)
@@ -446,9 +385,7 @@ class AppController:
         self.sync_worker.start()
 
     def on_sync_finished(self, success, error_msg):
-        self.view.sync_btn.setText("Sync Workload")
-        self.view.sync_btn.setEnabled(True)
-
+        self.view.nav_sync_btn.setEnabled(True)
         if not success:
             self.view.show_status("Sync failed.", 5000)
             self.view.show_warning("Sync Error", f"Could not sync data:\n\n{error_msg}")
@@ -485,11 +422,9 @@ class AppController:
             row = idx[0]
             selected_rows = [r.row() for r in self.view.info_table.selectionModel().selectedRows()]
             if row in selected_rows: return
-
             for col in range(self.view.info_table.columnCount()):
                 item = self.view.info_table.item(row, col)
-                if item:
-                    item.setBackground(QColor("#3E3E42"))
+                if item: item.setBackground(QColor("#3E3E42"))
 
     def handle_block_hover_out(self, smart_id):
         if self.current_plan_df.empty: return
@@ -498,8 +433,6 @@ class AppController:
             row = idx[0]
             selected_rows = [r.row() for r in self.view.info_table.selectionModel().selectedRows()]
             if row in selected_rows: return
-
             for col in range(self.view.info_table.columnCount()):
                 item = self.view.info_table.item(row, col)
-                if item:
-                    item.setBackground(QColor(0, 0, 0, 0))
+                if item: item.setBackground(QColor(0, 0, 0, 0))

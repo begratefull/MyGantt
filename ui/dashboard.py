@@ -1,8 +1,9 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QComboBox, QGroupBox
-from PySide6.QtCharts import (QChart, QChartView, QPieSeries, QBarSeries, QStackedBarSeries,
-                              QBarSet, QBarCategoryAxis, QValueAxis, QLineSeries)
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QPainter, QColor, QPen, QFont
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout,
+                               QLabel, QFrame, QComboBox, QToolTip)
+from PySide6.QtCharts import (QChart, QChartView, QPieSeries, QBarSeries,
+                              QBarSet, QBarCategoryAxis, QValueAxis, QLineSeries, QAreaSeries)
+from PySide6.QtCore import Qt, QPoint
+from PySide6.QtGui import QPainter, QColor, QPen, QFont, QCursor
 import pandas as pd
 import numpy as np
 
@@ -11,143 +12,184 @@ class DashboardWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.master_df = pd.DataFrame()
-        self.current_df = pd.DataFrame()
+        self._current_hover = None
+        self._chart_refs = []
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(15)
+        main_layout.setSpacing(10)
 
-        # --- Header & Global Filters ---
         header_layout = QHBoxLayout()
         header = QLabel("Engineering Workload Dashboard")
-        header.setObjectName("Header")
+        header.setStyleSheet("font-size: 20px; font-weight: bold; color: #FFFFFF;")
         header_layout.addWidget(header)
         header_layout.addStretch()
 
-        filter_lbl = QLabel("Global Filters:")
-        filter_lbl.setStyleSheet("color: #AAAAAA; font-weight: bold; font-size: 13px;")
+        filter_lbl = QLabel("Global Engineer Filter:")
+        filter_lbl.setStyleSheet("color: #AAAAAA; font-weight: bold; font-size: 12px;")
         header_layout.addWidget(filter_lbl)
 
         self.global_eng_filter = QComboBox()
         self.global_eng_filter.addItem("All Engineers")
-        self.global_eng_filter.currentTextChanged.connect(self.render_dashboard)
+        self.global_eng_filter.currentTextChanged.connect(self.render_all)
         header_layout.addWidget(self.global_eng_filter)
-
-        self.global_type_filter = QComboBox()
-        self.global_type_filter.addItem("All Types")
-        self.global_type_filter.currentTextChanged.connect(self.render_dashboard)
-        header_layout.addWidget(self.global_type_filter)
 
         main_layout.addLayout(header_layout)
 
-        # --- Top Row: 3 Independent KPI Windows ---
+        top_cards_layout = QHBoxLayout()
+        top_cards_layout.setSpacing(15)
+
+        self.prod_ui = self.create_active_card("Production Queue", show_req_filter=False)
+        self.quote_ui = self.create_active_card("Quote / Submittal Queue", show_req_filter=True)
+
+        top_cards_layout.addWidget(self.prod_ui['card'])
+        top_cards_layout.addWidget(self.quote_ui['card'])
+
+        main_layout.addLayout(top_cards_layout, 1)
+
+        self.hist_ui = self.create_history_card("Completed Jobs & Active Forecast")
+        main_layout.addWidget(self.hist_ui['card'], 1)
+
+        if self.prod_ui['req_filter']: self.prod_ui['req_filter'].currentTextChanged.connect(self.render_prod_card)
+        self.prod_ui['type_filter'].currentTextChanged.connect(self.render_prod_card)
+
+        if self.quote_ui['req_filter']: self.quote_ui['req_filter'].currentTextChanged.connect(self.render_quote_card)
+        self.quote_ui['type_filter'].currentTextChanged.connect(self.render_quote_card)
+
+        self.hist_ui['req_filter'].currentTextChanged.connect(self.render_hist_card)
+        self.hist_ui['date_filter'].currentTextChanged.connect(self.render_hist_card)
+
+    def create_active_card(self, title, show_req_filter=True):
+        card = QFrame()
+        card.setObjectName("DashCard")
+        card.setStyleSheet(
+            "QFrame#DashCard { background-color: #1E1E20; border: 1px solid #3E3E42; border-radius: 8px; }")
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
+
+        top_bar = QHBoxLayout()
+        title_lbl = QLabel(title)
+        title_lbl.setStyleSheet("font-size: 15px; font-weight: bold; color: #E0E0E0;")
+        top_bar.addWidget(title_lbl)
+        top_bar.addStretch()
+
+        req_filter = None
+        if show_req_filter:
+            req_filter = QComboBox()
+            req_filter.addItem("All Reqs")
+            req_filter.setMaximumHeight(24)
+            top_bar.addWidget(req_filter)
+
+        type_filter = QComboBox()
+        type_filter.addItem("All Types")
+        type_filter.setMaximumHeight(24)
+        top_bar.addWidget(type_filter)
+        layout.addLayout(top_bar)
+
         kpi_layout = QHBoxLayout()
-        kpi_layout.setSpacing(15)
+        kpi_layout.setSpacing(8)
 
-        self.kpi_prod = self.create_kpi_window("Production Queue")
-        self.kpi_quote = self.create_kpi_window("Quote / Submittal Queue")
-        self.kpi_hist = self.create_kpi_window("Completed Jobs")
+        kpi_lines = self.create_kpi_block("Total Lines")
+        kpi_var = self.create_kpi_block("Avg Target Var")
+        kpi_queue = self.create_kpi_block("Avg Queue Days")
+        kpi_proc = self.create_kpi_block("Avg Process Days")
 
-        kpi_layout.addWidget(self.kpi_prod['box'])
-        kpi_layout.addWidget(self.kpi_quote['box'])
-        kpi_layout.addWidget(self.kpi_hist['box'])
+        kpi_layout.addWidget(kpi_lines['frame'])
+        kpi_layout.addWidget(kpi_var['frame'])
+        kpi_layout.addWidget(kpi_queue['frame'])
+        kpi_layout.addWidget(kpi_proc['frame'])
+        layout.addLayout(kpi_layout)
 
-        main_layout.addLayout(kpi_layout)
+        chart = QChart()
+        chart.setTheme(QChart.ChartThemeDark)
+        chart.setBackgroundBrush(Qt.NoBrush)
+        chart.layout().setContentsMargins(0, 0, 0, 0)
+        chart.legend().hide()
 
-        # --- Middle Row: Donut & Bar Charts ---
-        mid_chart_layout = QHBoxLayout()
-        mid_chart_layout.setSpacing(20)
+        chart_view = QChartView(chart)
+        chart_view.setRenderHint(QPainter.Antialiasing)
+        chart_view.setStyleSheet("background: transparent; border: none;")
+        layout.addWidget(chart_view, 1)
 
-        self.workload_chart = QChart()
-        self.workload_chart.setTheme(QChart.ChartThemeDark)
-        self.workload_chart.setTitle("Workload Distribution")
-        self.workload_chart.setBackgroundBrush(QColor("#252526"))
-        self.workload_chart.legend().hide()
-        self.workload_view = QChartView(self.workload_chart)
-        self.workload_view.setRenderHint(QPainter.Antialiasing)
-        self.workload_view.setObjectName("DashCard")
+        return {
+            'card': card, 'req_filter': req_filter, 'type_filter': type_filter,
+            'lbl_lines': kpi_lines['val'], 'lbl_var': kpi_var['val'],
+            'lbl_queue': kpi_queue['val'], 'lbl_proc': kpi_proc['val'],
+            'chart': chart, 'chart_view': chart_view
+        }
 
-        self.type_chart = QChart()
-        self.type_chart.setTheme(QChart.ChartThemeDark)
-        self.type_chart.setTitle("Active Queue by Type")
-        self.type_chart.setBackgroundBrush(QColor("#252526"))
-        self.type_view = QChartView(self.type_chart)
-        self.type_view.setRenderHint(QPainter.Antialiasing)
-        self.type_view.setObjectName("DashCard")
+    def create_history_card(self, title):
+        card = QFrame()
+        card.setObjectName("DashCard")
+        card.setStyleSheet(
+            "QFrame#DashCard { background-color: #1E1E20; border: 1px solid #3E3E42; border-radius: 8px; }")
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
 
-        mid_chart_layout.addWidget(self.workload_view)
-        mid_chart_layout.addWidget(self.type_view)
-        main_layout.addLayout(mid_chart_layout, 1)
+        top_bar = QHBoxLayout()
+        title_lbl = QLabel(title)
+        title_lbl.setStyleSheet("font-size: 15px; font-weight: bold; color: #E0E0E0;")
+        top_bar.addWidget(title_lbl)
+        top_bar.addStretch()
 
-        # --- Bottom Row: Win/Loss Bar Chart ---
-        trend_container = QFrame()
-        trend_container.setObjectName("DashCard")
-        trend_layout = QVBoxLayout(trend_container)
-        trend_layout.setContentsMargins(0, 0, 0, 0)
+        req_filter = QComboBox()
+        req_filter.addItem("All Reqs")
+        req_filter.setMaximumHeight(24)
+        date_filter = QComboBox()
+        date_filter.addItems(["Last 30 Days", "Last 90 Days", "Year to Date", "All Time"])
+        date_filter.setCurrentText("Last 90 Days")
+        date_filter.setMaximumHeight(24)
 
-        trend_controls = QHBoxLayout()
-        trend_controls.setContentsMargins(15, 10, 15, 0)
+        top_bar.addWidget(req_filter)
+        top_bar.addWidget(date_filter)
+        layout.addLayout(top_bar)
 
-        trend_lbl = QLabel("Historical Variance Win/Loss (Weekly)")
-        trend_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #FFFFFF;")
-        trend_controls.addWidget(trend_lbl)
-        trend_controls.addStretch()
+        chart = QChart()
+        chart.setTheme(QChart.ChartThemeDark)
+        chart.setBackgroundBrush(Qt.NoBrush)
+        chart.layout().setContentsMargins(0, 0, 0, 0)
 
-        local_filter_lbl = QLabel("Date Range:")
-        local_filter_lbl.setStyleSheet("color: #AAAAAA; font-weight: bold;")
-        trend_controls.addWidget(local_filter_lbl)
+        chart_view = QChartView(chart)
+        chart_view.setRenderHint(QPainter.Antialiasing)
+        chart_view.setStyleSheet("background: transparent; border: none;")
+        layout.addWidget(chart_view, 1)
 
-        self.trend_date_filter = QComboBox()
-        self.trend_date_filter.addItems(["Last 30 Days", "Last 90 Days", "Year to Date"])
-        self.trend_date_filter.setCurrentText("Last 90 Days")
-        self.trend_date_filter.currentTextChanged.connect(self.refresh_trend_chart)
-        trend_controls.addWidget(self.trend_date_filter)
+        return {
+            'card': card, 'req_filter': req_filter, 'date_filter': date_filter,
+            'chart': chart, 'chart_view': chart_view
+        }
 
-        trend_layout.addLayout(trend_controls)
+    def create_kpi_block(self, title):
+        frame = QFrame()
+        frame.setStyleSheet("background-color: #2D2D30; border-radius: 4px;")
+        frame.setMaximumHeight(50)
 
-        self.trend_chart = QChart()
-        self.trend_chart.setTheme(QChart.ChartThemeDark)
-        self.trend_chart.setBackgroundBrush(Qt.NoBrush)
-        self.trend_chart.legend().show()
-        self.trend_chart.legend().setAlignment(Qt.AlignBottom)
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(2)
 
-        self.trend_view = QChartView(self.trend_chart)
-        self.trend_view.setRenderHint(QPainter.Antialiasing)
+        lbl_title = QLabel(title)
+        lbl_title.setStyleSheet("color: #AAAAAA; font-size: 10px; font-weight: bold;")
+        lbl_title.setAlignment(Qt.AlignCenter)
 
-        trend_layout.addWidget(self.trend_view, 1)
-        main_layout.addWidget(trend_container, 1)
-
-    def create_kpi_window(self, title):
-        """Creates an independent control panel (window) for targeted KPIs."""
-        group = QGroupBox(title)
-        group.setStyleSheet("""
-            QGroupBox { border: 1px solid #3E3E42; border-radius: 6px; margin-top: 12px; background-color: #252526; }
-            QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px; color: #AAAAAA; font-weight: bold; }
-        """)
-
-        layout = QVBoxLayout(group)
-        layout.setContentsMargins(10, 15, 10, 10)
-
-        # Local Filter Control
-        filter_cb = QComboBox()
-        filter_cb.addItem("All Requirements")
-        filter_cb.currentTextChanged.connect(self.render_dashboard)
-        layout.addWidget(filter_cb)
-
-        # Main KPI Value
         lbl_val = QLabel("0")
-        lbl_val.setStyleSheet("font-size: 28px; font-weight: bold; color: #FFFFFF; margin-top: 5px;")
+        lbl_val.setStyleSheet("color: #FFFFFF; font-size: 16px; font-weight: bold;")
         lbl_val.setAlignment(Qt.AlignCenter)
 
-        # Subtitle KPI Value
-        lbl_sub = QLabel("Var: --")
-        lbl_sub.setStyleSheet("color: #AAAAAA; font-size: 14px; font-weight: bold;")
-        lbl_sub.setAlignment(Qt.AlignCenter)
-
+        layout.addWidget(lbl_title)
         layout.addWidget(lbl_val)
-        layout.addWidget(lbl_sub)
 
-        return {'box': group, 'val_label': lbl_val, 'sub_label': lbl_sub, 'filter': filter_cb}
+        return {'frame': frame, 'val': lbl_val}
+
+    @staticmethod
+    def parse_variance(val):
+        if pd.isna(val) or val == "": return np.nan
+        try:
+            return float(str(val).replace('days', '').strip())
+        except:
+            return np.nan
 
     def update_dashboard(self, df):
         if df.empty: return
@@ -156,298 +198,358 @@ class DashboardWidget(QWidget):
         if 'LINE_COUNT' not in self.master_df.columns:
             self.master_df['LINE_COUNT'] = 1
 
-        # Populate Global Filters
-        current_eng = self.global_eng_filter.currentText()
-        engineers = [str(e) for e in self.master_df['ASSIGNED TO'].unique() if str(e).strip()]
-        self.global_eng_filter.blockSignals(True)
-        self.global_eng_filter.clear()
-        self.global_eng_filter.addItem("All Engineers")
-        self.global_eng_filter.addItems(sorted(engineers))
-        if current_eng in [self.global_eng_filter.itemText(i) for i in range(self.global_eng_filter.count())]:
-            self.global_eng_filter.setCurrentText(current_eng)
-        self.global_eng_filter.blockSignals(False)
+        self.active_df = self.master_df[self.master_df['STATUS'].str.strip().str.upper() != 'COMPLETE'].copy()
+        self.comp_df = self.master_df[self.master_df['STATUS'].str.strip().str.upper() == 'COMPLETE'].copy()
 
-        current_type = self.global_type_filter.currentText()
-        types = [str(t) for t in self.master_df['TYPE'].unique() if str(t).strip()]
-        self.global_type_filter.blockSignals(True)
-        self.global_type_filter.clear()
-        self.global_type_filter.addItem("All Types")
-        self.global_type_filter.addItems(sorted(types))
-        if current_type in [self.global_type_filter.itemText(i) for i in range(self.global_type_filter.count())]:
-            self.global_type_filter.setCurrentText(current_type)
-        self.global_type_filter.blockSignals(False)
+        prod_mask = self.active_df['REQUIREMENT'].str.contains('PROD', case=False, na=False)
+        self.prod_base = self.active_df[prod_mask]
+        self.quote_base = self.active_df[~prod_mask]
 
-        # Pre-populate Local Window Filters
-        self._populate_local_filter(self.kpi_prod['filter'], self.master_df[
-            self.master_df['REQUIREMENT'].str.contains('PROD', case=False, na=False)])
-        self._populate_local_filter(self.kpi_quote['filter'], self.master_df[
-            self.master_df['REQUIREMENT'].str.contains('QUOT|APP|SUB', case=False, na=False)])
-        self._populate_local_filter(self.kpi_hist['filter'], self.master_df)
+        self.populate_combo(self.global_eng_filter, self.master_df['ASSIGNED TO'], "All Engineers")
+        if self.prod_ui['req_filter']:
+            self.populate_combo(self.prod_ui['req_filter'], self.prod_base['REQUIREMENT'], "All Reqs")
+        self.populate_combo(self.prod_ui['type_filter'], self.prod_base['TYPE'], "All Types")
 
-        self.render_dashboard()
+        if self.quote_ui['req_filter']:
+            self.populate_combo(self.quote_ui['req_filter'], self.quote_base['REQUIREMENT'], "All Reqs")
+        self.populate_combo(self.quote_ui['type_filter'], self.quote_base['TYPE'], "All Types")
 
-    def _populate_local_filter(self, combo_box, target_df):
-        current_val = combo_box.currentText()
-        reqs = [str(r) for r in target_df['REQUIREMENT'].replace('', 'Uncategorized').unique() if str(r).strip()]
-        combo_box.blockSignals(True)
-        combo_box.clear()
-        combo_box.addItem("All Requirements")
-        combo_box.addItems(sorted(reqs))
-        if current_val in [combo_box.itemText(i) for i in range(combo_box.count())]:
-            combo_box.setCurrentText(current_val)
-        combo_box.blockSignals(False)
+        self.populate_combo(self.hist_ui['req_filter'], self.master_df['REQUIREMENT'], "All Reqs")
 
-    def render_dashboard(self):
-        if not hasattr(self, 'master_df') or self.master_df.empty: return
+        self.render_all()
 
-        # 1. Apply Global Filters
-        df = self.master_df.copy()
+    def populate_combo(self, combo, series, default_text):
+        current = combo.currentText()
+        items = [str(x) for x in series.replace('', 'Uncategorized').unique() if str(x).strip()]
+        combo.blockSignals(True)
+        combo.clear()
+        combo.addItem(default_text)
+        combo.addItems(sorted(items))
+        if current in [combo.itemText(i) for i in range(combo.count())]:
+            combo.setCurrentText(current)
+        combo.blockSignals(False)
+
+    def render_all(self):
+        self.render_prod_card()
+        self.render_quote_card()
+        self.render_hist_card()
+
+    def render_prod_card(self):
+        if hasattr(self, 'prod_base'):
+            self._apply_active_card_logic(self.prod_base.copy(), self.prod_ui)
+
+    def render_quote_card(self):
+        if hasattr(self, 'quote_base'):
+            self._apply_active_card_logic(self.quote_base.copy(), self.quote_ui)
+
+    def _apply_active_card_logic(self, df, ui_dict):
         if self.global_eng_filter.currentText() != "All Engineers":
             df = df[df['ASSIGNED TO'] == self.global_eng_filter.currentText()]
-        if self.global_type_filter.currentText() != "All Types":
-            df = df[df['TYPE'] == self.global_type_filter.currentText()]
 
-        self.current_df = df
+        if ui_dict['req_filter']:
+            req = ui_dict['req_filter'].currentText()
+            if req != "All Reqs": df = df[df['REQUIREMENT'].replace('', 'Uncategorized') == req]
 
-        # Bulletproof float conversion function to prevent Pandas string reduction errors
-        def parse_variance(val):
-            if pd.isna(val) or val == "": return np.nan
-            try:
-                return float(str(val).replace('days', '').strip())
-            except:
-                return np.nan
+        typ = ui_dict['type_filter'].currentText()
+        if typ != "All Types": df = df[df['TYPE'].replace('', 'Unknown') == typ]
 
-        active_df = df[df['STATUS'].str.strip().str.upper() != 'COMPLETE']
-        comp_df = df[df['STATUS'].str.strip().str.upper() == 'COMPLETE']
+        ui_dict['lbl_lines'].setText(str(int(df['LINE_COUNT'].sum())))
 
-        # ---------------------------------------------------------
-        # 2. Update KPI Windows with Local Filters Applied
-        # ---------------------------------------------------------
-        # Production Card
-        prod_mask = active_df['REQUIREMENT'].str.contains('PROD', case=False, na=False)
-        prod_df = active_df[prod_mask]
-        if self.kpi_prod['filter'].currentText() != "All Requirements":
-            prod_df = prod_df[prod_df['REQUIREMENT'] == self.kpi_prod['filter'].currentText()]
+        var_series = df['EST ENG VARIANCE'].apply(self.parse_variance).dropna()
+        avg_var = var_series.mean() if not var_series.empty else np.nan
+        ui_dict['lbl_var'].setText(f"{avg_var:+.1f} d" if not pd.isna(avg_var) else "--")
+        ui_dict['lbl_var'].setStyleSheet(
+            f"color: {'#FF5252' if avg_var < 0 else '#4CAF50'}; font-size: 16px; font-weight: bold;")
 
-        self.kpi_prod['val_label'].setText(str(int(prod_df['LINE_COUNT'].sum())))
-        prod_var_series = prod_df['EST ENG VARIANCE'].apply(parse_variance).astype(float).dropna()
-        prod_var = prod_var_series.mean() if not prod_var_series.empty else np.nan
-        self.kpi_prod['sub_label'].setText(f"Est Var: {prod_var:+.1f} days" if not pd.isna(prod_var) else "Est Var: --")
-        self.kpi_prod['sub_label'].setStyleSheet(
-            f"color: {'#FF5252' if prod_var < 0 else '#4CAF50'}; font-weight: bold; font-size: 14px;")
+        if 'QUEUE_DAYS' in df.columns:
+            q_series = df['QUEUE_DAYS'].apply(self.parse_variance).dropna()
+            avg_q = q_series.mean() if not q_series.empty else np.nan
+            ui_dict['lbl_queue'].setText(f"{avg_q:.1f} d" if not pd.isna(avg_q) else "--")
+            ui_dict['lbl_queue'].setStyleSheet("color: #FFFFFF; font-size: 16px; font-weight: bold;")
 
-        # Quote Card
-        quote_mask = active_df['REQUIREMENT'].str.contains('QUOT|APP|SUB', case=False, na=False)
-        quote_df = active_df[quote_mask]
-        if self.kpi_quote['filter'].currentText() != "All Requirements":
-            quote_df = quote_df[quote_df['REQUIREMENT'] == self.kpi_quote['filter'].currentText()]
+        if 'PROCESS_DAYS' in df.columns:
+            p_series = df['PROCESS_DAYS'].apply(self.parse_variance).dropna()
+            avg_p = p_series.mean() if not p_series.empty else np.nan
+            ui_dict['lbl_proc'].setText(f"{avg_p:.1f} d" if not pd.isna(avg_p) else "--")
+            ui_dict['lbl_proc'].setStyleSheet("color: #FFFFFF; font-size: 16px; font-weight: bold;")
 
-        self.kpi_quote['val_label'].setText(str(int(quote_df['LINE_COUNT'].sum())))
-        quote_var_series = quote_df['EST ENG VARIANCE'].apply(parse_variance).astype(float).dropna()
-        quote_var = quote_var_series.mean() if not quote_var_series.empty else np.nan
-        self.kpi_quote['sub_label'].setText(
-            f"Est Var: {quote_var:+.1f} days" if not pd.isna(quote_var) else "Est Var: --")
-        self.kpi_quote['sub_label'].setStyleSheet(
-            f"color: {'#FF5252' if quote_var < 0 else '#4CAF50'}; font-weight: bold; font-size: 14px;")
+        self.render_donut_chart(ui_dict['chart'], df, ui_dict['chart_view'])
 
-        # Historical Card
-        hist_df = comp_df.copy()
-        if self.kpi_hist['filter'].currentText() != "All Requirements":
-            hist_df = hist_df[hist_df['REQUIREMENT'] == self.kpi_hist['filter'].currentText()]
+    # =========================================================================
+    # NATIVE PIE CHART TOOLTIP HANDLER
+    # =========================================================================
+    def handle_pie_hover(self, state, slice_item, chart_view, eng_name, df):
+        if state:
+            eng_df = df[df['ASSIGNED TO'] == eng_name]
+            if eng_df.empty: return
 
-        self.kpi_hist['val_label'].setText(str(int(hist_df['LINE_COUNT'].sum())))
-        hist_var_series = hist_df['COMPLETION VARIANCE'].apply(parse_variance).astype(float).dropna()
-        hist_var = hist_var_series.mean() if not hist_var_series.empty else np.nan
-        self.kpi_hist['sub_label'].setText(f"Avg Var: {hist_var:+.1f} days" if not pd.isna(hist_var) else "Avg Var: --")
-        self.kpi_hist['sub_label'].setStyleSheet(
-            f"color: {'#FF5252' if hist_var < 0 else '#4CAF50'}; font-weight: bold; font-size: 14px;")
+            tooltip_html = f"<b>{eng_name.upper()} | Active Queue</b><hr/>"
 
-        # ---------------------------------------------------------
-        # 3. Update Workload Chart (Combined Labels)
-        # ---------------------------------------------------------
-        self.workload_chart.removeAllSeries()
-        pie_series = QPieSeries()
-        pie_series.setHoleSize(0.35)
+            for _, row in eng_df.head(15).iterrows():
+                proj = str(row.get('PROJECT NAME', 'Unknown'))[:20]
+                quote = str(row.get('QUOTE NO', '--'))
+                req = str(row.get('REQUIREMENT', ''))
+                req_short = req[:4] if req else "Unk"
 
-        color_map = {'ADAM': QColor("#2E7D32"), 'DAVID': QColor("#C62828"), 'ANDY': QColor("#1565C0"),
-                     'MATT': QColor("#EF6C00")}
-        engineers = active_df['ASSIGNED TO'].unique()
+                sell = str(row.get('SELL $', ''))
+                sell_str = f" | <span style='color: #4CAF50;'>${sell}</span>" if sell and sell.strip().lower() not in [
+                    "", "nan", "0", "0.0"] else ""
+
+                tooltip_html += f"• <span style='color: #AAAAAA;'>{quote} ({req_short})</span> - {proj}{sell_str}<br/>"
+
+            if len(eng_df) > 15:
+                tooltip_html += f"<br/><i>...and {len(eng_df) - 15} more lines.</i>"
+
+            pos = QCursor.pos()
+            offset_pos = QPoint(pos.x() + 15, pos.y() + 15)
+            # Anchored to view with 30s timeout to kill flickering!
+            QToolTip.showText(offset_pos, tooltip_html, chart_view, chart_view.rect(), 30000)
+        else:
+            QToolTip.hideText()
+
+    def render_donut_chart(self, chart, df, chart_view):
+        chart.removeAllSeries()
+        pie = QPieSeries()
+        pie.setHoleSize(0.4)
+
+        if df.empty:
+            chart.addSeries(pie)
+            return
+
+        engineers = df['ASSIGNED TO'].unique()
+        color_map = {'ADAM': "#2E7D32", 'DAVID': "#C62828", 'ANDY': "#1565C0", 'MATT': "#EF6C00"}
 
         for eng in engineers:
             eng_name = str(eng).strip().upper()
             if not eng_name: continue
 
-            base_color = QColor("#888888")
-            for key, c in color_map.items():
-                if key in eng_name:
-                    base_color = c
-                    break
+            lines = df[df['ASSIGNED TO'] == eng]['LINE_COUNT'].sum()
+            if lines > 0:
+                slc = pie.append(f"{eng_name}\n({int(lines)})", lines)
+                slc.setLabelVisible(True)
+                slc.setLabelColor(QColor("#FFFFFF"))
 
-            eng_df = active_df[active_df['ASSIGNED TO'] == eng]
-            total_lines = eng_df['LINE_COUNT'].sum()
+                c = "#888888"
+                for k, v in color_map.items():
+                    if k in eng_name: c = v; break
+                slc.setBrush(QColor(c))
+                slc.setPen(QPen(QColor("#1E1E20"), 2))
 
-            if total_lines > 0:
-                req_counts = eng_df.groupby('REQUIREMENT')['LINE_COUNT'].sum()
-                breakdown_strs = [f"{str(req)[:4] if req else 'Unk'}: {int(count)}" for req, count in
-                                  req_counts.items()]
-                slice_label = f"{eng_name}\n({', '.join(breakdown_strs)})"
+                slc.hovered.connect(
+                    lambda state, item=slc, e_name=eng, data=df: self.handle_pie_hover(state, item, chart_view, e_name,
+                                                                                       data))
 
-                pie_slice = pie_series.append(slice_label, total_lines)
-                pie_slice.setBrush(base_color)
-                pie_slice.setLabelVisible(True)
-                pie_slice.setLabelColor(QColor("#FFFFFF"))
-                pie_slice.setPen(QPen(QColor("#252526"), 2))
+        chart.addSeries(pie)
 
-        self.workload_chart.addSeries(pie_series)
+    def handle_bar_hover(self, status, index, req, weeks, df, is_forecast):
+        hover_id = f"{req}_{index}_{is_forecast}"
+        if status:
+            if self._current_hover == hover_id: return
+            self._current_hover = hover_id
+            try:
+                wk = weeks[index]
+                mask = (df['REQUIREMENT'].replace('', 'Uncategorized') == req) & (df['YearWeek'] == wk) & (
+                            df['IS_FORECAST'] == is_forecast)
+                bar_df = df[mask]
 
-        # ---------------------------------------------------------
-        # 4. Update Stacked Bar Chart
-        # ---------------------------------------------------------
-        self.type_chart.removeAllSeries()
-        for axis in self.type_chart.axes():
-            self.type_chart.removeAxis(axis)
+                if bar_df.empty: return
 
-        self.type_chart.legend().show()
-        self.type_chart.legend().setAlignment(Qt.AlignBottom)
+                prefix = "🔮 Forecast" if is_forecast else "✅ Actual"
+                tooltip_html = f"<b>{prefix} | {req} | {self.get_relative_week_label(wk)}</b><hr/>"
 
-        stacked_series = QStackedBarSeries()
-        stacked_series.setBarWidth(0.7)
-        requirements = active_df['REQUIREMENT'].replace('', 'Uncategorized').unique().tolist()
-        types = active_df['TYPE'].replace('', 'Unknown').unique().tolist()
+                for _, row in bar_df.head(15).iterrows():
+                    proj = str(row.get('PROJECT NAME', 'Unknown'))[:20]
+                    quote = str(row.get('QUOTE NO', '--'))
+                    var = row.get('VAR_DAYS', 0)
+                    color = "#FF5252" if var < 0 else "#4CAF50"
+                    tooltip_html += f"• <span style='color: #AAAAAA;'>{quote}</span> - {proj}: <b style='color: {color};'>{var:+.1f}d</b><br/>"
 
-        type_colors = ["#1F6AA5", "#FFD54F", "#4CAF50", "#9C27B0"]
-        max_stack_val = 0
+                if len(bar_df) > 15: tooltip_html += f"<br/><i>...and {len(bar_df) - 15} more.</i>"
 
-        for i, t_name in enumerate(types):
-            bar_set = QBarSet(str(t_name))
-            if i < len(type_colors): bar_set.setBrush(QColor(type_colors[i]))
+                pos = QCursor.pos()
+                offset_pos = QPoint(pos.x() + 15, pos.y() + 15)
+                QToolTip.showText(offset_pos, tooltip_html, self.hist_ui['chart_view'],
+                                  self.hist_ui['chart_view'].rect(), 30000)
+            except Exception:
+                pass
+        else:
+            self._current_hover = None
+            QToolTip.hideText()
 
-            for req in requirements:
-                req_type_df = active_df[
-                    (active_df['TYPE'] == t_name) & (active_df['REQUIREMENT'].replace('', 'Uncategorized') == req)]
-                bar_set.append(req_type_df['LINE_COUNT'].sum())
+    def get_relative_week_label(self, year_week_str):
+        try:
+            target_year, target_week = map(int, year_week_str.split('-'))
+            today = pd.Timestamp.today()
+            curr_year, curr_week, _ = today.isocalendar()
 
-            stacked_series.append(bar_set)
+            diff = (target_year - curr_year) * 52 + (target_week - curr_week)
+            if diff == 0:
+                return "Current Wk"
+            elif diff > 0:
+                return f"+{diff} Wk"
+            else:
+                return f"{diff} Wk"
+        except:
+            return year_week_str
 
-        for req in requirements:
-            total_for_req = active_df[active_df['REQUIREMENT'].replace('', 'Uncategorized') == req]['LINE_COUNT'].sum()
-            if total_for_req > max_stack_val: max_stack_val = total_for_req
+    def get_req_color(self, req_name):
+        """Explicitly lock Prod to Green, and Docs to Red."""
+        req_upper = str(req_name).upper()
+        if 'PROD' in req_upper: return "#4CAF50"  # Material Green
+        if 'SUPPORT' in req_upper or 'DOC' in req_upper: return "#F44336"  # Material Red
+        if 'QUOT' in req_upper: return "#2196F3"  # Blue
+        if 'APP' in req_upper: return "#FF9800"  # Orange
+        if 'SUB' in req_upper: return "#9C27B0"  # Purple
+        return "#00BCD4"  # Cyan Fallback
 
-        self.type_chart.addSeries(stacked_series)
+    def render_hist_card(self):
+        if not hasattr(self, 'comp_df') or not hasattr(self, 'active_df'): return
 
-        axisX = QBarCategoryAxis()
-        axisX.append([str(r)[:10] for r in requirements])
-        self.type_chart.addAxis(axisX, Qt.AlignBottom)
-        stacked_series.attachAxis(axisX)
+        h_df = self.comp_df.copy()
+        h_df['TARGET_DATE'] = pd.to_datetime(h_df['COMPLETE DATE'], errors='coerce')
+        h_df['VAR_DAYS'] = h_df['COMPLETION VARIANCE'].apply(self.parse_variance).fillna(0)
+        h_df['IS_FORECAST'] = False
 
-        axisY = QValueAxis()
-        axisY.setRange(0, max_stack_val + 2)
-        axisY.setLabelFormat("%d")
-        self.type_chart.addAxis(axisY, Qt.AlignLeft)
-        stacked_series.attachAxis(axisY)
+        f_df = self.active_df.copy()
+        f_df['TARGET_DATE'] = pd.to_datetime(f_df['EST END DATE'], errors='coerce')
+        f_df['VAR_DAYS'] = f_df['EST ENG VARIANCE'].apply(self.parse_variance).fillna(0)
+        f_df['IS_FORECAST'] = True
 
-        self.refresh_trend_chart()
+        df = pd.concat([h_df, f_df], ignore_index=True)
+        df = df.dropna(subset=['TARGET_DATE'])
 
-    def refresh_trend_chart(self):
-        """Builds a Win/Loss Bar Chart with thick columns and a spanning Zero line."""
-        if self.current_df.empty: return
+        if self.global_eng_filter.currentText() != "All Engineers":
+            df = df[df['ASSIGNED TO'] == self.global_eng_filter.currentText()]
 
-        self.trend_chart.removeAllSeries()
-        for axis in self.trend_chart.axes():
-            self.trend_chart.removeAxis(axis)
+        req = self.hist_ui['req_filter'].currentText()
+        if req != "All Reqs": df = df[df['REQUIREMENT'].replace('', 'Uncategorized') == req]
 
-        comp_df = self.current_df[self.current_df['STATUS'].str.strip().str.upper() == 'COMPLETE'].copy()
-        if comp_df.empty: return
-
-        comp_df['COMPLETE DATE'] = pd.to_datetime(comp_df['COMPLETE DATE'], errors='coerce')
-        comp_df = comp_df.dropna(subset=['COMPLETE DATE'])
-
-        range_sel = self.trend_date_filter.currentText()
+        range_sel = self.hist_ui['date_filter'].currentText()
         today = pd.Timestamp.today().normalize()
+
         if range_sel == "Last 30 Days":
             start_date = today - pd.Timedelta(days=30)
         elif range_sel == "Last 90 Days":
             start_date = today - pd.Timedelta(days=90)
-        else:
+        elif range_sel == "Year to Date":
             start_date = pd.Timestamp(year=today.year, month=1, day=1)
+        else:
+            start_date = pd.Timestamp.min
 
-        comp_df = comp_df[comp_df['COMPLETE DATE'] >= start_date].copy()
-        if comp_df.empty: return
+        df = df[(df['TARGET_DATE'] >= start_date) | (df['IS_FORECAST'] == True)].copy()
 
-        comp_df['YearWeek'] = comp_df['COMPLETE DATE'].dt.strftime('%G-%V')
-        comp_df['WeekLabel'] = comp_df['COMPLETE DATE'].dt.strftime('Wk %V')
+        chart = self.hist_ui['chart']
+        chart.removeAllSeries()
+        for axis in chart.axes(): chart.removeAxis(axis)
 
-        def parse_variance(val):
-            try:
-                return float(str(val).replace('days', '').strip())
-            except:
-                return 0
+        self._chart_refs = []
 
-        comp_df['VAR_DAYS'] = comp_df['COMPLETION VARIANCE'].apply(parse_variance)
+        if df.empty: return
 
-        weeks = sorted(comp_df['YearWeek'].unique().tolist())
-        reqs = comp_df['REQUIREMENT'].replace('', 'Uncategorized').unique().tolist()
+        df['YearWeek'] = df['TARGET_DATE'].dt.strftime('%G-%V')
+
+        weeks = sorted(df['YearWeek'].unique().tolist())
+        reqs = df['REQUIREMENT'].replace('', 'Uncategorized').unique().tolist()
 
         bar_series = QBarSeries()
         bar_series.setBarWidth(0.9)
 
-        req_colors = ["#1F6AA5", "#FFD54F", "#4CAF50", "#9C27B0", "#E53935", "#00ACC1"]
         min_y, max_y = 0, 0
 
-        for i, req in enumerate(reqs):
-            bar_set = QBarSet(str(req))
-            if i < len(req_colors):
-                bar_set.setBrush(QColor(req_colors[i]))
+        for r in reqs:
+            actual_set = QBarSet(str(r))
+            base_color = QColor(self.get_req_color(r))
+            actual_set.setBrush(base_color)
+
+            forecast_set = QBarSet(f"{r} (Forecast)")
+            forecast_color = QColor(base_color)
+            forecast_color.setAlpha(120)
+            forecast_set.setBrush(forecast_color)
 
             for wk in weeks:
-                mask = (comp_df['REQUIREMENT'].replace('', 'Uncategorized') == req) & (comp_df['YearWeek'] == wk)
-                wk_sum = comp_df.loc[mask, 'VAR_DAYS'].sum()
-                bar_set.append(wk_sum)
+                mask_base = (df['REQUIREMENT'].replace('', 'Uncategorized') == r) & (df['YearWeek'] == wk)
+                act_sum = df[mask_base & (~df['IS_FORECAST'])]['VAR_DAYS'].sum()
+                for_sum = df[mask_base & (df['IS_FORECAST'])]['VAR_DAYS'].sum()
 
-                if wk_sum < min_y: min_y = wk_sum
-                if wk_sum > max_y: max_y = wk_sum
+                actual_set.append(act_sum)
+                forecast_set.append(for_sum)
 
-            bar_series.append(bar_set)
+                min_y = min(min_y, act_sum, for_sum)
+                max_y = max(max_y, act_sum, for_sum)
 
-        self.trend_chart.addSeries(bar_series)
+            actual_set.hovered.connect(
+                lambda status, index, req_type=r: self.handle_bar_hover(status, index, req_type, weeks, df, False))
+            forecast_set.hovered.connect(
+                lambda status, index, req_type=r: self.handle_bar_hover(status, index, req_type, weeks, df, True))
 
-        # Set up X Axis
+            bar_series.append(actual_set)
+            bar_series.append(forecast_set)
+
+        chart.addSeries(bar_series)
+
         axisX = QBarCategoryAxis()
-        label_map = comp_df.drop_duplicates('YearWeek').set_index('YearWeek')['WeekLabel'].to_dict()
-        categories = [label_map[wk] for wk in weeks]
+        categories = [self.get_relative_week_label(wk) for wk in weeks]
         axisX.append(categories)
 
-        font = QFont()
-        font.setPointSize(8)
+        font = QFont("Segoe UI", 8, QFont.Bold)
         axisX.setLabelsFont(font)
-        self.trend_chart.addAxis(axisX, Qt.AlignBottom)
+        chart.addAxis(axisX, Qt.AlignBottom)
         bar_series.attachAxis(axisX)
 
-        # Set up Y Axis
         axisY = QValueAxis()
-        padding = max(abs(max_y), abs(min_y)) * 0.2
-        if padding == 0: padding = 2
-
-        axisY.setRange(min_y - padding, max_y + padding)
-        axisY.setTitleText("Total Variance (Days)")
-        self.trend_chart.addAxis(axisY, Qt.AlignLeft)
+        padding = max(abs(max_y), abs(min_y)) * 0.2 + 2
+        y_min = min_y - padding
+        y_max = max_y + padding
+        axisY.setRange(y_min, y_max)
+        chart.addAxis(axisY, Qt.AlignLeft)
         bar_series.attachAxis(axisY)
 
-        # ---------------------------------------------------------
-        # NEW: Spanning Zero Line!
-        # By setting the X coordinates from -0.5 to length - 0.5,
-        # the line touches the absolute left and right bounds of the graph
-        # ---------------------------------------------------------
+        axisX_line = QValueAxis()
+        axisX_line.setRange(-0.5, len(weeks) - 0.5)
+        axisX_line.setVisible(False)
+        chart.addAxis(axisX_line, Qt.AlignBottom)
+
+        curr_idx = next((i for i, c in enumerate(categories) if "+" in c or "Current" in c), None)
+        if curr_idx is not None:
+            future_upper = QLineSeries()
+            future_lower = QLineSeries()
+
+            start_x = curr_idx - 0.5
+            max_x = len(weeks) - 0.5
+
+            future_upper.append(start_x, y_max)
+            future_upper.append(max_x, y_max)
+            future_lower.append(start_x, y_min)
+            future_lower.append(max_x, y_min)
+
+            future_area = QAreaSeries(future_upper, future_lower)
+            future_area.setName("Future Highlight")
+
+            self._chart_refs.extend([future_upper, future_lower, future_area])
+
+            highlight = QColor("#FFFFFF")
+            highlight.setAlpha(12)
+            future_area.setBrush(highlight)
+            future_area.setPen(Qt.NoPen)
+
+            chart.addSeries(future_area)
+            future_area.attachAxis(axisX_line)
+            future_area.attachAxis(axisY)
+
         zero_line = QLineSeries()
-        zero_line.setName("Target (Zero Variance)")
-
-        max_idx = max(0, len(weeks) - 0.5)
+        zero_line.setName("Target")
         zero_line.append(-0.5, 0)
-        zero_line.append(max_idx, 0)
+        zero_line.append(len(weeks) - 0.5, 0)
+        zero_line.setPen(QPen(QColor("#FFFFFF"), 3, Qt.SolidLine))
 
-        zero_pen = QPen(QColor("#FFFFFF"), 2, Qt.SolidLine)
-        zero_line.setPen(zero_pen)
-
-        self.trend_chart.addSeries(zero_line)
-        zero_line.attachAxis(axisX)
+        chart.addSeries(zero_line)
+        zero_line.attachAxis(axisX_line)
         zero_line.attachAxis(axisY)
+
+        chart.legend().show()
+        chart.legend().setAlignment(Qt.AlignBottom)
+
+        for marker in chart.legend().markers():
+            label = marker.label()
+            if "(Forecast)" in label or label == "Target" or label == "Future Highlight":
+                marker.setVisible(False)

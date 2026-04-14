@@ -15,7 +15,6 @@ class MyGanttWindow(QMainWindow):
         self.setWindowTitle("MyGantt")
         self.resize(1500, 1000)
 
-        # --- Initialize Status Bar ---
         self.statusBar().showMessage("Ready")
         self.statusBar().setStyleSheet("color: #AAAAAA; background-color: #1E1E1E; border-top: 1px solid #3E3E42;")
 
@@ -35,18 +34,29 @@ class MyGanttWindow(QMainWindow):
         self.sidebar_layout.setSpacing(15)
 
         base_path = os.path.dirname(__file__)
-        self.nav_data_btn = QPushButton("")
-        self.nav_data_btn.setIcon(QIcon(os.path.join(base_path, "resources", "data.svg")))
-        self.nav_gantt_btn = QPushButton("")
-        self.nav_gantt_btn.setIcon(QIcon(os.path.join(base_path, "resources", "gantt.svg")))
         self.nav_dash_btn = QPushButton("")
         self.nav_dash_btn.setIcon(QIcon(os.path.join(base_path, "resources", "dashboard.svg")))
+        self.nav_gantt_btn = QPushButton("")
+        self.nav_gantt_btn.setIcon(QIcon(os.path.join(base_path, "resources", "gantt.svg")))
+        self.nav_data_btn = QPushButton("")
+        self.nav_data_btn.setIcon(QIcon(os.path.join(base_path, "resources", "data.svg")))
 
-        for btn in [self.nav_dash_btn, self.nav_gantt_btn, self.nav_data_btn]:
+        # New Sync Button in Sidebar
+        self.nav_sync_btn = QPushButton("")
+        self.nav_sync_btn.setIcon(QIcon(os.path.join(base_path, "resources", "refresh.svg")))
+        self.nav_sync_btn.setToolTip("Sync Workload from Excel")
+
+        for btn in [self.nav_dash_btn, self.nav_gantt_btn, self.nav_data_btn, self.nav_sync_btn]:
             btn.setObjectName("NavButton")
             btn.setFixedSize(50, 50)
             btn.setIconSize(QSize(24, 24))
-            self.sidebar_layout.addWidget(btn)
+
+        # Add buttons with a stretch to push Sync to the bottom
+        self.sidebar_layout.addWidget(self.nav_dash_btn)
+        self.sidebar_layout.addWidget(self.nav_gantt_btn)
+        self.sidebar_layout.addWidget(self.nav_data_btn)
+        self.sidebar_layout.addStretch()
+        self.sidebar_layout.addWidget(self.nav_sync_btn)
 
         # --- Main View Stack ---
         self.main_card_frame = QFrame()
@@ -57,12 +67,10 @@ class MyGanttWindow(QMainWindow):
         self.stacked_widget = QStackedWidget()
         self.card_layout.addWidget(self.stacked_widget)
 
-        # Initialize the 3 modular screens
         self.dash_screen = DashboardWidget()
         self.gantt_screen = GanttScreenWidget()
         self.data_screen = DataViewWidget()
 
-        # Add to stack (Index 0 = Dash, 1 = Gantt, 2 = Data)
         self.stacked_widget.addWidget(self.dash_screen)
         self.stacked_widget.addWidget(self.gantt_screen)
         self.stacked_widget.addWidget(self.data_screen)
@@ -76,9 +84,7 @@ class MyGanttWindow(QMainWindow):
 
         # ==========================================
         # CONTROLLER FACADE
-        # We map the child widget properties to self so the Controller doesn't break!
         # ==========================================
-        self.sync_btn = self.data_screen.sync_btn
         self.raw_table = self.data_screen.raw_table
 
         self.filter_req = self.gantt_screen.filter_req
@@ -95,10 +101,8 @@ class MyGanttWindow(QMainWindow):
         self.inp_est_days = self.gantt_screen.inp_est_days
         self.inp_assignee = self.gantt_screen.inp_assignee
 
-        # New Mappings Here!
         self.kpi_order = self.gantt_screen.kpi_order
         self.kpi_quote = self.gantt_screen.kpi_quote
-
         self.kpi_req = self.gantt_screen.kpi_req
         self.kpi_esd = self.gantt_screen.kpi_esd
         self.kpi_eng_due = self.gantt_screen.kpi_eng_due
@@ -106,11 +110,8 @@ class MyGanttWindow(QMainWindow):
         self.kpi_esd_var = self.gantt_screen.kpi_esd_var
 
     def show_status(self, message, timeout=4000):
-        """Helper to display messages in the bottom status bar.
-        Timeout is in milliseconds (4000 = 4 seconds). 0 means it stays until cleared."""
         self.statusBar().showMessage(message, timeout)
 
-    # Helper method for the controller
     def display_dataframe(self, table_widget, df):
         table_widget.clear()
         if df.empty:
