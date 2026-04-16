@@ -1,12 +1,20 @@
+"""
+window.py
+
+The main QMainWindow for the MyGantt application.
+Responsible for assembling the layout, sidebar navigation,
+and linking the Controller to the UI components.
+"""
+
 import os
 from PySide6.QtWidgets import (QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout,
                                QWidget, QMessageBox, QTableWidgetItem, QHeaderView, QStackedWidget, QFrame)
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon
 
-from ui.dashboard import DashboardWidget
-from ui.data_view import DataViewWidget
-from ui.gantt_view import GanttScreenWidget
+from ui.views.dashboard import DashboardWidget
+from ui.views.data_view import DataViewWidget
+from ui.views.gantt_view import GanttScreenWidget
 
 
 class MyGanttWindow(QMainWindow):
@@ -41,7 +49,7 @@ class MyGanttWindow(QMainWindow):
         self.nav_data_btn = QPushButton("")
         self.nav_data_btn.setIcon(QIcon(os.path.join(base_path, "resources", "data.svg")))
 
-        # New Sync Button in Sidebar
+        # Sync Button in Sidebar
         self.nav_sync_btn = QPushButton("")
         self.nav_sync_btn.setIcon(QIcon(os.path.join(base_path, "resources", "refresh.svg")))
         self.nav_sync_btn.setToolTip("Sync Workload from Excel")
@@ -109,10 +117,12 @@ class MyGanttWindow(QMainWindow):
         self.kpi_eng_var = self.gantt_screen.kpi_eng_var
         self.kpi_esd_var = self.gantt_screen.kpi_esd_var
 
-    def show_status(self, message, timeout=4000):
+    def show_status(self, message: str, timeout: int = 4000):
+        """Displays a temporary message in the app's bottom status bar."""
         self.statusBar().showMessage(message, timeout)
 
     def display_dataframe(self, table_widget, df):
+        """Helper to quickly load a pandas DataFrame into a QTableWidget."""
         table_widget.clear()
         if df.empty:
             table_widget.setRowCount(0)
@@ -130,5 +140,6 @@ class MyGanttWindow(QMainWindow):
                 table_widget.setItem(row, col, item)
         table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
 
-    def show_warning(self, title, message):
+    def show_warning(self, title: str, message: str):
+        """Helper to show a critical warning dialog."""
         QMessageBox.warning(self, title, message)

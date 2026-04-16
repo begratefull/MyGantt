@@ -1,17 +1,29 @@
+"""
+controller.py
+
+The central nervous system of the MyGantt application.
+Responsible for bridging the UI views with the underlying data model,
+handling background data refresh threads, and managing user interactions.
+"""
+
 import json
 import os
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 from PySide6.QtCore import Qt, QTimer, QThread, Signal
 from PySide6.QtGui import QPen, QColor, QFont, QShortcut, QKeySequence
 from PySide6.QtWidgets import QTableWidgetItem, QFileDialog
 
 from logic.history import HistoryManager
-from ui.gantt_components import GanttBlock, DueDateMarker
+from ui.components.gantt_components import GanttBlock, DueDateMarker
 
 
 class SyncWorker(QThread):
+    """
+    Background thread for syncing workload data from the external Excel file.
+    Prevents the main UI from freezing during large file parsing and database writes.
+    """
     finished = Signal(bool, str)
 
     def __init__(self, model, excel_path):
@@ -25,6 +37,11 @@ class SyncWorker(QThread):
 
 
 class DataRefreshWorker(QThread):
+    """
+    Background thread for processing the raw database into structured Pandas DataFrames.
+    Applies current filters, calculates variances, and merges staged history edits.
+    Emits (raw_df, filtered_plan_df, full_dashboard_df) when complete.
+    """
     data_ready = Signal(object, object, object)
 
     def __init__(self, model, staged_edits, req_filter, status_filter, maintain_ids):
@@ -76,6 +93,10 @@ class DataRefreshWorker(QThread):
 
 
 class AppController:
+    """
+    Main controller linking the UI components (view) to the Data components (model).
+    """
+
     def __init__(self, view, model):
         self.view = view
         self.model = model
@@ -88,8 +109,8 @@ class AppController:
         self.row_height = 36
 
         self.current_plan_df = pd.DataFrame()
-        self.current_visual_rows = []  # NEW: Tracks the hierarchy for rendering
-        self.expanded_projects = set()  # NEW: Remembers which parents are open
+        self.current_visual_rows = []
+        self.expanded_projects = set()
 
         self.initial_scroll_done = False
         self.last_hovered_block = None
@@ -107,8 +128,6 @@ class AppController:
         self.view.gantt_scene.selectionChanged.connect(self.handle_block_selection)
         self.view.info_table.itemSelectionChanged.connect(self.handle_table_selection)
         self.view.gantt_view.empty_clicked.connect(self.clear_all_selections)
-
-        # NEW: Double clicking the left table expands/collapses the order!
         self.view.info_table.cellDoubleClicked.connect(self.handle_table_double_click)
 
         self.view.inp_est_days.editingFinished.connect(self.handle_stage_edit)
@@ -163,6 +182,10 @@ class AppController:
                 self.view.show_status("No unsaved changes.", 3000)
 
     def refresh_tables(self, maintain_state=False):
+        """
+        Kicks off the background worker to fetch new data from the database.
+        Optionally maintains the selected KPI item and scroll state if `maintain_state` is True.
+        """
         self.selected_id_to_restore = self.view.inp_smart_id.text() if maintain_state and not self.view.kpi_panel.isHidden() else None
         self.is_maintaining_state = maintain_state
 
@@ -199,18 +222,17 @@ class AppController:
         if current_assignee in unique_assignees: self.view.inp_assignee.setCurrentText(current_assignee)
         self.view.inp_assignee.blockSignals(False)
 
-    # =========================================================================
-    # NEW: CORE HIERARCHY BUILDER
-    # =========================================================================
     def build_visual_hierarchy(self, df):
-        """Flattens the grouped data based on expansion state."""
+        """
+        Flattens the grouped data based on expansion state to prepare it for rendering.
+        Parent lines are calculated dynamically based on their child lines.
+        """
         visual_rows = []
         if df.empty: return visual_rows
 
         grouped = df.groupby('PROJECT_ID', sort=False)
 
         for project_id, group in grouped:
-            # 1. Calculate Parent bounds from children
             starts = pd.to_datetime(group['ENG START DATE'].replace('', pd.NaT)).combine_first(
                 pd.to_datetime(group['EST START DATE'].replace('', pd.NaT)))
             ends = pd.to_datetime(group['EST END DATE'].replace('', pd.NaT)).combine_first(
@@ -219,27 +241,22 @@ class AppController:
             min_start = starts.min() if not starts.isna().all() else pd.NaT
             max_end = ends.max() if not ends.isna().all() else pd.NaT
 
-            # Simple business days calculation for parent bar
             parent_days = 5
             if pd.notna(min_start) and pd.notna(max_end):
                 days = np.busday_count(min_start.date(), max_end.date())
                 parent_days = max(1, int(days))
 
-            # Grab shared project info from the first line
             first_row = group.iloc[0]
-
-            # Check status (If all complete, parent is complete)
             all_complete = all(group['STATUS'].str.strip().str.upper() == 'COMPLETE')
             parent_status = 'COMPLETE' if all_complete else 'ACTIVE'
 
-            # Identify multiple assignees or reqs
             reqs = group['REQUIREMENT'].unique()
             req_label = reqs[0] if len(reqs) == 1 else "Multiple"
 
             parent_row = {
                 'IS_PARENT': True,
                 'PROJECT_ID': project_id,
-                'SMART_ID': project_id,  # Fallback ID
+                'SMART_ID': project_id,
                 'REQUIREMENT': req_label,
                 'QUOTE NO': first_row.get('QUOTE NO', ''),
                 'PROJECT NAME': first_row.get('PROJECT NAME', ''),
@@ -247,11 +264,10 @@ class AppController:
                 'EST START DATE': min_start.strftime('%m/%d/%Y') if pd.notna(min_start) else "",
                 'EST END DATE': max_end.strftime('%m/%d/%Y') if pd.notna(max_end) else "",
                 'EST DAYS': str(parent_days),
-                'ESD': first_row.get('ESD', '')  # Usually shared across project
+                'ESD': first_row.get('ESD', '')
             }
             visual_rows.append(parent_row)
 
-            # 2. Append children if expanded
             if project_id in self.expanded_projects:
                 for idx, row in group.iterrows():
                     child_row = row.to_dict()
@@ -270,7 +286,6 @@ class AppController:
         if plan_df.empty: return
         self.current_plan_df = plan_df
 
-        # Build our new visual rows
         self.current_visual_rows = self.build_visual_hierarchy(plan_df)
 
         self.view.info_table.blockSignals(True)
@@ -294,25 +309,20 @@ class AppController:
             if row_data.get('IS_PARENT', False):
                 project_id = row_data['PROJECT_ID']
 
-                # Toggle the state
                 if project_id in self.expanded_projects:
                     self.expanded_projects.remove(project_id)
                 else:
                     self.expanded_projects.add(project_id)
 
-                # FAST REDRAW: Bypass the DB and use the data already in memory
                 if not self.current_plan_df.empty:
                     self.current_visual_rows = self.build_visual_hierarchy(self.current_plan_df)
-
                     self.view.info_table.blockSignals(True)
                     self.populate_left_table(self.current_visual_rows)
                     self.view.info_table.blockSignals(False)
-
                     self.draw_gantt_canvas(self.current_visual_rows)
 
     def restore_selection(self, target_id):
         try:
-            # Find row in visual hierarchy
             row_idx = next(i for i, r in enumerate(self.current_visual_rows) if
                            r.get('SMART_ID') == target_id or r.get('PROJECT_ID') == target_id)
             self.view.info_table.blockSignals(True)
@@ -353,7 +363,6 @@ class AppController:
 
             for col, item in enumerate(items):
                 item.setFont(font_parent if is_parent else font_child)
-                # The green text override has been removed from here!
                 table.setItem(row_idx, col, item)
 
         table.resizeColumnsToContents()
@@ -369,7 +378,6 @@ class AppController:
 
         if not visual_rows: return
 
-        # Find day zero for canvas bounds
         all_starts = [r.get('ENG START DATE') or r.get('EST START DATE') for r in visual_rows if
                       r.get('ENG START DATE') or r.get('EST START DATE')]
         if all_starts:
@@ -416,7 +424,6 @@ class AppController:
             d_text.setPos(current_x + 2, 20)
             current_x += self.day_width
 
-        # We pass our dynamically captured assignees to the blocks
         dynamic_engineers = [self.view.inp_assignee.itemText(i) for i in range(self.view.inp_assignee.count())]
 
         for index, row in enumerate(visual_rows):
@@ -443,7 +450,6 @@ class AppController:
             block.assignee_changed.connect(self.handle_right_click_assign)
             self.view.gantt_scene.addItem(block)
 
-            # Draw Due Date Markers only for children
             if not is_parent:
                 due_dt = pd.to_datetime(row.get('ENG DUE DATE', '')) if str(row.get('ENG DUE DATE', '')) else pd.NaT
                 if pd.notna(due_dt):
@@ -458,14 +464,13 @@ class AppController:
             self.initial_scroll_done = True
 
     def handle_right_click_assign(self, target_id, new_assignee):
-        # We only assign children, so target_id is SMART_ID
         self.history.stage_edit(target_id, {'MAN_ASSIGNED': new_assignee})
         self.refresh_tables(maintain_state=True)
         if hasattr(self.view, 'show_status'):
             self.view.show_status("Assignee updated. Press Ctrl+S to save.", 3000)
 
     def handle_block_dropped(self, target_id, new_x, new_width, is_parent):
-        if is_parent: return  # For now, we only allow dragging child lines
+        if is_parent: return
 
         new_date = self.day_zero + pd.tseries.offsets.BusinessDay(int(new_x / self.day_width))
         self.history.stage_edit(target_id, {
@@ -490,12 +495,12 @@ class AppController:
         assignee = str(data.get('ASSIGNED TO', '')).strip()
         self.view.inp_assignee.blockSignals(True)
         self.view.inp_assignee.setCurrentText(assignee)
-        self.view.inp_assignee.setEnabled(not is_parent)  # Disable changing assignee for whole orders
+        self.view.inp_assignee.setEnabled(not is_parent)
         self.view.inp_assignee.blockSignals(False)
 
         self.view.inp_est_days.blockSignals(True)
         self.view.inp_est_days.setText(str(data.get('EST DAYS', '')))
-        self.view.inp_est_days.setEnabled(not is_parent)  # Disable changing days for whole orders
+        self.view.inp_est_days.setEnabled(not is_parent)
         self.view.inp_est_days.blockSignals(False)
 
         self.view.kpi_eng_due.setText(str(data.get('ENG DUE DATE', '--')))

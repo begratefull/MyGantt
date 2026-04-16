@@ -1,3 +1,10 @@
+"""
+dashboard.py
+
+Contains the DashboardWidget which displays high-level KPIs,
+queue times, and active engineer workloads using QtCharts.
+"""
+
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout,
                                QLabel, QFrame, QComboBox, QToolTip)
 from PySide6.QtCharts import (QChart, QChartView, QPieSeries, QBarSeries,
@@ -7,8 +14,8 @@ from PySide6.QtGui import QPainter, QColor, QPen, QFont, QCursor
 import pandas as pd
 import numpy as np
 
-# Import our newly separated custom widget!
-from ui.custom_widgets import CheckableComboBox
+# Updated import path to point to the new components folder!
+from ui.components.custom_widgets import CheckableComboBox
 
 
 class DashboardWidget(QWidget):
@@ -543,7 +550,6 @@ class DashboardWidget(QWidget):
         y_max = max_y + padding
         axisY.setRange(y_min, y_max)
 
-        # RESTORED MISSING CODE: Attaching the Y Axis to the chart
         chart.addAxis(axisY, Qt.AlignLeft)
         bar_series.attachAxis(axisY)
 
@@ -552,7 +558,6 @@ class DashboardWidget(QWidget):
         axisX_line.setVisible(False)
         chart.addAxis(axisX_line, Qt.AlignBottom)
 
-        # RESTORED MISSING CODE: The Future Area Highlights and Target Line
         curr_idx = next((i for i, c in enumerate(categories) if "+" in c or "Current" in c), None)
         if curr_idx is not None:
             future_upper = QLineSeries()
