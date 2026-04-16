@@ -4,7 +4,7 @@ from PySide6.QtWidgets import QApplication
 # Updated imports pulling from our new folder structure!
 from ui.window import MyGanttWindow
 from ui.styles import DARK_THEME
-from data.manager import DataManager
+from data.workload_manager import WorkloadManager
 from logic.controller import AppController
 
 if __name__ == "__main__":
@@ -14,7 +14,7 @@ if __name__ == "__main__":
     app.setStyleSheet(DARK_THEME)
 
     # Initialize the three parts of our MVC architecture
-    model = DataManager()
+    model = WorkloadManager()
     view = MyGanttWindow()
     controller = AppController(view, model)
 

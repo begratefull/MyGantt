@@ -7,6 +7,9 @@ from PySide6.QtGui import QPainter, QColor, QPen, QFont, QCursor
 import pandas as pd
 import numpy as np
 
+# Import our newly separated custom widget!
+from ui.custom_widgets import CheckableComboBox
+
 
 class DashboardWidget(QWidget):
     def __init__(self):
@@ -14,6 +17,9 @@ class DashboardWidget(QWidget):
         self.master_df = pd.DataFrame()
         self._current_hover = None
         self._chart_refs = []
+
+        self.dynamic_color_map = {}
+        self.palette = ["#2196F3", "#F44336", "#4CAF50", "#FF9800", "#9C27B0", "#00BCD4", "#795548", "#E91E63"]
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -25,22 +31,23 @@ class DashboardWidget(QWidget):
         header_layout.addWidget(header)
         header_layout.addStretch()
 
-        filter_lbl = QLabel("Global Engineer Filter:")
+        filter_lbl = QLabel("Global Type Filter:")
         filter_lbl.setStyleSheet("color: #AAAAAA; font-weight: bold; font-size: 12px;")
         header_layout.addWidget(filter_lbl)
 
-        self.global_eng_filter = QComboBox()
-        self.global_eng_filter.addItem("All Engineers")
-        self.global_eng_filter.currentTextChanged.connect(self.render_all)
-        header_layout.addWidget(self.global_eng_filter)
+        # Using our custom widget
+        self.global_type_filter = CheckableComboBox()
+        self.global_type_filter.setMinimumWidth(150)
+        self.global_type_filter.selection_changed.connect(self.render_all)
+        header_layout.addWidget(self.global_type_filter)
 
         main_layout.addLayout(header_layout)
 
         top_cards_layout = QHBoxLayout()
         top_cards_layout.setSpacing(15)
 
-        self.prod_ui = self.create_active_card("Production Queue", show_req_filter=False)
-        self.quote_ui = self.create_active_card("Quote / Submittal Queue", show_req_filter=True)
+        self.prod_ui = self.create_active_card("Production Queue", show_req_filter=False, show_var=True)
+        self.quote_ui = self.create_active_card("Submittal Queue", show_req_filter=True, show_var=False)
 
         top_cards_layout.addWidget(self.prod_ui['card'])
         top_cards_layout.addWidget(self.quote_ui['card'])
@@ -59,7 +66,17 @@ class DashboardWidget(QWidget):
         self.hist_ui['req_filter'].currentTextChanged.connect(self.render_hist_card)
         self.hist_ui['date_filter'].currentTextChanged.connect(self.render_hist_card)
 
-    def create_active_card(self, title, show_req_filter=True):
+    def get_dynamic_color(self, name):
+        name = str(name).strip().upper()
+        if not name or name == "UNASSIGNED": return "#888888"
+
+        if name not in self.dynamic_color_map:
+            color_idx = len(self.dynamic_color_map) % len(self.palette)
+            self.dynamic_color_map[name] = self.palette[color_idx]
+
+        return self.dynamic_color_map[name]
+
+    def create_active_card(self, title, show_req_filter=True, show_var=True):
         card = QFrame()
         card.setObjectName("DashCard")
         card.setStyleSheet(
@@ -91,12 +108,16 @@ class DashboardWidget(QWidget):
         kpi_layout.setSpacing(8)
 
         kpi_lines = self.create_kpi_block("Total Lines")
-        kpi_var = self.create_kpi_block("Avg Target Var")
         kpi_queue = self.create_kpi_block("Avg Queue Days")
         kpi_proc = self.create_kpi_block("Avg Process Days")
 
         kpi_layout.addWidget(kpi_lines['frame'])
-        kpi_layout.addWidget(kpi_var['frame'])
+
+        kpi_var = None
+        if show_var:
+            kpi_var = self.create_kpi_block("Avg Target Var")
+            kpi_layout.addWidget(kpi_var['frame'])
+
         kpi_layout.addWidget(kpi_queue['frame'])
         kpi_layout.addWidget(kpi_proc['frame'])
         layout.addLayout(kpi_layout)
@@ -114,7 +135,8 @@ class DashboardWidget(QWidget):
 
         return {
             'card': card, 'req_filter': req_filter, 'type_filter': type_filter,
-            'lbl_lines': kpi_lines['val'], 'lbl_var': kpi_var['val'],
+            'lbl_lines': kpi_lines['val'],
+            'lbl_var': kpi_var['val'] if kpi_var else None,
             'lbl_queue': kpi_queue['val'], 'lbl_proc': kpi_proc['val'],
             'chart': chart, 'chart_view': chart_view
         }
@@ -198,6 +220,26 @@ class DashboardWidget(QWidget):
         if 'LINE_COUNT' not in self.master_df.columns:
             self.master_df['LINE_COUNT'] = 1
 
+        current_types = self.global_type_filter.get_checked_items()
+        is_first_load = self.global_type_filter.model.rowCount() == 0
+
+        unique_types = sorted(
+            [str(x) for x in self.master_df['TYPE'].replace('', 'Unknown').unique() if str(x).strip()])
+        default_types = ["MOD", "CUS", "PART-MC"]
+
+        self.global_type_filter.blockSignals(True)
+        self.global_type_filter.model.clear()
+
+        for t in unique_types:
+            if is_first_load:
+                is_checked = t in default_types
+            else:
+                is_checked = t in current_types
+            self.global_type_filter.add_item(t, is_checked)
+
+        self.global_type_filter.update_text()
+        self.global_type_filter.blockSignals(False)
+
         self.active_df = self.master_df[self.master_df['STATUS'].str.strip().str.upper() != 'COMPLETE'].copy()
         self.comp_df = self.master_df[self.master_df['STATUS'].str.strip().str.upper() == 'COMPLETE'].copy()
 
@@ -205,7 +247,6 @@ class DashboardWidget(QWidget):
         self.prod_base = self.active_df[prod_mask]
         self.quote_base = self.active_df[~prod_mask]
 
-        self.populate_combo(self.global_eng_filter, self.master_df['ASSIGNED TO'], "All Engineers")
         if self.prod_ui['req_filter']:
             self.populate_combo(self.prod_ui['req_filter'], self.prod_base['REQUIREMENT'], "All Reqs")
         self.populate_combo(self.prod_ui['type_filter'], self.prod_base['TYPE'], "All Types")
@@ -243,8 +284,11 @@ class DashboardWidget(QWidget):
             self._apply_active_card_logic(self.quote_base.copy(), self.quote_ui)
 
     def _apply_active_card_logic(self, df, ui_dict):
-        if self.global_eng_filter.currentText() != "All Engineers":
-            df = df[df['ASSIGNED TO'] == self.global_eng_filter.currentText()]
+        checked_types = self.global_type_filter.get_checked_items()
+        if checked_types:
+            df = df[df['TYPE'].replace('', 'Unknown').isin(checked_types)]
+        else:
+            df = df.iloc[0:0]
 
         if ui_dict['req_filter']:
             req = ui_dict['req_filter'].currentText()
@@ -255,11 +299,12 @@ class DashboardWidget(QWidget):
 
         ui_dict['lbl_lines'].setText(str(int(df['LINE_COUNT'].sum())))
 
-        var_series = df['EST ENG VARIANCE'].apply(self.parse_variance).dropna()
-        avg_var = var_series.mean() if not var_series.empty else np.nan
-        ui_dict['lbl_var'].setText(f"{avg_var:+.1f} d" if not pd.isna(avg_var) else "--")
-        ui_dict['lbl_var'].setStyleSheet(
-            f"color: {'#FF5252' if avg_var < 0 else '#4CAF50'}; font-size: 16px; font-weight: bold;")
+        if ui_dict.get('lbl_var'):
+            var_series = df['EST ENG VARIANCE'].apply(self.parse_variance).dropna()
+            avg_var = var_series.mean() if not var_series.empty else np.nan
+            ui_dict['lbl_var'].setText(f"{avg_var:+.1f} d" if not pd.isna(avg_var) else "--")
+            ui_dict['lbl_var'].setStyleSheet(
+                f"color: {'#FF5252' if avg_var < 0 else '#4CAF50'}; font-size: 16px; font-weight: bold;")
 
         if 'QUEUE_DAYS' in df.columns:
             q_series = df['QUEUE_DAYS'].apply(self.parse_variance).dropna()
@@ -275,9 +320,6 @@ class DashboardWidget(QWidget):
 
         self.render_donut_chart(ui_dict['chart'], df, ui_dict['chart_view'])
 
-    # =========================================================================
-    # NATIVE PIE CHART TOOLTIP HANDLER
-    # =========================================================================
     def handle_pie_hover(self, state, slice_item, chart_view, eng_name, df):
         if state:
             eng_df = df[df['ASSIGNED TO'] == eng_name]
@@ -302,7 +344,6 @@ class DashboardWidget(QWidget):
 
             pos = QCursor.pos()
             offset_pos = QPoint(pos.x() + 15, pos.y() + 15)
-            # Anchored to view with 30s timeout to kill flickering!
             QToolTip.showText(offset_pos, tooltip_html, chart_view, chart_view.rect(), 30000)
         else:
             QToolTip.hideText()
@@ -317,7 +358,6 @@ class DashboardWidget(QWidget):
             return
 
         engineers = df['ASSIGNED TO'].unique()
-        color_map = {'ADAM': "#2E7D32", 'DAVID': "#C62828", 'ANDY': "#1565C0", 'MATT': "#EF6C00"}
 
         for eng in engineers:
             eng_name = str(eng).strip().upper()
@@ -329,9 +369,8 @@ class DashboardWidget(QWidget):
                 slc.setLabelVisible(True)
                 slc.setLabelColor(QColor("#FFFFFF"))
 
-                c = "#888888"
-                for k, v in color_map.items():
-                    if k in eng_name: c = v; break
+                c = self.get_dynamic_color(eng_name)
+
                 slc.setBrush(QColor(c))
                 slc.setPen(QPen(QColor("#1E1E20"), 2))
 
@@ -349,7 +388,7 @@ class DashboardWidget(QWidget):
             try:
                 wk = weeks[index]
                 mask = (df['REQUIREMENT'].replace('', 'Uncategorized') == req) & (df['YearWeek'] == wk) & (
-                            df['IS_FORECAST'] == is_forecast)
+                        df['IS_FORECAST'] == is_forecast)
                 bar_df = df[mask]
 
                 if bar_df.empty: return
@@ -393,14 +432,13 @@ class DashboardWidget(QWidget):
             return year_week_str
 
     def get_req_color(self, req_name):
-        """Explicitly lock Prod to Green, and Docs to Red."""
         req_upper = str(req_name).upper()
-        if 'PROD' in req_upper: return "#4CAF50"  # Material Green
-        if 'SUPPORT' in req_upper or 'DOC' in req_upper: return "#F44336"  # Material Red
-        if 'QUOT' in req_upper: return "#2196F3"  # Blue
-        if 'APP' in req_upper: return "#FF9800"  # Orange
-        if 'SUB' in req_upper: return "#9C27B0"  # Purple
-        return "#00BCD4"  # Cyan Fallback
+        if 'PROD' in req_upper: return "#4CAF50"
+        if 'SUPPORT' in req_upper or 'DOC' in req_upper: return "#F44336"
+        if 'QUOT' in req_upper: return "#2196F3"
+        if 'APP' in req_upper: return "#FF9800"
+        if 'SUB' in req_upper: return "#9C27B0"
+        return self.get_dynamic_color(req_upper)
 
     def render_hist_card(self):
         if not hasattr(self, 'comp_df') or not hasattr(self, 'active_df'): return
@@ -418,8 +456,11 @@ class DashboardWidget(QWidget):
         df = pd.concat([h_df, f_df], ignore_index=True)
         df = df.dropna(subset=['TARGET_DATE'])
 
-        if self.global_eng_filter.currentText() != "All Engineers":
-            df = df[df['ASSIGNED TO'] == self.global_eng_filter.currentText()]
+        checked_types = self.global_type_filter.get_checked_items()
+        if checked_types:
+            df = df[df['TYPE'].replace('', 'Unknown').isin(checked_types)]
+        else:
+            df = df.iloc[0:0]
 
         req = self.hist_ui['req_filter'].currentText()
         if req != "All Reqs": df = df[df['REQUIREMENT'].replace('', 'Uncategorized') == req]
@@ -501,6 +542,8 @@ class DashboardWidget(QWidget):
         y_min = min_y - padding
         y_max = max_y + padding
         axisY.setRange(y_min, y_max)
+
+        # RESTORED MISSING CODE: Attaching the Y Axis to the chart
         chart.addAxis(axisY, Qt.AlignLeft)
         bar_series.attachAxis(axisY)
 
@@ -509,6 +552,7 @@ class DashboardWidget(QWidget):
         axisX_line.setVisible(False)
         chart.addAxis(axisX_line, Qt.AlignBottom)
 
+        # RESTORED MISSING CODE: The Future Area Highlights and Target Line
         curr_idx = next((i for i, c in enumerate(categories) if "+" in c or "Current" in c), None)
         if curr_idx is not None:
             future_upper = QLineSeries()

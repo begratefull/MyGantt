@@ -65,10 +65,11 @@ class GanttScreenWidget(QWidget):
         filter_lbl.setStyleSheet("color: #AAAAAA; font-weight: bold; margin-right: 5px;")
         gantt_header_layout.addWidget(filter_lbl)
 
+        # REMOVED HARDCODED REQS - Now it only holds the default
         self.filter_req = QComboBox()
-        self.filter_req.addItems(["All Reqs", "Production", "Approval", "Quote"])
-        self.filter_req.setCurrentText("All Reqs")
+        self.filter_req.addItem("All Reqs")
 
+        # Keeping Status hardcoded for now, as the logic depends specifically on "Active" and "Complete"
         self.filter_status = QComboBox()
         self.filter_status.addItems(["All Status", "Active", "Complete"])
         self.filter_status.setCurrentText("Active")
@@ -164,13 +165,12 @@ class GanttScreenWidget(QWidget):
         self.inp_smart_id.hide()
         self.inp_est_days = QLineEdit()
 
+        # REMOVED HARDCODED ENGINEERS - Now defaults to Unassigned
         self.inp_assignee = QComboBox()
-        self.inp_assignee.addItems(["", "Adam T", "David M", "Andy C", "Matt M"])
+        self.inp_assignee.addItem("Unassigned")
 
-        # New Labels!
         self.kpi_order = QLabel("--")
         self.kpi_quote = QLabel("--")
-
         self.kpi_req = QLabel("--")
         self.kpi_esd = QLabel("--")
         self.kpi_eng_due = QLabel("--")

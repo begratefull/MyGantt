@@ -2,12 +2,13 @@ from PySide6.QtWidgets import QGraphicsObject, QGraphicsItem, QMenu
 from PySide6.QtGui import QBrush, QColor, QPen, QPainter, QFontMetrics, QPolygonF
 from PySide6.QtCore import Qt, QRectF, Signal, QTimer, QPointF
 
+# We keep this as a color fallback for known engineers to keep the charts pretty!
 TEAM_CONFIG = {
-    "ADAM": "#2E7D32",  # Bold Green
-    "DAVID": "#C62828",  # Bold Red
-    "DAVE": "#C62828",  # Bold Red (Alias)
-    "ANDY": "#1565C0",  # Bold Blue
-    "MATT": "#EF6C00",  # True Orange
+    "ADAM": "#2E7D32",
+    "DAVID": "#C62828",
+    "DAVE": "#C62828",
+    "ANDY": "#1565C0",
+    "MATT": "#EF6C00",
 }
 
 
@@ -18,9 +19,7 @@ class DueDateMarker(QGraphicsItem):
     def __init__(self, x, y, height):
         super().__init__()
         self.setPos(x, y)
-        # Bounding rect for a triangle that is 12px wide and 12px tall
         self.rect = QRectF(-6, 0, 12, 12)
-        # Give it a higher Z-Value so it renders on top of the grid and ghost blocks
         self.setZValue(5)
 
     def boundingRect(self):
@@ -28,20 +27,13 @@ class DueDateMarker(QGraphicsItem):
 
     def paint(self, painter, option, widget=None):
         painter.setRenderHint(QPainter.Antialiasing)
-
-        # A bright, warning-yellow color
         painter.setBrush(QBrush(QColor("#FFD54F")))
-
-        # Adding a subtle dark border helps it pop against the grid
         painter.setPen(QPen(QColor("#252526"), 1))
-
-        # Define the 3 points of a downward-pointing triangle
         triangle = QPolygonF([
-            QPointF(-6, 0),  # Top Left
-            QPointF(6, 0),  # Top Right
-            QPointF(0, 12)  # Bottom Center
+            QPointF(-6, 0),
+            QPointF(6, 0),
+            QPointF(0, 12)
         ])
-
         painter.drawPolygon(triangle)
 
 
@@ -49,17 +41,19 @@ class DueDateMarker(QGraphicsItem):
 # Gantt Block (Task Representation)
 # =====================================================================
 class GanttBlock(QGraphicsObject):
-    block_dropped = Signal(str, float, float)
+    block_dropped = Signal(str, float, float, bool)  # Added boolean to flag if it's a parent drop
     assignee_changed = Signal(str, str)
 
-    def __init__(self, project_data, x, y, width, height, day_width, due_x_offset=-1):
+    def __init__(self, project_data, x, y, width, height, day_width, dynamic_engineers=None, is_parent=False,
+                 due_x_offset=-1):
         super().__init__()
         self.setPos(x, y)
         self.data = project_data
-
         self.day_width = day_width
         self.rect = QRectF(0, 0, width, height)
 
+        self.is_parent = is_parent
+        self.dynamic_engineers = dynamic_engineers if dynamic_engineers else []
         self.due_x_offset = due_x_offset
 
         self.setAcceptHoverEvents(True)
@@ -71,45 +65,40 @@ class GanttBlock(QGraphicsObject):
         est_start = str(self.data.get('EST START DATE', '')).strip()
         est_days = str(self.data.get('EST DAYS', '')).strip()
 
-        self.base_color = QColor("#888888")  # Default Grey
+        # Determine color
+        self.base_color = QColor("#888888")
         for name, hex_color in TEAM_CONFIG.items():
             if name in assignee:
                 self.base_color = QColor(hex_color)
                 break
 
-        # With heavy transparency over a dark canvas, white text is required for contrast
         self.text_color = QColor("#FFFFFF")
-
         self.can_move = True
-        self.can_resize = True
+        self.can_resize = not self.is_parent  # Prevent resizing parent blocks directly for now
 
         # --- TRANSPARENCY TIERS ---
-
-        # 1. Actuals (Alpha 180 - The old 'Planned' look)
         actual_color = QColor(self.base_color)
         actual_color.setAlpha(180)
 
-        # 2. Planned (Alpha 90 - Highly transparent)
         planned_color = QColor(self.base_color)
         planned_color.setAlpha(120)
 
-        # 3. Ghost/Queue (Alpha 30 - Barely visible)
         ghost_color = QColor(self.base_color)
         ghost_color.setAlpha(120)
 
-        # Apply the tiers based on rules
-        if status == 'RELEASED FOR PRODUCTION' or status == 'COMPLETE':
+        # Style logic
+        if self.is_parent:
+            self.brush = QBrush(QColor("#454548"))  # Distinct grey for parent groups
+            self.text_color = QColor("#E0E0E0")
+        elif status == 'RELEASED FOR PRODUCTION' or status == 'COMPLETE':
             self.brush = QBrush(actual_color)
             self.can_move = False
             self.can_resize = False
-
         elif raw_start:
             self.brush = QBrush(actual_color)
             self.can_move = False
-
         elif est_start and est_days:
             self.brush = QBrush(planned_color)
-
         else:
             self.brush = QBrush(ghost_color)
 
@@ -125,24 +114,48 @@ class GanttBlock(QGraphicsObject):
         else:
             painter.setPen(Qt.NoPen)
 
-        painter.drawRoundedRect(self.rect, 4, 4)
+        # Draw a summary bar shape if it's a parent, otherwise a rounded rect
+        if self.is_parent:
+            # Traditional summary bracket shape
+            poly = QPolygonF([
+                QPointF(0, 0),
+                QPointF(self.rect.width(), 0),
+                QPointF(self.rect.width(), self.rect.height()),
+                QPointF(self.rect.width() - 8, self.rect.height() - 8),
+                QPointF(8, self.rect.height() - 8),
+                QPointF(0, self.rect.height())
+            ])
+            painter.drawPolygon(poly)
+        else:
+            painter.drawRoundedRect(self.rect, 4, 4)
 
-        assignee = str(self.data.get('ASSIGNED TO', '')).strip()
-        if assignee:
+        # Draw Label
+        label_text = ""
+        if self.is_parent:
+            # Show order/quote number for parents
+            label_text = f"Order: {self.data.get('PROJECT_ID', 'Unk')}"
+        else:
+            label_text = str(self.data.get('ASSIGNED TO', '')).strip()
+
+        if label_text:
             painter.setPen(QPen(self.text_color))
             font = painter.font()
             font.setFamily("Segoe UI")
             font.setPointSize(8)
-            font.setBold(True)
+            font.setBold(True if self.is_parent else False)
             painter.setFont(font)
 
             metrics = QFontMetrics(font)
-            elided_text = metrics.elidedText(assignee, Qt.ElideRight, int(self.rect.width() - 8))
+            elided_text = metrics.elidedText(label_text, Qt.ElideRight, int(self.rect.width() - 8))
 
-            text_rect = QRectF(self.rect.x() + 4, self.rect.y(), self.rect.width() - 8, self.rect.height())
+            text_rect = QRectF(self.rect.x() + 4, self.rect.y(), self.rect.width() - 8,
+                               self.rect.height() if not self.is_parent else self.rect.height() - 8)
             painter.drawText(text_rect, Qt.AlignVCenter | Qt.AlignLeft, elided_text)
 
     def contextMenuEvent(self, event):
+        if self.is_parent:
+            return  # Let's disable assigning a whole order to one person for now
+
         menu = QMenu()
         menu.setStyleSheet("""
             QMenu { background-color: #252526; color: white; border: 1px solid #3E3E42; }
@@ -151,8 +164,8 @@ class GanttBlock(QGraphicsObject):
 
         assign_menu = menu.addMenu("Assign To...")
 
-        engineers = [name.capitalize() for name in TEAM_CONFIG.keys() if name not in ["DAVE"]] + ["Unassigned"]
-        for eng in engineers:
+        # Use the dynamic list we passed in!
+        for eng in self.dynamic_engineers:
             action = assign_menu.addAction(eng)
             action.triggered.connect(lambda checked=False, e=eng: self.change_assignee(e))
 
@@ -224,6 +237,8 @@ class GanttBlock(QGraphicsObject):
         super().mouseReleaseEvent(event)
 
         if was_resizing or was_moving:
-            smart_id = str(self.data.get('SMART_ID', ''))
-            if smart_id:
-                QTimer.singleShot(0, lambda: self.block_dropped.emit(smart_id, self.x(), self.rect.width()))
+            # Return the PROJECT_ID if parent, or SMART_ID if child.
+            target_id = str(self.data.get('PROJECT_ID', '')) if self.is_parent else str(self.data.get('SMART_ID', ''))
+            if target_id:
+                QTimer.singleShot(0, lambda: self.block_dropped.emit(target_id, self.x(), self.rect.width(),
+                                                                     self.is_parent))
