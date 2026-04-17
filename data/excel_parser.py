@@ -110,6 +110,12 @@ class ExcelParser:
             if end_idx != -1:
                 df = df.iloc[:end_idx]
 
+            # --- NEW: Strip Empty Rows ---
+            # If the row has no Order Number, no Quote Number, AND no Project Name, it's considered empty junk.
+            if all(c in df.columns for c in ["ORDER NUMBER", "QUOTE NO", "PROJECT NAME"]):
+                mask = (df['ORDER NUMBER'] != "") | (df['QUOTE NO'] != "") | (df['PROJECT NAME'] != "")
+                df = df[mask].reset_index(drop=True)
+
             columns_to_keep = [c for c in df.columns if c in self.unique_expected_cols]
             df = df[columns_to_keep]
 

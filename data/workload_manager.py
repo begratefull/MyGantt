@@ -67,7 +67,6 @@ class WorkloadManager:
         df['PROJECT_ID'] = df.apply(lambda x: x['PROJECT_ID'] if x['PROJECT_ID'] else x['SMART_ID'], axis=1)
         df['LINE_COUNT'] = 1
 
-        # NOTE: The groupby() aggregator was entirely removed here. All lines are independent!
 
         # 4. Calculate Business Day Variances (Vectorized for speed)
         starts_dt = pd.to_datetime(df['EST START DATE'], errors='coerce')
@@ -113,6 +112,5 @@ class WorkloadManager:
             "QUEUE_DAYS", "PROCESS_DAYS", "SELL $", "LINE_COUNT"
         ]
 
-        # Only return the columns we actually need and exist
         available_cols = [c for c in planning_headers if c in df.columns]
         return df[available_cols]

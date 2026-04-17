@@ -8,22 +8,19 @@ handling background data refresh threads, and managing user interactions.
 
 import json
 import os
+import re
 
-import numpy as np
 import pandas as pd
+import numpy as np
 from PySide6.QtCore import Qt, QTimer, QThread, Signal
 from PySide6.QtGui import QPen, QColor, QFont, QShortcut, QKeySequence
-from PySide6.QtWidgets import QTableWidgetItem, QFileDialog
+from PySide6.QtWidgets import QTableWidgetItem, QFileDialog, QHeaderView
 
 from logic.history import HistoryManager
 from ui.components.gantt_components import GanttBlock, DueDateMarker
 
 
 class SyncWorker(QThread):
-    """
-    Background thread for syncing workload data from the external Excel file.
-    Prevents the main UI from freezing during large file parsing and database writes.
-    """
     finished = Signal(bool, str)
 
     def __init__(self, model, excel_path):
@@ -37,11 +34,6 @@ class SyncWorker(QThread):
 
 
 class DataRefreshWorker(QThread):
-    """
-    Background thread for processing the raw database into structured Pandas DataFrames.
-    Applies current filters, calculates variances, and merges staged history edits.
-    Emits (raw_df, filtered_plan_df, full_dashboard_df) when complete.
-    """
     data_ready = Signal(object, object, object)
 
     def __init__(self, model, staged_edits, req_filter, status_filter, maintain_ids):
@@ -61,7 +53,13 @@ class DataRefreshWorker(QThread):
                 self.data_ready.emit(raw_df, plan_df, plan_df)
                 return
 
+            # 1. The Dashboard gets the full, unfiltered dataset!
             full_dashboard_df = plan_df.copy()
+
+            # 2. We now filter plan_df specifically for the Gantt chart
+            prod_mask = plan_df['REQUIREMENT'].str.contains('PROD', case=False, na=False)
+            type_mask = plan_df['TYPE'].str.strip().str.upper().isin(['MOD', 'CUS', 'PART-MC'])
+            plan_df = plan_df[prod_mask & type_mask].copy()
 
             if self.req_filter != "All Reqs":
                 plan_df = plan_df[plan_df['REQUIREMENT'].str.contains(self.req_filter, case=False, na=False)]
@@ -93,10 +91,6 @@ class DataRefreshWorker(QThread):
 
 
 class AppController:
-    """
-    Main controller linking the UI components (view) to the Data components (model).
-    """
-
     def __init__(self, view, model):
         self.view = view
         self.model = model
@@ -182,10 +176,6 @@ class AppController:
                 self.view.show_status("No unsaved changes.", 3000)
 
     def refresh_tables(self, maintain_state=False):
-        """
-        Kicks off the background worker to fetch new data from the database.
-        Optionally maintains the selected KPI item and scroll state if `maintain_state` is True.
-        """
         self.selected_id_to_restore = self.view.inp_smart_id.text() if maintain_state and not self.view.kpi_panel.isHidden() else None
         self.is_maintaining_state = maintain_state
 
@@ -222,11 +212,16 @@ class AppController:
         if current_assignee in unique_assignees: self.view.inp_assignee.setCurrentText(current_assignee)
         self.view.inp_assignee.blockSignals(False)
 
+    def clean_requirement_text(self, req_text):
+        return re.sub(r'(?i)drawing', '', str(req_text)).strip()
+
+    def is_target_parent(self, target_id):
+        for row in self.current_visual_rows:
+            if row.get('IS_PARENT') and row.get('PROJECT_ID') == target_id:
+                return True
+        return False
+
     def build_visual_hierarchy(self, df):
-        """
-        Flattens the grouped data based on expansion state to prepare it for rendering.
-        Parent lines are calculated dynamically based on their child lines.
-        """
         visual_rows = []
         if df.empty: return visual_rows
 
@@ -250,21 +245,43 @@ class AppController:
             all_complete = all(group['STATUS'].str.strip().str.upper() == 'COMPLETE')
             parent_status = 'COMPLETE' if all_complete else 'ACTIVE'
 
+            assignees = [str(x).strip().upper() for x in group['ASSIGNED TO'].unique() if str(x).strip().upper() not in ('', 'UNASSIGNED')]
+            parent_assignee = assignees[0] if len(assignees) == 1 else "MULTIPLE" if len(assignees) > 1 else "UNASSIGNED"
+
             reqs = group['REQUIREMENT'].unique()
-            req_label = reqs[0] if len(reqs) == 1 else "Multiple"
+            raw_req = reqs[0] if len(reqs) == 1 else "Multiple"
+
+            # Calculate target dates for the parent block
+            due_dates = pd.to_datetime(group['ENG DUE DATE'].replace('', pd.NaT))
+            min_due = due_dates.min() if not due_dates.isna().all() else pd.NaT
+
+            esd_dates = pd.to_datetime(group['ESD'].replace('', pd.NaT))
+            min_esd = esd_dates.min() if not esd_dates.isna().all() else pd.NaT
+
+            parent_eng_var = ""
+            if pd.notna(max_end) and pd.notna(min_due):
+                parent_eng_var = f"{int(np.busday_count(max_end.date(), min_due.date()))} days"
+
+            parent_esd_var = ""
+            if pd.notna(max_end) and pd.notna(min_esd):
+                parent_esd_var = f"{int(np.busday_count(max_end.date(), min_esd.date()))} days"
 
             parent_row = {
                 'IS_PARENT': True,
                 'PROJECT_ID': project_id,
                 'SMART_ID': project_id,
-                'REQUIREMENT': req_label,
+                'REQUIREMENT': self.clean_requirement_text(raw_req),
                 'QUOTE NO': first_row.get('QUOTE NO', ''),
-                'PROJECT NAME': first_row.get('PROJECT NAME', ''),
+                'PROJECT NAME': f"{first_row.get('PROJECT NAME', '')} ({len(group)})",
                 'STATUS': parent_status,
+                'ASSIGNED TO': parent_assignee,
                 'EST START DATE': min_start.strftime('%m/%d/%Y') if pd.notna(min_start) else "",
                 'EST END DATE': max_end.strftime('%m/%d/%Y') if pd.notna(max_end) else "",
                 'EST DAYS': str(parent_days),
-                'ESD': first_row.get('ESD', '')
+                'ENG DUE DATE': min_due.strftime('%m/%d/%Y') if pd.notna(min_due) else "",
+                'ESD': min_esd.strftime('%m/%d/%Y') if pd.notna(min_esd) else "",
+                'EST ENG VARIANCE': parent_eng_var,
+                'EST ESD VARIANCE': parent_esd_var
             }
             visual_rows.append(parent_row)
 
@@ -272,6 +289,7 @@ class AppController:
                 for idx, row in group.iterrows():
                     child_row = row.to_dict()
                     child_row['IS_PARENT'] = False
+                    child_row['REQUIREMENT'] = self.clean_requirement_text(child_row.get('REQUIREMENT', ''))
                     visual_rows.append(child_row)
 
         return visual_rows
@@ -303,7 +321,6 @@ class AppController:
             self.view.kpi_panel.hide()
 
     def handle_table_double_click(self, row, col):
-        """Toggles the expansion state of a parent order instantly."""
         if row < len(self.current_visual_rows):
             row_data = self.current_visual_rows[row]
             if row_data.get('IS_PARENT', False):
@@ -345,27 +362,48 @@ class AppController:
         table = self.view.info_table
         table.setRowCount(len(visual_rows))
 
+        table.setWordWrap(False)
+
+        header = table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Interactive)
+        header.setSectionResizeMode(1, QHeaderView.Interactive)
+        header.setSectionResizeMode(2, QHeaderView.Interactive)
+        header.setSectionResizeMode(3, QHeaderView.Interactive)
+        header.setSectionResizeMode(4, QHeaderView.Interactive)
+
+        table.setColumnWidth(0, 85)
+        table.setColumnWidth(1, 100)
+        table.setColumnWidth(2, 220)
+        table.setColumnWidth(3, 80)
+        table.setColumnWidth(4, 90)
+
         font_parent = QFont("Segoe UI", 9, QFont.Bold)
         font_child = QFont("Segoe UI", 9)
 
         for row_idx, row in enumerate(visual_rows):
+            table.setRowHeight(row_idx, self.row_height)
+
             is_parent = row.get('IS_PARENT', False)
             prefix = "▼ " if is_parent and row.get(
                 'PROJECT_ID') in self.expanded_projects else "▶ " if is_parent else "    "
 
+            req_text = f"{prefix}{str(row.get('REQUIREMENT', ''))}"
+            project_text = str(row.get('PROJECT NAME', ''))
+
             items = [
-                QTableWidgetItem(f"{prefix}{str(row.get('REQUIREMENT', ''))}"),
+                QTableWidgetItem(req_text),
                 QTableWidgetItem(str(row.get('QUOTE NO', ''))),
-                QTableWidgetItem(str(row.get('PROJECT NAME', ''))),
+                QTableWidgetItem(project_text),
                 QTableWidgetItem(str(row.get('ESD', ''))),
                 QTableWidgetItem(str(row.get('STATUS', '')))
             ]
 
+            items[0].setToolTip(req_text.strip("▼▶ "))
+            items[2].setToolTip(project_text)
+
             for col, item in enumerate(items):
                 item.setFont(font_parent if is_parent else font_child)
                 table.setItem(row_idx, col, item)
-
-        table.resizeColumnsToContents()
 
     def get_business_day_offset(self, start_date, target_date):
         if pd.isna(target_date) or pd.isna(start_date): return 0
@@ -463,23 +501,124 @@ class AppController:
             QTimer.singleShot(0, lambda: self.view.gantt_view.horizontalScrollBar().setValue(scroll_x))
             self.initial_scroll_done = True
 
+    # ---------------------------------------------------------
+    # LOCAL INTERACTION MUTATORS
+    # ---------------------------------------------------------
+
     def handle_right_click_assign(self, target_id, new_assignee):
-        self.history.stage_edit(target_id, {'MAN_ASSIGNED': new_assignee})
-        self.refresh_tables(maintain_state=True)
+        if self.is_target_parent(target_id):
+            mask = self.current_plan_df['PROJECT_ID'] == target_id
+            for child_id in self.current_plan_df[mask]['SMART_ID'].tolist():
+                self.history.stage_edit(child_id, {'MAN_ASSIGNED': new_assignee})
+        else:
+            self.history.stage_edit(target_id, {'MAN_ASSIGNED': new_assignee})
+
+        for item in self.view.gantt_scene.items():
+            if isinstance(item, GanttBlock):
+                is_match = (item.data.get('SMART_ID') == target_id) or \
+                           (self.is_target_parent(target_id) and item.data.get('PROJECT_ID') == target_id)
+                if is_match:
+                    item.data['ASSIGNED TO'] = new_assignee
+                    item.refresh_visuals()
+
+        if self.view.inp_smart_id.text() == target_id or (self.is_target_parent(target_id) and self.view.kpi_order.text() == target_id):
+            self.view.inp_assignee.blockSignals(True)
+            self.view.inp_assignee.setCurrentText(new_assignee)
+            self.view.inp_assignee.blockSignals(False)
+
         if hasattr(self.view, 'show_status'):
-            self.view.show_status("Assignee updated. Press Ctrl+S to save.", 3000)
+            self.view.show_status("Unsaved Assignee edit. Press Ctrl+S to Calculate & Save.", 5000)
 
-    def handle_block_dropped(self, target_id, new_x, new_width, is_parent):
-        if is_parent: return
+    def update_kpi_variances_locally(self, start_x, est_days_str):
+        start_date = self.day_zero + pd.tseries.offsets.BusinessDay(int(start_x / self.day_width))
+        days = int(est_days_str) if est_days_str.isdigit() else 5
+        end_date = start_date + pd.tseries.offsets.BusinessDay(days)
 
+        due_date_str = self.view.kpi_eng_due.text()
+        if due_date_str and due_date_str != '--':
+            try:
+                due_dt = pd.to_datetime(due_date_str)
+                var = np.busday_count(end_date.date(), due_dt.date())
+                self.view.kpi_eng_var.setText(f"{int(var)} days")
+            except Exception:
+                pass
+
+        esd_str = self.view.kpi_esd.text()
+        if esd_str and esd_str != '--':
+            try:
+                esd_dt = pd.to_datetime(esd_str)
+                var_esd = np.busday_count(end_date.date(), esd_dt.date())
+                self.view.kpi_esd_var.setText(f"{int(var_esd)} days")
+            except Exception:
+                pass
+
+    def handle_block_dropped(self, target_id, new_x, new_width, is_parent, delta_x=0.0):
         new_date = self.day_zero + pd.tseries.offsets.BusinessDay(int(new_x / self.day_width))
-        self.history.stage_edit(target_id, {
-            'MAN_START_DATE': f"{new_date.month}/{new_date.day}/{new_date.year}",
-            'MAN_EST_DAYS': str(int(new_width / self.day_width))
-        })
-        self.refresh_tables(maintain_state=True)
+        new_days_str = str(int(new_width / self.day_width))
+
+        if not is_parent:
+            self.history.stage_edit(target_id, {
+                'MAN_START_DATE': f"{new_date.month}/{new_date.day}/{new_date.year}",
+                'MAN_EST_DAYS': new_days_str
+            })
+        else:
+            for item in self.view.gantt_scene.items():
+                if isinstance(item, GanttBlock) and not item.is_parent and item.data.get('PROJECT_ID') == target_id:
+                    item.setPos(max(0, item.x() + delta_x), item.y())
+                    item.prepareGeometryChange()
+                    item.rect.setWidth(new_width)
+                    item.update()
+
+                    child_date = self.day_zero + pd.tseries.offsets.BusinessDay(int(item.x() / self.day_width))
+                    self.history.stage_edit(item.data.get('SMART_ID'), {
+                        'MAN_START_DATE': f"{child_date.month}/{child_date.day}/{child_date.year}",
+                        'MAN_EST_DAYS': new_days_str
+                    })
+
+        if self.view.inp_smart_id.text() == target_id or (is_parent and self.view.kpi_order.text() == target_id):
+            self.view.inp_est_days.blockSignals(True)
+            self.view.inp_est_days.setText(new_days_str)
+            self.view.inp_est_days.blockSignals(False)
+
+            self.update_kpi_variances_locally(new_x, new_days_str)
+
         if hasattr(self.view, 'show_status'):
-            self.view.show_status("Schedule adjusted. Press Ctrl+S to save.", 3000)
+            self.view.show_status("Unsaved Schedule edit. Press Ctrl+S to Calculate & Save.", 5000)
+
+    def handle_stage_edit(self):
+        smart_id = self.view.inp_smart_id.text()
+        assignee = self.view.inp_assignee.currentText()
+        est_days_str = self.view.inp_est_days.text()
+
+        updates = {'MAN_ASSIGNED': assignee, 'MAN_EST_DAYS': est_days_str}
+
+        if self.is_target_parent(smart_id):
+            mask = self.current_plan_df['PROJECT_ID'] == smart_id
+            for child_id in self.current_plan_df[mask]['SMART_ID'].tolist():
+                self.history.stage_edit(child_id, updates)
+        else:
+            self.history.stage_edit(smart_id, updates)
+
+        new_width = float(est_days_str) * self.day_width if est_days_str.isdigit() else self.day_width
+
+        updated_kpi = False
+        for item in self.view.gantt_scene.items():
+            if isinstance(item, GanttBlock):
+                is_match = (item.data.get('SMART_ID') == smart_id) or \
+                           (self.is_target_parent(smart_id) and item.data.get('PROJECT_ID') == smart_id)
+                if is_match:
+                    item.data['ASSIGNED TO'] = assignee
+                    item.data['EST DAYS'] = est_days_str
+                    item.prepareGeometryChange()
+                    item.rect.setWidth(new_width)
+                    item.refresh_visuals()
+
+                    if not updated_kpi and (self.view.inp_smart_id.text() == smart_id or (self.is_target_parent(smart_id) and self.view.kpi_order.text() == smart_id)):
+                         self.update_kpi_variances_locally(item.x(), est_days_str)
+                         updated_kpi = True
+
+        if hasattr(self.view, 'show_status'):
+            self.view.show_status("Unsaved Edit. Press Ctrl+S to Calculate & Save.", 5000)
 
     def populate_kpi_inspector(self, data):
         self.view.inp_smart_id.setText(str(data.get('SMART_ID', '')))
@@ -495,12 +634,12 @@ class AppController:
         assignee = str(data.get('ASSIGNED TO', '')).strip()
         self.view.inp_assignee.blockSignals(True)
         self.view.inp_assignee.setCurrentText(assignee)
-        self.view.inp_assignee.setEnabled(not is_parent)
+        self.view.inp_assignee.setEnabled(True)
         self.view.inp_assignee.blockSignals(False)
 
         self.view.inp_est_days.blockSignals(True)
         self.view.inp_est_days.setText(str(data.get('EST DAYS', '')))
-        self.view.inp_est_days.setEnabled(not is_parent)
+        self.view.inp_est_days.setEnabled(True)
         self.view.inp_est_days.blockSignals(False)
 
         self.view.kpi_eng_due.setText(str(data.get('ENG DUE DATE', '--')))
@@ -569,18 +708,7 @@ class AppController:
 
         if not success:
             if hasattr(self.view, 'show_status'): self.view.show_status("Sync failed.", 5000)
-            if hasattr(self.view, 'show_warning'): self.view.show_warning("Sync Error",
-                                                                          f"Could not sync data:\n\n{error_msg}")
+            if hasattr(self.view, 'show_warning'): self.view.show_warning("Sync Error", f"Could not sync data:\n\n{error_msg}")
         else:
             if hasattr(self.view, 'show_status'): self.view.show_status("Sync complete!", 4000)
             self.refresh_tables(maintain_state=False)
-
-    def handle_stage_edit(self):
-        smart_id = self.view.inp_smart_id.text()
-        assignee = self.view.inp_assignee.currentText()
-        est_days = self.view.inp_est_days.text()
-
-        self.history.stage_edit(smart_id, {'MAN_ASSIGNED': assignee, 'MAN_EST_DAYS': est_days})
-        self.refresh_tables(maintain_state=True)
-        if hasattr(self.view, 'show_status'):
-            self.view.show_status("Edit staged. Press Ctrl+S to save.", 3000)
