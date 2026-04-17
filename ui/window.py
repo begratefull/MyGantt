@@ -15,6 +15,7 @@ from PySide6.QtGui import QIcon
 from ui.views.dashboard import DashboardWidget
 from ui.views.data_view import DataViewWidget
 from ui.views.gantt_view import GanttScreenWidget
+from ui.views.team_view import TeamManagementWidget
 
 
 class MyGanttWindow(QMainWindow):
@@ -44,8 +45,13 @@ class MyGanttWindow(QMainWindow):
         base_path = os.path.dirname(__file__)
         self.nav_dash_btn = QPushButton("")
         self.nav_dash_btn.setIcon(QIcon(os.path.join(base_path, "resources", "dashboard.svg")))
+
         self.nav_gantt_btn = QPushButton("")
         self.nav_gantt_btn.setIcon(QIcon(os.path.join(base_path, "resources", "gantt.svg")))
+
+        self.nav_team_btn = QPushButton("")
+        self.nav_team_btn.setIcon(QIcon(os.path.join(base_path, "resources", "team.svg")))
+
         self.nav_data_btn = QPushButton("")
         self.nav_data_btn.setIcon(QIcon(os.path.join(base_path, "resources", "data.svg")))
 
@@ -54,7 +60,7 @@ class MyGanttWindow(QMainWindow):
         self.nav_sync_btn.setIcon(QIcon(os.path.join(base_path, "resources", "refresh.svg")))
         self.nav_sync_btn.setToolTip("Sync Workload from Excel")
 
-        for btn in [self.nav_dash_btn, self.nav_gantt_btn, self.nav_data_btn, self.nav_sync_btn]:
+        for btn in [self.nav_dash_btn, self.nav_gantt_btn, self.nav_team_btn, self.nav_data_btn, self.nav_sync_btn]:
             btn.setObjectName("NavButton")
             btn.setFixedSize(50, 50)
             btn.setIconSize(QSize(24, 24))
@@ -62,6 +68,7 @@ class MyGanttWindow(QMainWindow):
         # Add buttons with a stretch to push Sync to the bottom
         self.sidebar_layout.addWidget(self.nav_dash_btn)
         self.sidebar_layout.addWidget(self.nav_gantt_btn)
+        self.sidebar_layout.addWidget(self.nav_team_btn)
         self.sidebar_layout.addWidget(self.nav_data_btn)
         self.sidebar_layout.addStretch()
         self.sidebar_layout.addWidget(self.nav_sync_btn)
@@ -77,18 +84,22 @@ class MyGanttWindow(QMainWindow):
 
         self.dash_screen = DashboardWidget()
         self.gantt_screen = GanttScreenWidget()
+        self.team_screen = TeamManagementWidget()
         self.data_screen = DataViewWidget()
 
-        self.stacked_widget.addWidget(self.dash_screen)
-        self.stacked_widget.addWidget(self.gantt_screen)
-        self.stacked_widget.addWidget(self.data_screen)
-
-        main_layout.addWidget(self.sidebar_frame)
-        main_layout.addWidget(self.main_card_frame, 1)
+        self.stacked_widget.addWidget(self.dash_screen)  # Index 0
+        self.stacked_widget.addWidget(self.gantt_screen) # Index 1
+        self.stacked_widget.addWidget(self.team_screen)  # Index 2
+        self.stacked_widget.addWidget(self.data_screen)  # Index 3
 
         self.nav_dash_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(0))
         self.nav_gantt_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(1))
-        self.nav_data_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(2))
+        self.nav_team_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(2))
+        self.nav_data_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(3))
+
+        # ---> THE MISSING LINES THAT BROKE THE WINDOW <---
+        main_layout.addWidget(self.sidebar_frame)
+        main_layout.addWidget(self.main_card_frame, 1)
 
         # ==========================================
         # CONTROLLER FACADE
@@ -118,11 +129,9 @@ class MyGanttWindow(QMainWindow):
         self.kpi_esd_var = self.gantt_screen.kpi_esd_var
 
     def show_status(self, message: str, timeout: int = 4000):
-        """Displays a temporary message in the app's bottom status bar."""
         self.statusBar().showMessage(message, timeout)
 
     def display_dataframe(self, table_widget, df):
-        """Helper to quickly load a pandas DataFrame into a QTableWidget."""
         table_widget.clear()
         if df.empty:
             table_widget.setRowCount(0)
@@ -141,5 +150,4 @@ class MyGanttWindow(QMainWindow):
         table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
 
     def show_warning(self, title: str, message: str):
-        """Helper to show a critical warning dialog."""
         QMessageBox.warning(self, title, message)

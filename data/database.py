@@ -6,20 +6,44 @@ from typing import Dict, Any, List
 
 class DatabaseManager:
     def __init__(self):
-        # Set up the path to the database file in the same directory as this script
+        # Set up the path to the database file
         base_path = os.path.dirname(__file__)
         self.db_path = os.path.join(base_path, "gantt_data.db")
 
+        # Force the static tables to exist the moment the app boots!
+        self._ensure_static_tables()
+
     def get_connection(self):
-        """Helper to quickly get a database connection."""
         return sqlite3.connect(self.db_path)
 
+    def _ensure_static_tables(self):
+        """Silently creates teams and engineers tables on startup if they don't exist."""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS teams (
+                        "team_name" TEXT PRIMARY KEY,
+                        "hourly_rate" REAL
+                    )
+                ''')
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS engineers (
+                        "name" TEXT PRIMARY KEY,
+                        "team_name" TEXT,
+                        "hex_color" TEXT,
+                        FOREIGN KEY("team_name") REFERENCES teams("team_name")
+                    )
+                ''')
+                conn.commit()
+        except Exception as e:
+            print(f"Warning: Could not initialize static tables: {e}")
+
     def init_db(self, unique_cols: List[str]):
-        """Creates the necessary tables if they don't already exist."""
+        """Creates the raw_workload table dynamically during an Excel sync."""
+        self._ensure_static_tables()
         with self.get_connection() as conn:
             cursor = conn.cursor()
-
-            # Format the column names for the SQL CREATE statement
             raw_cols = ", ".join([f'"{h}" TEXT' for h in unique_cols])
 
             cursor.execute(f'''
@@ -40,17 +64,35 @@ class DatabaseManager:
             conn.commit()
 
     def get_raw_df(self) -> pd.DataFrame:
-        """Fetches the raw synced data as a Pandas DataFrame."""
-        with self.get_connection() as conn:
-            return pd.read_sql_query('SELECT * FROM raw_workload', conn).fillna("")
+        try:
+            with self.get_connection() as conn:
+                return pd.read_sql_query('SELECT * FROM raw_workload', conn).fillna("")
+        except Exception:
+            return pd.DataFrame()
 
     def get_saved_overrides_df(self) -> pd.DataFrame:
-        """Fetches the manual user overrides as a Pandas DataFrame."""
-        with self.get_connection() as conn:
-            return pd.read_sql_query('SELECT * FROM user_overrides', conn).fillna("")
+        try:
+            with self.get_connection() as conn:
+                return pd.read_sql_query('SELECT * FROM user_overrides', conn).fillna("")
+        except Exception:
+            return pd.DataFrame()
+
+    def get_engineers_df(self) -> pd.DataFrame:
+        """Fetches engineers with a safety net if the table is empty or missing."""
+        try:
+            with self.get_connection() as conn:
+                return pd.read_sql_query('SELECT * FROM engineers', conn).fillna("")
+        except Exception:
+            return pd.DataFrame(columns=["name", "team_name", "hex_color"])
+
+    def get_teams_df(self) -> pd.DataFrame:
+        try:
+            with self.get_connection() as conn:
+                return pd.read_sql_query('SELECT * FROM teams', conn).fillna("")
+        except Exception:
+            return pd.DataFrame(columns=["team_name", "hourly_rate"])
 
     def save_overrides(self, staged_edits_dict: Dict[str, Dict[str, Any]]):
-        """Commits user overrides (assignees, dates, days) to the database."""
         if not staged_edits_dict or not isinstance(staged_edits_dict, dict):
             return
 
@@ -71,8 +113,32 @@ class DatabaseManager:
                 ''', (smart_id, assignee, est_days, start_date))
             conn.commit()
 
+    def upsert_engineer(self, name: str, team_name: str, hex_color: str):
+        self._ensure_static_tables()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO engineers ("name", "team_name", "hex_color")
+                VALUES (?, ?, ?)
+                ON CONFLICT("name") DO UPDATE SET
+                    "team_name" = excluded."team_name",
+                    "hex_color" = excluded."hex_color"
+            ''', (name, team_name, hex_color))
+            conn.commit()
+
+    def upsert_team(self, team_name: str, hourly_rate: float):
+        self._ensure_static_tables()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO teams ("team_name", "hourly_rate")
+                VALUES (?, ?)
+                ON CONFLICT("team_name") DO UPDATE SET
+                    "hourly_rate" = excluded."hourly_rate"
+            ''', (team_name, hourly_rate))
+            conn.commit()
+
     def replace_raw_workload(self, df: pd.DataFrame, expected_cols: List[str], final_cols: List[str]):
-        """Drops the old raw_workload table and inserts the freshly synced Excel data."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('DROP TABLE IF EXISTS raw_workload')

@@ -53,10 +53,8 @@ class DataRefreshWorker(QThread):
                 self.data_ready.emit(raw_df, plan_df, plan_df)
                 return
 
-            # 1. The Dashboard gets the full, unfiltered dataset!
             full_dashboard_df = plan_df.copy()
 
-            # 2. We now filter plan_df specifically for the Gantt chart
             prod_mask = plan_df['REQUIREMENT'].str.contains('PROD', case=False, na=False)
             type_mask = plan_df['TYPE'].str.strip().str.upper().isin(['MOD', 'CUS', 'PART-MC'])
             plan_df = plan_df[prod_mask & type_mask].copy()
@@ -111,6 +109,11 @@ class AppController:
         self.refresh_worker = None
 
         self.setup_shortcuts()
+
+        # Connect the team screen signals
+        self.view.team_screen.save_engineer_requested.connect(self.handle_save_engineer)
+        self.refresh_team_view()
+
         self.refresh_tables()
 
         if hasattr(self.view, 'nav_sync_btn'):
@@ -251,7 +254,6 @@ class AppController:
             reqs = group['REQUIREMENT'].unique()
             raw_req = reqs[0] if len(reqs) == 1 else "Multiple"
 
-            # Calculate target dates for the parent block
             due_dates = pd.to_datetime(group['ENG DUE DATE'].replace('', pd.NaT))
             min_due = due_dates.min() if not due_dates.isna().all() else pd.NaT
 
@@ -501,10 +503,6 @@ class AppController:
             QTimer.singleShot(0, lambda: self.view.gantt_view.horizontalScrollBar().setValue(scroll_x))
             self.initial_scroll_done = True
 
-    # ---------------------------------------------------------
-    # LOCAL INTERACTION MUTATORS
-    # ---------------------------------------------------------
-
     def handle_right_click_assign(self, target_id, new_assignee):
         if self.is_target_parent(target_id):
             mask = self.current_plan_df['PROJECT_ID'] == target_id
@@ -712,3 +710,42 @@ class AppController:
         else:
             if hasattr(self.view, 'show_status'): self.view.show_status("Sync complete!", 4000)
             self.refresh_tables(maintain_state=False)
+
+    # ---------------------------------------------------------
+    # TEAM MANAGEMENT LOGIC
+    # ---------------------------------------------------------
+
+    def refresh_team_view(self):
+        """Fetches DB configurations and populates the Team Roster and Dropdowns."""
+        try:
+            eng_df = self.model.db.get_engineers_df()
+            self.view.team_screen.populate_roster(eng_df)
+
+            raw_df = self.model.get_raw_df()
+            if not raw_df.empty and 'RAW_ASSIGNED' in raw_df.columns:
+                raw_names = set([str(x).strip().upper() for x in raw_df['RAW_ASSIGNED'].unique() if
+                                 str(x).strip().upper() not in ('', 'UNASSIGNED', 'NAN')])
+                configured_names = set(
+                    [str(x).strip().upper() for x in eng_df['name'].unique()]) if not eng_df.empty else set()
+
+                unconfigured = sorted(list(raw_names - configured_names))
+
+                combo = self.view.team_screen.inp_name
+                combo.blockSignals(True)
+                combo.clear()
+                combo.addItems(unconfigured + sorted(list(configured_names)))
+                combo.blockSignals(False)
+        except Exception as e:
+            print(f"CRITICAL ERROR in refresh_team_view: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def handle_save_engineer(self, name, team, color):
+        """Saves the team and engineer config to the SQLite database."""
+        self.model.db.upsert_team(team, 0.0)
+        self.model.db.upsert_engineer(name, team, color)
+
+        if hasattr(self.view, 'show_status'):
+            self.view.show_status(f"Saved configuration for {name}.", 3000)
+
+        self.refresh_team_view()
