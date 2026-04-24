@@ -1,23 +1,23 @@
 """
-team_view.py
-
 Provides the TeamManagementWidget, a dedicated interface for assigning
 engineers to specific teams, configuring their Gantt chart colors, and
 viewing their individual workload analytics.
-
-Phase 3 Updates:
-- Expanded the color palette to 25 vibrant, dark-theme optimized colors.
-- Upgraded the swatch layout to a QGridLayout for a clean 5x5 presentation.
 """
 
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-                               QTableWidget, QTableWidgetItem, QHeaderView,
-                               QFrame, QComboBox, QPushButton, QAbstractItemView,
-                               QGridLayout)
+from typing import Dict, List, Tuple, Optional
+
+import pandas as pd
+from PySide6.QtCharts import (
+    QChart, QChartView, QBarSeries, QBarSet,
+    QBarCategoryAxis, QValueAxis
+)
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor
-from PySide6.QtCharts import (QChart, QChartView, QBarSeries, QBarSet,
-                              QBarCategoryAxis, QValueAxis)
+from PySide6.QtGui import QColor, QPainter
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTableWidget,
+    QTableWidgetItem, QHeaderView, QFrame, QComboBox,
+    QPushButton, QAbstractItemView, QGridLayout
+)
 
 
 class TeamManagementWidget(QWidget):
@@ -29,22 +29,26 @@ class TeamManagementWidget(QWidget):
     save_engineer_requested = Signal(str, str, str)
     engineer_selected = Signal(str)
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         # Expanded 25-Color App-Wide Palette (Material Design optimized for Dark UI)
-        self.palette = [
+        self.palette: List[str] = [
             "#D32F2F", "#F44336", "#FF5252", "#E91E63", "#C2185B",  # Reds & Pinks
             "#7B1FA2", "#9C27B0", "#673AB7", "#512DA8", "#3F51B5",  # Purples & Deep Blues
             "#1976D2", "#2196F3", "#03A9F4", "#00BCD4", "#0097A7",  # Blues & Cyans
             "#00796B", "#009688", "#4CAF50", "#388E3C", "#8BC34A",  # Teals & Greens
-            "#AFB42B", "#FBC02D", "#FF9800", "#F57C00", "#FF5722"   # Yellows & Oranges
+            "#AFB42B", "#FBC02D", "#FF9800", "#F57C00", "#FF5722"  # Yellows & Oranges
         ]
 
-        self.swatch_buttons = []
-        self._current_selected_color = self.palette[11] # Default to a nice MyGantt blue
-        self.roster_data = None
+        self.swatch_buttons: List[Tuple[QPushButton, str]] = []
+        self._current_selected_color: str = self.palette[11]  # Default to a nice MyGantt blue
+        self.roster_data: Optional[pd.DataFrame] = None
 
+        self._setup_ui()
+
+    def _setup_ui(self) -> None:
+        """Initializes the layout and UI components for the Team Management view."""
         # Main Layout is Vertical
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -56,7 +60,7 @@ class TeamManagementWidget(QWidget):
         top_layout = QHBoxLayout()
         top_layout.setSpacing(15)
 
-        # --- 1. Engineer Roster Table ---
+        # --- Engineer Roster Table ---
         roster_frame = QFrame()
         roster_frame.setObjectName("TableWell")
         roster_layout = QVBoxLayout(roster_frame)
@@ -77,8 +81,6 @@ class TeamManagementWidget(QWidget):
         self.roster_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.roster_table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.roster_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-
-        # Connect the table selection to our internal handler
         self.roster_table.itemSelectionChanged.connect(self._on_roster_selection)
 
         # Optimized Column Sizing
@@ -90,7 +92,7 @@ class TeamManagementWidget(QWidget):
         roster_layout.addWidget(self.roster_table)
         top_layout.addWidget(roster_frame, 1)
 
-        # --- 2. Configuration Form ---
+        # --- Configuration Form ---
         config_frame = QFrame()
         config_frame.setObjectName("TableWell")
         config_layout = QVBoxLayout(config_frame)
@@ -133,8 +135,9 @@ class TeamManagementWidget(QWidget):
 
         for index, color in enumerate(self.palette):
             btn = QPushButton()
-            btn.setFixedSize(24, 24) # Slightly smaller to fit grid beautifully
+            btn.setFixedSize(24, 24)
             btn.setCursor(Qt.PointingHandCursor)
+            # Use default argument capture for lambda
             btn.clicked.connect(lambda checked=False, c=color: self.set_selected_color(c))
             self.swatch_buttons.append((btn, color))
 
@@ -182,35 +185,41 @@ class TeamManagementWidget(QWidget):
         self.chart.layout().setContentsMargins(0, 0, 0, 0)
 
         self.chart_view = QChartView(self.chart)
-        self.chart_view.setStyleSheet("background: transparent; border: none;")
-
+        self.chart_view.setRenderHint(QPainter.Antialiasing)
+        # Background transparency handled by globally targeted QChartView in styles.py
         analytics_layout.addWidget(self.chart_view, 1)
+
         main_layout.addWidget(analytics_frame, 1)
 
         # Initialize the default selected color styling
         self.set_selected_color(self._current_selected_color)
 
-    def create_kpi_block(self, parent_layout, title):
-        """Helper function to create uniform KPI data blocks."""
+    def create_kpi_block(self, parent_layout: QHBoxLayout, title: str) -> QLabel:
+        """
+        Helper function to create uniform KPI data blocks tied to global styles.
+        Returns the QLabel reference to the value so it can be updated later.
+        """
         frame = QFrame()
-        frame.setStyleSheet("background-color: #2D2D30; border-radius: 4px;")
+        frame.setObjectName("KpiBlock")
+
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(5, 5, 5, 5)
 
         lbl_title = QLabel(title)
-        lbl_title.setStyleSheet("color: #AAAAAA; font-size: 10px; font-weight: bold;")
+        lbl_title.setObjectName("KpiBlockTitle")
         lbl_title.setAlignment(Qt.AlignCenter)
 
         lbl_val = QLabel("--")
-        lbl_val.setStyleSheet("color: #FFFFFF; font-size: 18px; font-weight: bold;")
+        lbl_val.setObjectName("KpiBlockValue")
         lbl_val.setAlignment(Qt.AlignCenter)
 
         layout.addWidget(lbl_title)
         layout.addWidget(lbl_val)
         parent_layout.addWidget(frame)
+
         return lbl_val
 
-    def set_selected_color(self, color_hex):
+    def set_selected_color(self, color_hex: str) -> None:
         """Updates the selected color and redraws the swatch borders to highlight the active one."""
         self._current_selected_color = color_hex.upper()
         for btn, btn_color in self.swatch_buttons:
@@ -219,7 +228,7 @@ class TeamManagementWidget(QWidget):
             else:
                 btn.setStyleSheet(f"background-color: {btn_color}; border-radius: 12px; border: 2px solid #1E1E20;")
 
-    def _on_roster_selection(self):
+    def _on_roster_selection(self) -> None:
         """Internal handler fired when a user clicks a row in the roster table."""
         selected_rows = self.roster_table.selectionModel().selectedRows()
         if not selected_rows:
@@ -228,7 +237,7 @@ class TeamManagementWidget(QWidget):
         row_idx = selected_rows[0].row()
         name = self.roster_table.item(row_idx, 0).text()
 
-        # Auto-fill the form with the selected user's data
+        # Autofill the form with the selected user's data
         if self.roster_data is not None and not self.roster_data.empty:
             match = self.roster_data[self.roster_data['name'].str.upper() == name.upper()]
             if not match.empty:
@@ -244,17 +253,18 @@ class TeamManagementWidget(QWidget):
         # Tell the controller an engineer was clicked so it can calculate analytics
         self.engineer_selected.emit(name)
 
-    def emit_save_request(self):
+    def emit_save_request(self) -> None:
         """Emits the form data to be saved to the database."""
         name = self.inp_name.currentText().strip().upper()
         team = self.inp_team.currentText().strip()
         if name and team:
             self.save_engineer_requested.emit(name, team, self._current_selected_color)
 
-    def populate_roster(self, df):
+    def populate_roster(self, df: pd.DataFrame) -> None:
         """Clears and populates the engineer roster table from a DataFrame."""
-        self.roster_data = df # Cache the DF for auto-filling the form later
+        self.roster_data = df  # Cache the DF for auto-filling the form later
         self.roster_table.setRowCount(0)
+
         if df.empty:
             return
 
@@ -264,11 +274,11 @@ class TeamManagementWidget(QWidget):
             team = str(row.get('team_name', ''))
             color = str(row.get('hex_color', '#888888'))
 
-            # 1. Add Text
+            # Add Text
             self.roster_table.setItem(row_idx, 0, QTableWidgetItem(name))
             self.roster_table.setItem(row_idx, 1, QTableWidgetItem(team))
 
-            # 2. Add Color Badge
+            # Add Color Badge
             color_widget = QWidget()
             color_layout = QHBoxLayout(color_widget)
             color_layout.setContentsMargins(0, 0, 0, 0)
@@ -276,13 +286,14 @@ class TeamManagementWidget(QWidget):
 
             color_badge = QFrame()
             color_badge.setFixedSize(16, 16)
+
             color_badge.setStyleSheet(f"background-color: {color}; border-radius: 8px; border: 1px solid #1E1E20;")
 
             color_layout.addWidget(color_badge)
             self.roster_table.setCellWidget(row_idx, 2, color_widget)
 
     def update_analytics(self, engineer_name: str, active_lines: int, avg_days: float,
-                         family_counts: dict, primary_color: str = "#007ACC"):
+                         family_counts: Dict[str, int], primary_color: str = "#007ACC") -> None:
         """
         Updates the UI elements of the Analytics Dashboard for a specific engineer.
         Draws a bar chart showing the frequency of different project 'Families' they work on.
@@ -291,7 +302,7 @@ class TeamManagementWidget(QWidget):
         self.lbl_total_lines.setText(str(active_lines))
         self.lbl_avg_days.setText(f"{avg_days:.1f}" if avg_days > 0 else "0.0")
 
-        # 1. Clean up old chart data
+        # Clean up old chart data
         self.chart.removeAllSeries()
         for axis in self.chart.axes():
             self.chart.removeAxis(axis)
@@ -299,13 +310,14 @@ class TeamManagementWidget(QWidget):
         if not family_counts:
             return
 
-        # 2. Build the new Bar Series
+        # Build the new Bar Series
         series = QBarSeries()
         bar_set = QBarSet("Projects")
         bar_set.setColor(QColor(primary_color))
 
-        categories = []
+        categories: List[str] = []
         max_val = 0
+
         for family, count in family_counts.items():
             bar_set.append(count)
             categories.append(str(family))
@@ -315,17 +327,18 @@ class TeamManagementWidget(QWidget):
         series.append(bar_set)
         self.chart.addSeries(series)
 
-        # 3. Attach X Axis (Categories)
+        # Attach X Axis (Categories)
         axis_x = QBarCategoryAxis()
         axis_x.append(categories)
         axis_x.setLabelsBrush(QColor("#AAAAAA"))
         self.chart.addAxis(axis_x, Qt.AlignBottom)
         series.attachAxis(axis_x)
 
-        # 4. Attach Y Axis (Values)
+        # Attach Y Axis (Values)
         axis_y = QValueAxis()
-        axis_y.setRange(0, max_val + (max_val * 0.2))  # Give 20% headroom at the top
-        axis_y.setLabelFormat("%d")                    # Whole numbers only
+        # Give 20% headroom at the top
+        axis_y.setRange(0, max_val + (max_val * 0.2))
+        axis_y.setLabelFormat("%d")
         axis_y.setLabelsBrush(QColor("#AAAAAA"))
         self.chart.addAxis(axis_y, Qt.AlignLeft)
         series.attachAxis(axis_y)

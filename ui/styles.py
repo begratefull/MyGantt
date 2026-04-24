@@ -3,8 +3,11 @@ DARK_THEME = """
 QMainWindow { background-color: #1E1E1E; }
 QWidget { color: #F0F0F0; font-family: 'Segoe UI', 'Roboto', sans-serif; font-size: 12px; }
 
+/* Status Bar */
+QStatusBar { color: #AAAAAA; background-color: #1E1E1E; border-top: 1px solid #3E3E42; }
+
 /* --- CONTAINERS (The Card & Well System) --- */
-QFrame#sidebarFrame, QFrame#mainCardFrame, QFrame#Panel, QFrame#DashCard {
+QFrame#sidebarFrame, QFrame#mainCardFrame, QFrame#Panel {
     background-color: #252526; 
     border-radius: 10px;
     border: none;
@@ -16,9 +19,17 @@ QFrame#TableWell {
     border: 1px solid #3E3E42;
 }
 
+QFrame#DashCard { 
+    background-color: #1E1E20; 
+    border: 1px solid #3E3E42; 
+    border-radius: 8px; 
+}
+
 /* --- TYPOGRAPHY --- */
 QLabel#Header { font-size: 20px; font-weight: 700; color: #F0F0F0; padding-bottom: 5px; }
 QLabel#SubHeader { font-size: 11px; color: #AAAAAA; }
+QLabel#CardTitle { font-size: 15px; font-weight: bold; color: #E0E0E0; }
+QLabel#FilterLabel { color: #AAAAAA; font-weight: bold; font-size: 12px; margin-right: 5px; }
 
 /* Specific KPI Panel Text */
 QLabel#KpiLabel { color: #AAAAAA; font-weight: bold; }
@@ -27,6 +38,11 @@ QLabel#KpiValue { color: #4DB8FF; font-weight: bold; font-size: 14px; }
 /* Specific Dashboard Text */
 QLabel#DashMetric { font-size: 28px; font-weight: bold; color: #FFFFFF; }
 QLabel#DashTitle { color: #AAAAAA; font-weight: bold; font-size: 12px; }
+
+/* Unified KPI Blocks (Small nested data blocks) */
+QFrame#KpiBlock { background-color: #2D2D30; border-radius: 4px; }
+QLabel#KpiBlockTitle { color: #AAAAAA; font-size: 10px; font-weight: bold; }
+QLabel#KpiBlockValue { color: #FFFFFF; font-size: 16px; font-weight: bold; }
 
 /* --- TABLE STYLING --- */
 QTableView, QTableWidget {
@@ -90,8 +106,15 @@ QScrollBar::add-line, QScrollBar::sub-line, QScrollBar::add-page, QScrollBar::su
 
 /* --- GANTT SPECIFIC --- */
 QSplitter::handle { background: #3E3E42; width: 1px; }
-
 QGraphicsView { background: transparent; border: none; }
 QGraphicsView#HeaderView { border-bottom: 1px solid #3E3E42; border-top-right-radius: 8px; }
 QGraphicsView#CanvasView { border-bottom-right-radius: 8px; }
+
+/* --- COMPONENTS & WIDGETS --- */
+QChartView { background: transparent; border: none; }
+QFrame#SeparatorLine { background-color: #3E3E42; }
+
+/* --- MENUS --- */
+QMenu { background-color: #252526; color: white; border: 1px solid #3E3E42; }
+QMenu::item:selected { background-color: #007ACC; }
 """

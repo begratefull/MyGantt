@@ -1,49 +1,68 @@
 """
-dashboard.py
-
 Contains the DashboardWidget which displays high-level KPIs,
 queue times, and active engineer workloads using QtCharts.
-
-Phase 3 Updates:
-- Fixed case sensitivity bug in the Team Filter logic (.upper()).
 """
 
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout,
-                               QLabel, QFrame, QComboBox, QToolTip)
-from PySide6.QtCharts import (QChart, QChartView, QPieSeries, QBarSeries,
-                              QBarSet, QBarCategoryAxis, QValueAxis, QLineSeries, QAreaSeries)
-from PySide6.QtCore import Qt, QPoint
-from PySide6.QtGui import QPainter, QColor, QPen, QFont, QCursor
+from typing import Dict, Any, Optional, List
+
 import pandas as pd
 import numpy as np
 
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QComboBox, QToolTip
+)
+from PySide6.QtCharts import (
+    QChart, QChartView, QPieSeries, QBarSeries, QBarSet,
+    QBarCategoryAxis, QValueAxis, QLineSeries, QAreaSeries
+)
+from PySide6.QtCore import Qt, QPoint
+from PySide6.QtGui import QPainter, QColor, QPen, QFont, QCursor
+
+# Inject the new logic service!
+from logic.dashboard_service import DashboardService
+
 
 class DashboardWidget(QWidget):
-    def __init__(self):
+    """
+    Main widget for the Analytics Dashboard.
+    Provides visual representations of current and historical engineering workloads.
+    """
+
+    def __init__(self) -> None:
         super().__init__()
-        self.master_df = pd.DataFrame()
-        self.team_map = {} # Will hold the engineer-to-team mappings
-        self._current_hover = None
-        self._chart_refs = []
 
-        self.dynamic_color_map = {}
-        self.palette = ["#2196F3", "#F44336", "#4CAF50", "#FF9800", "#9C27B0", "#00BCD4", "#795548", "#E91E63"]
+        self.master_df: pd.DataFrame = pd.DataFrame()
+        self.team_map: Dict[str, str] = {}
+        self.color_map: Dict[str, str] = {}
 
+        self._current_hover: Optional[str] = None
+        self._chart_refs: List[Any] = []
+
+        self.dynamic_color_map: Dict[str, str] = {}
+        self.palette: List[str] = [
+            "#2196F3", "#F44336", "#4CAF50", "#FF9800",
+            "#9C27B0", "#00BCD4", "#795548", "#E91E63"
+        ]
+
+        self._setup_ui()
+
+    def _setup_ui(self) -> None:
+        """Initializes the layout and UI components for the dashboard."""
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(10)
 
+        # --- Header Section ---
         header_layout = QHBoxLayout()
         header = QLabel("Engineering Workload Dashboard")
-        header.setStyleSheet("font-size: 20px; font-weight: bold; color: #FFFFFF;")
+        header.setObjectName("Header")
         header_layout.addWidget(header)
         header_layout.addStretch()
 
         filter_lbl = QLabel("Team Filter:")
-        filter_lbl.setStyleSheet("color: #AAAAAA; font-weight: bold; font-size: 12px;")
+        filter_lbl.setObjectName("FilterLabel")
         header_layout.addWidget(filter_lbl)
 
-        # ---> THE TEAM FILTER <---
         self.filter_team = QComboBox()
         self.filter_team.setMinimumWidth(150)
         self.filter_team.addItem("All Teams")
@@ -52,6 +71,7 @@ class DashboardWidget(QWidget):
 
         main_layout.addLayout(header_layout)
 
+        # --- Top Active Queues Section ---
         top_cards_layout = QHBoxLayout()
         top_cards_layout.setSpacing(15)
 
@@ -63,45 +83,48 @@ class DashboardWidget(QWidget):
 
         main_layout.addLayout(top_cards_layout, 1)
 
+        # --- Bottom Historical Forecast Section ---
         self.hist_ui = self.create_history_card("Completed Jobs & Active Forecast")
         main_layout.addWidget(self.hist_ui['card'], 1)
 
-        if self.prod_ui['req_filter']: self.prod_ui['req_filter'].currentTextChanged.connect(self.render_prod_card)
+        # --- Signal Connections ---
+        if self.prod_ui['req_filter']:
+            self.prod_ui['req_filter'].currentTextChanged.connect(self.render_prod_card)
         self.prod_ui['type_filter'].currentTextChanged.connect(self.render_prod_card)
 
-        if self.quote_ui['req_filter']: self.quote_ui['req_filter'].currentTextChanged.connect(self.render_quote_card)
+        if self.quote_ui['req_filter']:
+            self.quote_ui['req_filter'].currentTextChanged.connect(self.render_quote_card)
         self.quote_ui['type_filter'].currentTextChanged.connect(self.render_quote_card)
 
         self.hist_ui['req_filter'].currentTextChanged.connect(self.render_hist_card)
         self.hist_ui['date_filter'].currentTextChanged.connect(self.render_hist_card)
 
-    def get_dynamic_color(self, name):
+    def get_dynamic_color(self, name: str) -> str:
+        """Retrieves the assigned hex color for an engineer."""
         name = str(name).strip().upper()
-        if not name or name == "UNASSIGNED": return "#888888"
+        if not name or name == "UNASSIGNED":
+            return "#888888"
 
-        # Check the app-wide color map first!
         if hasattr(self, 'color_map') and name in self.color_map:
             return self.color_map[name]
 
-        # Fallback to random dynamic color if not configured
         if name not in self.dynamic_color_map:
             color_idx = len(self.dynamic_color_map) % len(self.palette)
             self.dynamic_color_map[name] = self.palette[color_idx]
 
         return self.dynamic_color_map[name]
 
-    def create_active_card(self, title, show_req_filter=True, show_var=True):
+    def create_active_card(self, title: str, show_req_filter: bool = True, show_var: bool = True) -> Dict[str, Any]:
         card = QFrame()
         card.setObjectName("DashCard")
-        card.setStyleSheet(
-            "QFrame#DashCard { background-color: #1E1E20; border: 1px solid #3E3E42; border-radius: 8px; }")
+
         layout = QVBoxLayout(card)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(8)
 
         top_bar = QHBoxLayout()
         title_lbl = QLabel(title)
-        title_lbl.setStyleSheet("font-size: 15px; font-weight: bold; color: #E0E0E0;")
+        title_lbl.setObjectName("CardTitle")
         top_bar.addWidget(title_lbl)
         top_bar.addStretch()
 
@@ -144,35 +167,38 @@ class DashboardWidget(QWidget):
 
         chart_view = QChartView(chart)
         chart_view.setRenderHint(QPainter.Antialiasing)
-        chart_view.setStyleSheet("background: transparent; border: none;")
         layout.addWidget(chart_view, 1)
 
         return {
-            'card': card, 'req_filter': req_filter, 'type_filter': type_filter,
+            'card': card,
+            'req_filter': req_filter,
+            'type_filter': type_filter,
             'lbl_lines': kpi_lines['val'],
             'lbl_var': kpi_var['val'] if kpi_var else None,
-            'lbl_queue': kpi_queue['val'], 'lbl_proc': kpi_proc['val'],
-            'chart': chart, 'chart_view': chart_view
+            'lbl_queue': kpi_queue['val'],
+            'lbl_proc': kpi_proc['val'],
+            'chart': chart,
+            'chart_view': chart_view
         }
 
-    def create_history_card(self, title):
+    def create_history_card(self, title: str) -> Dict[str, Any]:
         card = QFrame()
         card.setObjectName("DashCard")
-        card.setStyleSheet(
-            "QFrame#DashCard { background-color: #1E1E20; border: 1px solid #3E3E42; border-radius: 8px; }")
+
         layout = QVBoxLayout(card)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(8)
 
         top_bar = QHBoxLayout()
         title_lbl = QLabel(title)
-        title_lbl.setStyleSheet("font-size: 15px; font-weight: bold; color: #E0E0E0;")
+        title_lbl.setObjectName("CardTitle")
         top_bar.addWidget(title_lbl)
         top_bar.addStretch()
 
         req_filter = QComboBox()
         req_filter.addItem("All Reqs")
         req_filter.setMaximumHeight(24)
+
         date_filter = QComboBox()
         date_filter.addItems(["Last 30 Days", "Last 90 Days", "Year to Date", "All Time"])
         date_filter.setCurrentText("Last 90 Days")
@@ -189,17 +215,19 @@ class DashboardWidget(QWidget):
 
         chart_view = QChartView(chart)
         chart_view.setRenderHint(QPainter.Antialiasing)
-        chart_view.setStyleSheet("background: transparent; border: none;")
         layout.addWidget(chart_view, 1)
 
         return {
-            'card': card, 'req_filter': req_filter, 'date_filter': date_filter,
-            'chart': chart, 'chart_view': chart_view
+            'card': card,
+            'req_filter': req_filter,
+            'date_filter': date_filter,
+            'chart': chart,
+            'chart_view': chart_view
         }
 
-    def create_kpi_block(self, title):
+    def create_kpi_block(self, title: str) -> Dict[str, Any]:
         frame = QFrame()
-        frame.setStyleSheet("background-color: #2D2D30; border-radius: 4px;")
+        frame.setObjectName("KpiBlock")
         frame.setMaximumHeight(50)
 
         layout = QVBoxLayout(frame)
@@ -207,11 +235,11 @@ class DashboardWidget(QWidget):
         layout.setSpacing(2)
 
         lbl_title = QLabel(title)
-        lbl_title.setStyleSheet("color: #AAAAAA; font-size: 10px; font-weight: bold;")
+        lbl_title.setObjectName("KpiBlockTitle")
         lbl_title.setAlignment(Qt.AlignCenter)
 
-        lbl_val = QLabel("0")
-        lbl_val.setStyleSheet("color: #FFFFFF; font-size: 16px; font-weight: bold;")
+        lbl_val = QLabel("--")
+        lbl_val.setObjectName("KpiBlockValue")
         lbl_val.setAlignment(Qt.AlignCenter)
 
         layout.addWidget(lbl_title)
@@ -219,79 +247,72 @@ class DashboardWidget(QWidget):
 
         return {'frame': frame, 'val': lbl_val}
 
-    @staticmethod
-    def parse_variance(val):
-        if pd.isna(val) or val == "": return np.nan
-        try:
-            return float(str(val).replace('days', '').strip())
-        except:
-            return np.nan
+    def update_dashboard(self, df: pd.DataFrame) -> None:
+        """Receives the latest application dataframe, leverages the DashboardService for splitting, and triggers UI updates."""
+        if df.empty:
+            return
 
-    def update_dashboard(self, df):
-        if df.empty: return
         self.master_df = df.copy()
 
-        if 'LINE_COUNT' not in self.master_df.columns:
-            self.master_df['LINE_COUNT'] = 1
-
-        self.active_df = self.master_df[self.master_df['STATUS'].str.strip().str.upper() != 'COMPLETE'].copy()
-        self.comp_df = self.master_df[self.master_df['STATUS'].str.strip().str.upper() == 'COMPLETE'].copy()
-
-        prod_mask = self.active_df['REQUIREMENT'].str.contains('PROD', case=False, na=False)
-        self.prod_base = self.active_df[prod_mask]
-        self.quote_base = self.active_df[~prod_mask]
+        # Delegate splitting logic to Service
+        self.active_df, self.comp_df, self.prod_base, self.quote_base = DashboardService.split_base_data(self.master_df)
 
         if self.prod_ui['req_filter']:
-            self.populate_combo(self.prod_ui['req_filter'], self.prod_base['REQUIREMENT'], "All Reqs")
-        self.populate_combo(self.prod_ui['type_filter'], self.prod_base['TYPE'], "All Types")
+            self.populate_combo(self.prod_ui['req_filter'], self.prod_base.get('REQUIREMENT', pd.Series(dtype=str)), "All Reqs")
+        self.populate_combo(self.prod_ui['type_filter'], self.prod_base.get('TYPE', pd.Series(dtype=str)), "All Types")
 
         if self.quote_ui['req_filter']:
-            self.populate_combo(self.quote_ui['req_filter'], self.quote_base['REQUIREMENT'], "All Reqs")
-        self.populate_combo(self.quote_ui['type_filter'], self.quote_base['TYPE'], "All Types")
+            self.populate_combo(self.quote_ui['req_filter'], self.quote_base.get('REQUIREMENT', pd.Series(dtype=str)), "All Reqs")
+        self.populate_combo(self.quote_ui['type_filter'], self.quote_base.get('TYPE', pd.Series(dtype=str)), "All Types")
 
-        self.populate_combo(self.hist_ui['req_filter'], self.master_df['REQUIREMENT'], "All Reqs")
+        self.populate_combo(self.hist_ui['req_filter'], self.master_df.get('REQUIREMENT', pd.Series(dtype=str)), "All Reqs")
 
         self.render_all()
 
-    def populate_combo(self, combo, series, default_text):
+    def populate_combo(self, combo: QComboBox, series: pd.Series, default_text: str) -> None:
         current = combo.currentText()
         items = [str(x) for x in series.replace('', 'Uncategorized').unique() if str(x).strip()]
+
         combo.blockSignals(True)
         combo.clear()
         combo.addItem(default_text)
         combo.addItems(sorted(items))
+
         if current in [combo.itemText(i) for i in range(combo.count())]:
             combo.setCurrentText(current)
+
         combo.blockSignals(False)
 
-    def _get_team_for_row(self, row):
-        """Helper to match a row to a Team (mirrors Controller logic)"""
+    def _get_team_for_row(self, row: pd.Series) -> str:
         name = str(row.get('ASSIGNED TO', '')).strip().upper()
         if name and name not in ['UNASSIGNED', 'NAN', '']:
             return self.team_map.get(name, "UNASSIGNED")
 
         line_type = str(row.get('TYPE', '')).strip().upper()
-        if line_type in ['STD', 'STD-M', 'PART']: return "STANDARD TEAM"
-        elif line_type in ['MOD', 'CUS', 'PART-MC']: return "CUSTOM TEAM"
+        if line_type in ['STD', 'STD-M', 'PART']:
+            return "STANDARD TEAM"
+        elif line_type in ['MOD', 'CUS', 'PART-MC']:
+            return "CUSTOM TEAM"
 
         return "UNASSIGNED"
 
-    def render_all(self):
+    def render_all(self) -> None:
         self.render_prod_card()
         self.render_quote_card()
         self.render_hist_card()
 
-    def render_prod_card(self):
+    def render_prod_card(self) -> None:
         if hasattr(self, 'prod_base'):
             self._apply_active_card_logic(self.prod_base.copy(), self.prod_ui)
 
-    def render_quote_card(self):
+    def render_quote_card(self) -> None:
         if hasattr(self, 'quote_base'):
             self._apply_active_card_logic(self.quote_base.copy(), self.quote_ui)
 
-    def _apply_active_card_logic(self, df, ui_dict):
-        # ---> FIXED CASE SENSITIVITY HERE <---
+    def _apply_active_card_logic(self, df: pd.DataFrame, ui_dict: Dict[str, Any]) -> None:
+        """Applies local combo-box UI filters, requests KPI calculations from the Service, and draws the UI."""
         current_team = self.filter_team.currentText()
+
         if current_team != "All Teams":
             df['CALC_TEAM'] = df.apply(self._get_team_for_row, axis=1)
             df = df[df['CALC_TEAM'] == current_team.strip().upper()].copy()
@@ -299,38 +320,34 @@ class DashboardWidget(QWidget):
 
         if ui_dict['req_filter']:
             req = ui_dict['req_filter'].currentText()
-            if req != "All Reqs": df = df[df['REQUIREMENT'].replace('', 'Uncategorized') == req]
+            if req != "All Reqs":
+                df = df[df['REQUIREMENT'].replace('', 'Uncategorized') == req]
 
         typ = ui_dict['type_filter'].currentText()
-        if typ != "All Types": df = df[df['TYPE'].replace('', 'Unknown') == typ]
+        if typ != "All Types":
+            df = df[df['TYPE'].replace('', 'Unknown') == typ]
 
-        ui_dict['lbl_lines'].setText(str(int(df['LINE_COUNT'].sum())))
+        # ---> THE FIX: Delegate KPI calculation to the service!
+        kpis = DashboardService.calculate_kpis(df)
+
+        ui_dict['lbl_lines'].setText(str(kpis['lines']))
 
         if ui_dict.get('lbl_var'):
-            var_series = df['EST ENG VARIANCE'].apply(self.parse_variance).dropna()
-            avg_var = var_series.mean() if not var_series.empty else np.nan
+            avg_var = kpis['avg_var']
             ui_dict['lbl_var'].setText(f"{avg_var:+.1f} d" if not pd.isna(avg_var) else "--")
-            ui_dict['lbl_var'].setStyleSheet(
-                f"color: {'#FF5252' if avg_var < 0 else '#4CAF50'}; font-size: 16px; font-weight: bold;")
+            var_color = '#FF5252' if avg_var < 0 else '#4CAF50'
+            ui_dict['lbl_var'].setStyleSheet(f"color: {var_color};")
 
-        if 'QUEUE_DAYS' in df.columns:
-            q_series = df['QUEUE_DAYS'].apply(self.parse_variance).dropna()
-            avg_q = q_series.mean() if not q_series.empty else np.nan
-            ui_dict['lbl_queue'].setText(f"{avg_q:.1f} d" if not pd.isna(avg_q) else "--")
-            ui_dict['lbl_queue'].setStyleSheet("color: #FFFFFF; font-size: 16px; font-weight: bold;")
-
-        if 'PROCESS_DAYS' in df.columns:
-            p_series = df['PROCESS_DAYS'].apply(self.parse_variance).dropna()
-            avg_p = p_series.mean() if not p_series.empty else np.nan
-            ui_dict['lbl_proc'].setText(f"{avg_p:.1f} d" if not pd.isna(avg_p) else "--")
-            ui_dict['lbl_proc'].setStyleSheet("color: #FFFFFF; font-size: 16px; font-weight: bold;")
+        ui_dict['lbl_queue'].setText(f"{kpis['avg_queue']:.1f} d" if not pd.isna(kpis['avg_queue']) else "--")
+        ui_dict['lbl_proc'].setText(f"{kpis['avg_proc']:.1f} d" if not pd.isna(kpis['avg_proc']) else "--")
 
         self.render_donut_chart(ui_dict['chart'], df, ui_dict['chart_view'])
 
-    def handle_pie_hover(self, state, slice_item, chart_view, eng_name, df):
+    def handle_pie_hover(self, state: bool, slice_item: Any, chart_view: QChartView, eng_name: str, df: pd.DataFrame) -> None:
         if state:
             eng_df = df[df['ASSIGNED TO'] == eng_name]
-            if eng_df.empty: return
+            if eng_df.empty:
+                return
 
             tooltip_html = f"<b>{eng_name.upper()} | Active Queue</b><hr/>"
 
@@ -341,8 +358,7 @@ class DashboardWidget(QWidget):
                 req_short = req[:4] if req else "Unk"
 
                 sell = str(row.get('SELL $', ''))
-                sell_str = f" | <span style='color: #4CAF50;'>${sell}</span>" if sell and sell.strip().lower() not in [
-                    "", "nan", "0", "0.0"] else ""
+                sell_str = f" | <span style='color: #4CAF50;'>${sell}</span>" if sell and sell.strip().lower() not in ["", "nan", "0", "0.0"] else ""
 
                 tooltip_html += f"• <span style='color: #AAAAAA;'>{quote} ({req_short})</span> - {proj}{sell_str}<br/>"
 
@@ -355,50 +371,48 @@ class DashboardWidget(QWidget):
         else:
             QToolTip.hideText()
 
-    def render_donut_chart(self, chart, df, chart_view):
+    def render_donut_chart(self, chart: QChart, df: pd.DataFrame, chart_view: QChartView) -> None:
         chart.removeAllSeries()
         pie = QPieSeries()
         pie.setHoleSize(0.4)
 
-        if df.empty:
+        # Delegate Distribution Math to Service
+        distribution = DashboardService.get_donut_distribution(df)
+
+        if not distribution:
             chart.addSeries(pie)
             return
 
-        engineers = df['ASSIGNED TO'].unique()
+        for eng_name, lines in distribution.items():
+            slc = pie.append(f"{eng_name}\n({lines})", lines)
+            slc.setLabelVisible(True)
+            slc.setLabelColor(QColor("#FFFFFF"))
 
-        for eng in engineers:
-            eng_name = str(eng).strip().upper()
-            if not eng_name: continue
+            c = self.get_dynamic_color(eng_name)
+            slc.setBrush(QColor(c))
+            slc.setPen(QPen(QColor("#1E1E20"), 2))
 
-            lines = df[df['ASSIGNED TO'] == eng]['LINE_COUNT'].sum()
-            if lines > 0:
-                slc = pie.append(f"{eng_name}\n({int(lines)})", lines)
-                slc.setLabelVisible(True)
-                slc.setLabelColor(QColor("#FFFFFF"))
-
-                c = self.get_dynamic_color(eng_name)
-
-                slc.setBrush(QColor(c))
-                slc.setPen(QPen(QColor("#1E1E20"), 2))
-
-                slc.hovered.connect(
-                    lambda state, item=slc, e_name=eng, data=df: self.handle_pie_hover(state, item, chart_view, e_name,
-                                                                                       data))
+            slc.hovered.connect(
+                lambda state, item=slc, e_name=eng_name, data=df:
+                self.handle_pie_hover(state, item, chart_view, e_name, data)
+            )
 
         chart.addSeries(pie)
 
-    def handle_bar_hover(self, status, index, req, weeks, df, is_forecast):
+    def handle_bar_hover(self, status: bool, index: int, req: str, weeks: List[str], df: pd.DataFrame, is_forecast: bool) -> None:
         hover_id = f"{req}_{index}_{is_forecast}"
         if status:
-            if self._current_hover == hover_id: return
+            if self._current_hover == hover_id:
+                return
             self._current_hover = hover_id
+
             try:
                 wk = weeks[index]
-                mask = (df['REQUIREMENT'].replace('', 'Uncategorized') == req) & (df['YearWeek'] == wk) & (
-                        df['IS_FORECAST'] == is_forecast)
+                mask = (df['REQUIREMENT'].replace('', 'Uncategorized') == req) & (df['YearWeek'] == wk) & (df['IS_FORECAST'] == is_forecast)
                 bar_df = df[mask]
 
-                if bar_df.empty: return
+                if bar_df.empty:
+                    return
 
                 prefix = "🔮 Forecast" if is_forecast else "✅ Actual"
                 tooltip_html = f"<b>{prefix} | {req} | {self.get_relative_week_label(wk)}</b><hr/>"
@@ -407,22 +421,23 @@ class DashboardWidget(QWidget):
                     proj = str(row.get('PROJECT NAME', 'Unknown'))[:20]
                     quote = str(row.get('QUOTE NO', '--'))
                     var = row.get('VAR_DAYS', 0)
+
                     color = "#FF5252" if var < 0 else "#4CAF50"
                     tooltip_html += f"• <span style='color: #AAAAAA;'>{quote}</span> - {proj}: <b style='color: {color};'>{var:+.1f}d</b><br/>"
 
-                if len(bar_df) > 15: tooltip_html += f"<br/><i>...and {len(bar_df) - 15} more.</i>"
+                if len(bar_df) > 15:
+                    tooltip_html += f"<br/><i>...and {len(bar_df) - 15} more.</i>"
 
                 pos = QCursor.pos()
                 offset_pos = QPoint(pos.x() + 15, pos.y() + 15)
-                QToolTip.showText(offset_pos, tooltip_html, self.hist_ui['chart_view'],
-                                  self.hist_ui['chart_view'].rect(), 30000)
+                QToolTip.showText(offset_pos, tooltip_html, self.hist_ui['chart_view'], self.hist_ui['chart_view'].rect(), 30000)
             except Exception:
                 pass
         else:
             self._current_hover = None
             QToolTip.hideText()
 
-    def get_relative_week_label(self, year_week_str):
+    def get_relative_week_label(self, year_week_str: str) -> str:
         try:
             target_year, target_week = map(int, year_week_str.split('-'))
             today = pd.Timestamp.today()
@@ -435,10 +450,10 @@ class DashboardWidget(QWidget):
                 return f"+{diff} Wk"
             else:
                 return f"{diff} Wk"
-        except:
+        except Exception:
             return year_week_str
 
-    def get_req_color(self, req_name):
+    def get_req_color(self, req_name: str) -> str:
         req_upper = str(req_name).upper()
         if 'PROD' in req_upper: return "#4CAF50"
         if 'SUPPORT' in req_upper or 'DOC' in req_upper: return "#F44336"
@@ -447,58 +462,41 @@ class DashboardWidget(QWidget):
         if 'SUB' in req_upper: return "#9C27B0"
         return self.get_dynamic_color(req_upper)
 
-    def render_hist_card(self):
-        if not hasattr(self, 'comp_df') or not hasattr(self, 'active_df'): return
-
-        h_df = self.comp_df.copy()
-        h_df['TARGET_DATE'] = pd.to_datetime(h_df['COMPLETE DATE'], errors='coerce')
-        h_df['VAR_DAYS'] = h_df['COMPLETION VARIANCE'].apply(self.parse_variance).fillna(0)
-        h_df['IS_FORECAST'] = False
-
-        f_df = self.active_df.copy()
-        f_df['TARGET_DATE'] = pd.to_datetime(f_df['EST END DATE'], errors='coerce')
-        f_df['VAR_DAYS'] = f_df['EST ENG VARIANCE'].apply(self.parse_variance).fillna(0)
-        f_df['IS_FORECAST'] = True
-
-        df = pd.concat([h_df, f_df], ignore_index=True)
-        df = df.dropna(subset=['TARGET_DATE'])
-
-        # ---> FIXED CASE SENSITIVITY HERE <---
-        current_team = self.filter_team.currentText()
-        if current_team != "All Teams":
-            df['CALC_TEAM'] = df.apply(self._get_team_for_row, axis=1)
-            df = df[df['CALC_TEAM'] == current_team.strip().upper()].copy()
-            df = df.drop(columns=['CALC_TEAM'])
-
-        req = self.hist_ui['req_filter'].currentText()
-        if req != "All Reqs": df = df[df['REQUIREMENT'].replace('', 'Uncategorized') == req]
+    def render_hist_card(self) -> None:
+        if not hasattr(self, 'comp_df') or not hasattr(self, 'active_df'):
+            return
 
         range_sel = self.hist_ui['date_filter'].currentText()
         today = pd.Timestamp.today().normalize()
 
-        if range_sel == "Last 30 Days":
-            start_date = today - pd.Timedelta(days=30)
-        elif range_sel == "Last 90 Days":
-            start_date = today - pd.Timedelta(days=90)
-        elif range_sel == "Year to Date":
-            start_date = pd.Timestamp(year=today.year, month=1, day=1)
-        else:
-            start_date = pd.Timestamp.min
+        if range_sel == "Last 30 Days": start_date = today - pd.Timedelta(days=30)
+        elif range_sel == "Last 90 Days": start_date = today - pd.Timedelta(days=90)
+        elif range_sel == "Year to Date": start_date = pd.Timestamp(year=today.year, month=1, day=1)
+        else: start_date = pd.Timestamp.min
 
-        df = df[(df['TARGET_DATE'] >= start_date) | (df['IS_FORECAST'] == True)].copy()
+        # Delegate dataframe merging and timeline prep to Service
+        weeks, reqs, df = DashboardService.prepare_timeline_data(self.comp_df, self.active_df, start_date)
+
+        current_team = self.filter_team.currentText()
+        if current_team != "All Teams" and not df.empty:
+            df['CALC_TEAM'] = df.apply(self._get_team_for_row, axis=1)
+            df = df[df['CALC_TEAM'] == current_team.strip().upper()].copy()
+
+        req = self.hist_ui['req_filter'].currentText()
+        if req != "All Reqs" and not df.empty:
+            df = df[df['REQUIREMENT'].replace('', 'Uncategorized') == req]
+            # Override reqs for drawing purely this requirement
+            reqs = [req]
 
         chart = self.hist_ui['chart']
         chart.removeAllSeries()
-        for axis in chart.axes(): chart.removeAxis(axis)
+        for axis in chart.axes():
+            chart.removeAxis(axis)
 
         self._chart_refs = []
 
-        if df.empty: return
-
-        df['YearWeek'] = df['TARGET_DATE'].dt.strftime('%G-%V')
-
-        weeks = sorted(df['YearWeek'].unique().tolist())
-        reqs = df['REQUIREMENT'].replace('', 'Uncategorized').unique().tolist()
+        if df.empty or not weeks:
+            return
 
         bar_series = QBarSeries()
         bar_series.setBarWidth(0.9)
@@ -527,9 +525,11 @@ class DashboardWidget(QWidget):
                 max_y = max(max_y, act_sum, for_sum)
 
             actual_set.hovered.connect(
-                lambda status, index, req_type=r: self.handle_bar_hover(status, index, req_type, weeks, df, False))
+                lambda status, index, req_type=r: self.handle_bar_hover(status, index, req_type, weeks, df, False)
+            )
             forecast_set.hovered.connect(
-                lambda status, index, req_type=r: self.handle_bar_hover(status, index, req_type, weeks, df, True))
+                lambda status, index, req_type=r: self.handle_bar_hover(status, index, req_type, weeks, df, True)
+            )
 
             bar_series.append(actual_set)
             bar_series.append(forecast_set)
@@ -559,6 +559,7 @@ class DashboardWidget(QWidget):
         axisX_line.setVisible(False)
         chart.addAxis(axisX_line, Qt.AlignBottom)
 
+        # Highlight the "Future" zone starting from the Current Week
         curr_idx = next((i for i, c in enumerate(categories) if "+" in c or "Current" in c), None)
         if curr_idx is not None:
             future_upper = QLineSeries()
@@ -586,6 +587,7 @@ class DashboardWidget(QWidget):
             future_area.attachAxis(axisX_line)
             future_area.attachAxis(axisY)
 
+        # Draw the target Zero line across the chart
         zero_line = QLineSeries()
         zero_line.setName("Target")
         zero_line.append(-0.5, 0)
