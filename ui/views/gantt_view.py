@@ -1,3 +1,14 @@
+"""
+gantt_view.py
+
+Provides the Interactive Gantt Chart interface. This view coordinates the
+left-hand information table, the scrollable interactive Gantt canvas, and
+the dynamic KPI Job Inspector panel.
+
+Phase 3 Updates:
+- Added 'filter_team' QComboBox to the header layout to allow filtering the Gantt chart by Team.
+"""
+
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
                                QComboBox, QSplitter, QTableWidget, QAbstractItemView,
                                QGraphicsView, QGraphicsScene, QFormLayout, QLineEdit)
@@ -65,6 +76,10 @@ class GanttScreenWidget(QWidget):
         filter_lbl.setStyleSheet("color: #AAAAAA; font-weight: bold; margin-right: 5px;")
         gantt_header_layout.addWidget(filter_lbl)
 
+        # NEW: Team Filter Dropdown
+        self.filter_team = QComboBox()
+        self.filter_team.addItem("All Teams")
+
         # REMOVED HARDCODED REQS - Now it only holds the default
         self.filter_req = QComboBox()
         self.filter_req.addItem("All Reqs")
@@ -74,6 +89,7 @@ class GanttScreenWidget(QWidget):
         self.filter_status.addItems(["All Status", "Active", "Complete"])
         self.filter_status.setCurrentText("Active")
 
+        gantt_header_layout.addWidget(self.filter_team)
         gantt_header_layout.addWidget(self.filter_req)
         gantt_header_layout.addWidget(self.filter_status)
         gantt_main_layout.addLayout(gantt_header_layout)

@@ -3,6 +3,9 @@ dashboard.py
 
 Contains the DashboardWidget which displays high-level KPIs,
 queue times, and active engineer workloads using QtCharts.
+
+Phase 3 Updates:
+- Fixed case sensitivity bug in the Team Filter logic (.upper()).
 """
 
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout,
@@ -14,14 +17,12 @@ from PySide6.QtGui import QPainter, QColor, QPen, QFont, QCursor
 import pandas as pd
 import numpy as np
 
-# Updated import path to point to the new components folder!
-from ui.components.custom_widgets import CheckableComboBox
-
 
 class DashboardWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.master_df = pd.DataFrame()
+        self.team_map = {} # Will hold the engineer-to-team mappings
         self._current_hover = None
         self._chart_refs = []
 
@@ -38,15 +39,16 @@ class DashboardWidget(QWidget):
         header_layout.addWidget(header)
         header_layout.addStretch()
 
-        filter_lbl = QLabel("Global Type Filter:")
+        filter_lbl = QLabel("Team Filter:")
         filter_lbl.setStyleSheet("color: #AAAAAA; font-weight: bold; font-size: 12px;")
         header_layout.addWidget(filter_lbl)
 
-        # Using our custom widget
-        self.global_type_filter = CheckableComboBox()
-        self.global_type_filter.setMinimumWidth(150)
-        self.global_type_filter.selection_changed.connect(self.render_all)
-        header_layout.addWidget(self.global_type_filter)
+        # ---> THE TEAM FILTER <---
+        self.filter_team = QComboBox()
+        self.filter_team.setMinimumWidth(150)
+        self.filter_team.addItem("All Teams")
+        self.filter_team.currentTextChanged.connect(self.render_all)
+        header_layout.addWidget(self.filter_team)
 
         main_layout.addLayout(header_layout)
 
@@ -77,6 +79,11 @@ class DashboardWidget(QWidget):
         name = str(name).strip().upper()
         if not name or name == "UNASSIGNED": return "#888888"
 
+        # Check the app-wide color map first!
+        if hasattr(self, 'color_map') and name in self.color_map:
+            return self.color_map[name]
+
+        # Fallback to random dynamic color if not configured
         if name not in self.dynamic_color_map:
             color_idx = len(self.dynamic_color_map) % len(self.palette)
             self.dynamic_color_map[name] = self.palette[color_idx]
@@ -227,26 +234,6 @@ class DashboardWidget(QWidget):
         if 'LINE_COUNT' not in self.master_df.columns:
             self.master_df['LINE_COUNT'] = 1
 
-        current_types = self.global_type_filter.get_checked_items()
-        is_first_load = self.global_type_filter.model.rowCount() == 0
-
-        unique_types = sorted(
-            [str(x) for x in self.master_df['TYPE'].replace('', 'Unknown').unique() if str(x).strip()])
-        default_types = ["MOD", "CUS", "PART-MC"]
-
-        self.global_type_filter.blockSignals(True)
-        self.global_type_filter.model.clear()
-
-        for t in unique_types:
-            if is_first_load:
-                is_checked = t in default_types
-            else:
-                is_checked = t in current_types
-            self.global_type_filter.add_item(t, is_checked)
-
-        self.global_type_filter.update_text()
-        self.global_type_filter.blockSignals(False)
-
         self.active_df = self.master_df[self.master_df['STATUS'].str.strip().str.upper() != 'COMPLETE'].copy()
         self.comp_df = self.master_df[self.master_df['STATUS'].str.strip().str.upper() == 'COMPLETE'].copy()
 
@@ -277,6 +264,18 @@ class DashboardWidget(QWidget):
             combo.setCurrentText(current)
         combo.blockSignals(False)
 
+    def _get_team_for_row(self, row):
+        """Helper to match a row to a Team (mirrors Controller logic)"""
+        name = str(row.get('ASSIGNED TO', '')).strip().upper()
+        if name and name not in ['UNASSIGNED', 'NAN', '']:
+            return self.team_map.get(name, "UNASSIGNED")
+
+        line_type = str(row.get('TYPE', '')).strip().upper()
+        if line_type in ['STD', 'STD-M', 'PART']: return "STANDARD TEAM"
+        elif line_type in ['MOD', 'CUS', 'PART-MC']: return "CUSTOM TEAM"
+
+        return "UNASSIGNED"
+
     def render_all(self):
         self.render_prod_card()
         self.render_quote_card()
@@ -291,11 +290,12 @@ class DashboardWidget(QWidget):
             self._apply_active_card_logic(self.quote_base.copy(), self.quote_ui)
 
     def _apply_active_card_logic(self, df, ui_dict):
-        checked_types = self.global_type_filter.get_checked_items()
-        if checked_types:
-            df = df[df['TYPE'].replace('', 'Unknown').isin(checked_types)]
-        else:
-            df = df.iloc[0:0]
+        # ---> FIXED CASE SENSITIVITY HERE <---
+        current_team = self.filter_team.currentText()
+        if current_team != "All Teams":
+            df['CALC_TEAM'] = df.apply(self._get_team_for_row, axis=1)
+            df = df[df['CALC_TEAM'] == current_team.strip().upper()].copy()
+            df = df.drop(columns=['CALC_TEAM'])
 
         if ui_dict['req_filter']:
             req = ui_dict['req_filter'].currentText()
@@ -463,11 +463,12 @@ class DashboardWidget(QWidget):
         df = pd.concat([h_df, f_df], ignore_index=True)
         df = df.dropna(subset=['TARGET_DATE'])
 
-        checked_types = self.global_type_filter.get_checked_items()
-        if checked_types:
-            df = df[df['TYPE'].replace('', 'Unknown').isin(checked_types)]
-        else:
-            df = df.iloc[0:0]
+        # ---> FIXED CASE SENSITIVITY HERE <---
+        current_team = self.filter_team.currentText()
+        if current_team != "All Teams":
+            df['CALC_TEAM'] = df.apply(self._get_team_for_row, axis=1)
+            df = df[df['CALC_TEAM'] == current_team.strip().upper()].copy()
+            df = df.drop(columns=['CALC_TEAM'])
 
         req = self.hist_ui['req_filter'].currentText()
         if req != "All Reqs": df = df[df['REQUIREMENT'].replace('', 'Uncategorized') == req]

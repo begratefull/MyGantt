@@ -4,6 +4,10 @@ controller.py
 The central nervous system of the MyGantt application.
 Responsible for bridging the UI views with the underlying data model,
 handling background data refresh threads, and managing user interactions.
+
+Phase 3 Updates:
+- Set app-wide default to "Custom Team" on startup.
+- Fixed Dashboard team filter signal connection.
 """
 
 import json
@@ -36,10 +40,11 @@ class SyncWorker(QThread):
 class DataRefreshWorker(QThread):
     data_ready = Signal(object, object, object)
 
-    def __init__(self, model, staged_edits, req_filter, status_filter, maintain_ids):
+    def __init__(self, model, staged_edits, team_filter, req_filter, status_filter, maintain_ids):
         super().__init__()
         self.model = model
         self.staged_edits = staged_edits
+        self.team_filter = team_filter
         self.req_filter = req_filter
         self.status_filter = status_filter
         self.maintain_ids = maintain_ids
@@ -53,11 +58,33 @@ class DataRefreshWorker(QThread):
                 self.data_ready.emit(raw_df, plan_df, plan_df)
                 return
 
+            # Dashboard gets the full payload to do its own local filtering
             full_dashboard_df = plan_df.copy()
 
-            prod_mask = plan_df['REQUIREMENT'].str.contains('PROD', case=False, na=False)
-            type_mask = plan_df['TYPE'].str.strip().str.upper().isin(['MOD', 'CUS', 'PART-MC'])
-            plan_df = plan_df[prod_mask & type_mask].copy()
+            # --- DYNAMIC TEAM & UNASSIGNED FILTERING FOR GANTT ---
+            if self.team_filter != "All Teams":
+                eng_df = self.model.db.get_engineers_df()
+                team_map = {}
+                if not eng_df.empty:
+                    team_map = {str(k).strip().upper(): str(v).strip().upper()
+                                for k, v in zip(eng_df['name'], eng_df['team_name'])}
+
+                def get_team(row):
+                    name = str(row.get('ASSIGNED TO', '')).strip().upper()
+                    if name and name not in ['UNASSIGNED', 'NAN', '']:
+                        return team_map.get(name, "UNASSIGNED")
+
+                    line_type = str(row.get('TYPE', '')).strip().upper()
+                    if line_type in ['STD', 'STD-M', 'PART']:
+                        return "STANDARD TEAM"
+                    elif line_type in ['MOD', 'CUS', 'PART-MC']:
+                        return "CUSTOM TEAM"
+
+                    return "UNASSIGNED"
+
+                plan_df['CALC_TEAM'] = plan_df.apply(get_team, axis=1)
+                plan_df = plan_df[plan_df['CALC_TEAM'] == self.team_filter.strip().upper()].copy()
+                plan_df = plan_df.drop(columns=['CALC_TEAM'])
 
             if self.req_filter != "All Reqs":
                 plan_df = plan_df[plan_df['REQUIREMENT'].str.contains(self.req_filter, case=False, na=False)]
@@ -110,14 +137,33 @@ class AppController:
 
         self.setup_shortcuts()
 
-        # Connect the team screen signals
         self.view.team_screen.save_engineer_requested.connect(self.handle_save_engineer)
+        self.view.team_screen.engineer_selected.connect(self.handle_engineer_selected)
         self.refresh_team_view()
 
+        # ---> INJECT DEFAULT TEAM SELECTION ON APP OPEN <---
+        if hasattr(self.view, 'dash_screen'):
+            if self.view.dash_screen.filter_team.findText("Custom Team") == -1:
+                self.view.dash_screen.filter_team.addItem("Custom Team")
+            self.view.dash_screen.filter_team.setCurrentText("Custom Team")
+
+        if hasattr(self.view, 'filter_team'):
+            if self.view.filter_team.findText("Custom Team") == -1:
+                self.view.filter_team.addItem("Custom Team")
+            self.view.filter_team.setCurrentText("Custom Team")
+
+        # Now trigger the very first data load
         self.refresh_tables()
 
         if hasattr(self.view, 'nav_sync_btn'):
             self.view.nav_sync_btn.clicked.connect(self.handle_sync)
+
+        # Connect Dash & Gantt Team Filters so the UI updates when you switch teams
+        if hasattr(self.view, 'dash_screen'):
+            self.view.dash_screen.filter_team.currentTextChanged.connect(lambda text: self.refresh_tables(maintain_state=False))
+
+        if hasattr(self.view, 'filter_team'):
+            self.view.filter_team.currentTextChanged.connect(lambda text: self.refresh_tables(maintain_state=False))
 
         self.view.filter_req.currentTextChanged.connect(lambda text: self.refresh_tables(maintain_state=False))
         self.view.filter_status.currentTextChanged.connect(lambda text: self.refresh_tables(maintain_state=False))
@@ -182,6 +228,7 @@ class AppController:
         self.selected_id_to_restore = self.view.inp_smart_id.text() if maintain_state and not self.view.kpi_panel.isHidden() else None
         self.is_maintaining_state = maintain_state
 
+        team_filter = self.view.filter_team.currentText() if hasattr(self.view, 'filter_team') else "All Teams"
         req_filter = self.view.filter_req.currentText()
         status_filter = self.view.filter_status.currentText()
         staged_edits = self.history.get_staged_edits()
@@ -191,13 +238,53 @@ class AppController:
         if self.refresh_worker and self.refresh_worker.isRunning():
             self.refresh_worker.data_ready.disconnect()
 
-        self.refresh_worker = DataRefreshWorker(self.model, staged_edits, req_filter, status_filter, maintain_ids)
+        self.refresh_worker = DataRefreshWorker(self.model, staged_edits, team_filter, req_filter, status_filter, maintain_ids)
         self.refresh_worker.data_ready.connect(self.on_data_refreshed)
         self.refresh_worker.start()
 
     def update_dynamic_dropdowns(self, df):
         if df.empty: return
 
+        # 1. Update Team Dropdowns (Gantt & Dashboard)
+        eng_df = self.model.db.get_engineers_df()
+        unique_teams = ["All Teams"]
+        team_map = {}
+        color_map = {}
+        if not eng_df.empty:
+            unique_teams += sorted([str(x) for x in eng_df['team_name'].unique() if str(x).strip()])
+            team_map = {str(k).strip().upper(): str(v).strip().upper() for k, v in zip(eng_df['name'], eng_df['team_name'])}
+            color_map = {str(k).strip().upper(): str(v).strip().upper() for k, v in zip(eng_df['name'], eng_df['hex_color'])}
+
+        # Pass data to Dashboard
+        if hasattr(self.view, 'dash_screen'):
+            self.view.dash_screen.team_map = team_map
+            self.view.dash_screen.color_map = color_map
+            dash_combo = self.view.dash_screen.filter_team
+            current_dash_team = dash_combo.currentText()
+
+            dash_combo.blockSignals(True)
+            dash_combo.clear()
+            dash_combo.addItems(unique_teams)
+            # Maintain selection, fallback gracefully
+            if current_dash_team in unique_teams:
+                dash_combo.setCurrentText(current_dash_team)
+            elif "Custom Team" in unique_teams:
+                dash_combo.setCurrentText("Custom Team")
+            dash_combo.blockSignals(False)
+
+        # Update Gantt Filter
+        if hasattr(self.view, 'filter_team'):
+            current_team = self.view.filter_team.currentText()
+            self.view.filter_team.blockSignals(True)
+            self.view.filter_team.clear()
+            self.view.filter_team.addItems(unique_teams)
+            if current_team in unique_teams:
+                self.view.filter_team.setCurrentText(current_team)
+            elif "Custom Team" in unique_teams:
+                self.view.filter_team.setCurrentText("Custom Team")
+            self.view.filter_team.blockSignals(False)
+
+        # 2. Update Requirements Dropdown
         current_req = self.view.filter_req.currentText()
         unique_reqs = ["All Reqs"] + sorted([str(x) for x in df['REQUIREMENT'].replace('', 'Uncategorized').unique() if
                                              str(x).strip() and str(x).strip() != 'Uncategorized'])
@@ -207,6 +294,7 @@ class AppController:
         if current_req in unique_reqs: self.view.filter_req.setCurrentText(current_req)
         self.view.filter_req.blockSignals(False)
 
+        # 3. Update KPI Assignee Dropdown
         current_assignee = self.view.inp_assignee.currentText()
         unique_assignees = ["Unassigned"] + sorted([str(x) for x in df['ASSIGNED TO'].unique() if str(x).strip()])
         self.view.inp_assignee.blockSignals(True)
@@ -227,6 +315,12 @@ class AppController:
     def build_visual_hierarchy(self, df):
         visual_rows = []
         if df.empty: return visual_rows
+
+        # --- Grab Database Colors for Gantt Blocks ---
+        eng_df = self.model.db.get_engineers_df()
+        color_map = {}
+        if not eng_df.empty:
+            color_map = {str(k).strip().upper(): str(v).strip().upper() for k, v in zip(eng_df['name'], eng_df['hex_color'])}
 
         grouped = df.groupby('PROJECT_ID', sort=False)
 
@@ -250,6 +344,11 @@ class AppController:
 
             assignees = [str(x).strip().upper() for x in group['ASSIGNED TO'].unique() if str(x).strip().upper() not in ('', 'UNASSIGNED')]
             parent_assignee = assignees[0] if len(assignees) == 1 else "MULTIPLE" if len(assignees) > 1 else "UNASSIGNED"
+
+            # Determine Parent Block Color
+            parent_color = color_map.get(parent_assignee, "#007ACC") # Default Blue
+            if parent_assignee == "MULTIPLE": parent_color = "#888888" # Grey
+            if parent_assignee == "UNASSIGNED": parent_color = "#555555" # Dark Grey
 
             reqs = group['REQUIREMENT'].unique()
             raw_req = reqs[0] if len(reqs) == 1 else "Multiple"
@@ -277,6 +376,7 @@ class AppController:
                 'PROJECT NAME': f"{first_row.get('PROJECT NAME', '')} ({len(group)})",
                 'STATUS': parent_status,
                 'ASSIGNED TO': parent_assignee,
+                'HEX_COLOR': parent_color,
                 'EST START DATE': min_start.strftime('%m/%d/%Y') if pd.notna(min_start) else "",
                 'EST END DATE': max_end.strftime('%m/%d/%Y') if pd.notna(max_end) else "",
                 'EST DAYS': str(parent_days),
@@ -292,6 +392,11 @@ class AppController:
                     child_row = row.to_dict()
                     child_row['IS_PARENT'] = False
                     child_row['REQUIREMENT'] = self.clean_requirement_text(child_row.get('REQUIREMENT', ''))
+
+                    child_assignee = str(child_row.get('ASSIGNED TO', '')).strip().upper()
+                    child_color = color_map.get(child_assignee, "#007ACC") if child_assignee not in ["", "UNASSIGNED", "NAN"] else "#555555"
+                    child_row['HEX_COLOR'] = child_color
+
                     visual_rows.append(child_row)
 
         return visual_rows
@@ -511,12 +616,17 @@ class AppController:
         else:
             self.history.stage_edit(target_id, {'MAN_ASSIGNED': new_assignee})
 
+        eng_df = self.model.db.get_engineers_df()
+        color_map = {str(k).strip().upper(): str(v).strip().upper() for k, v in zip(eng_df['name'], eng_df['hex_color'])} if not eng_df.empty else {}
+        new_color = color_map.get(str(new_assignee).strip().upper(), "#007ACC") if str(new_assignee).strip().upper() not in ["", "UNASSIGNED"] else "#555555"
+
         for item in self.view.gantt_scene.items():
             if isinstance(item, GanttBlock):
                 is_match = (item.data.get('SMART_ID') == target_id) or \
                            (self.is_target_parent(target_id) and item.data.get('PROJECT_ID') == target_id)
                 if is_match:
                     item.data['ASSIGNED TO'] = new_assignee
+                    item.data['HEX_COLOR'] = new_color
                     item.refresh_visuals()
 
         if self.view.inp_smart_id.text() == target_id or (self.is_target_parent(target_id) and self.view.kpi_order.text() == target_id):
@@ -599,6 +709,10 @@ class AppController:
 
         new_width = float(est_days_str) * self.day_width if est_days_str.isdigit() else self.day_width
 
+        eng_df = self.model.db.get_engineers_df()
+        color_map = {str(k).strip().upper(): str(v).strip().upper() for k, v in zip(eng_df['name'], eng_df['hex_color'])} if not eng_df.empty else {}
+        new_color = color_map.get(str(assignee).strip().upper(), "#007ACC") if str(assignee).strip().upper() not in ["", "UNASSIGNED"] else "#555555"
+
         updated_kpi = False
         for item in self.view.gantt_scene.items():
             if isinstance(item, GanttBlock):
@@ -607,6 +721,7 @@ class AppController:
                 if is_match:
                     item.data['ASSIGNED TO'] = assignee
                     item.data['EST DAYS'] = est_days_str
+                    item.data['HEX_COLOR'] = new_color
                     item.prepareGeometryChange()
                     item.rect.setWidth(new_width)
                     item.refresh_visuals()
@@ -749,3 +864,67 @@ class AppController:
             self.view.show_status(f"Saved configuration for {name}.", 3000)
 
         self.refresh_team_view()
+
+    def handle_engineer_selected(self, engineer_name):
+        """
+        Calculates KPIs (Active Lines, Avg Est Days) and extracts Fixture Families
+        for the selected engineer, then updates the Analytics Dashboard.
+        """
+        if self.current_plan_df.empty:
+            return
+
+        # 1. Filter our plan for this specific engineer
+        eng_mask = self.current_plan_df['ASSIGNED TO'].str.strip().str.upper() == engineer_name.strip().upper()
+        eng_df = self.current_plan_df[eng_mask]
+
+        if eng_df.empty:
+            self.view.team_screen.update_analytics(engineer_name, 0, 0.0, {})
+            return
+
+        # 2. Calculate Active Lines
+        active_mask = eng_df['STATUS'].str.strip().str.upper() != 'COMPLETE'
+        active_df = eng_df[active_mask]
+        active_lines = int(active_mask.sum())
+
+        # 3. Calculate Average Estimated Days
+        avg_days = 0.0
+        if not active_df.empty and 'EST DAYS' in active_df.columns:
+            days_numeric = pd.to_numeric(active_df['EST DAYS'], errors='coerce')
+            avg_days = float(days_numeric.mean())
+            if pd.isna(avg_days):
+                avg_days = 0.0
+
+        # 4. Extract Fixture Families (Fallback to REQUIREMENT if no FAMILY/CATALOG CODE column)
+        family_counts = {}
+        if not active_df.empty:
+            target_col = None
+            for col in ['FAMILY', 'CATALOG CODE', 'CATALOG', 'REQUIREMENT']:
+                if col in active_df.columns:
+                    target_col = col
+                    break
+
+            if target_col:
+                counts = active_df[target_col].value_counts()
+                for family, count in counts.head(7).items():
+                    family_str = str(family).strip()
+                    if not family_str or family_str.lower() == 'nan':
+                        family_str = "Uncategorized"
+
+                    family_counts[family_str] = family_counts.get(family_str, 0) + int(count)
+
+        # 5. Grab the Engineer's specific hex color from the Database to color the chart
+        eng_db_df = self.model.db.get_engineers_df()
+        primary_color = "#007ACC"
+        if not eng_db_df.empty:
+            color_match = eng_db_df[eng_db_df['name'].str.upper() == engineer_name.upper()]
+            if not color_match.empty:
+                primary_color = color_match.iloc[0].get('hex_color', '#007ACC')
+
+        # 6. Push it to the View
+        self.view.team_screen.update_analytics(
+            engineer_name=engineer_name,
+            active_lines=active_lines,
+            avg_days=avg_days,
+            family_counts=family_counts,
+            primary_color=primary_color
+        )

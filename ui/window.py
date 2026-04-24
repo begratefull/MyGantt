@@ -4,6 +4,9 @@ window.py
 The main QMainWindow for the MyGantt application.
 Responsible for assembling the layout, sidebar navigation,
 and linking the Controller to the UI components.
+
+Phase 3 Updates:
+- Exposed filter_team to the controller facade so it can be dynamically populated.
 """
 
 import os
@@ -105,6 +108,9 @@ class MyGanttWindow(QMainWindow):
         # CONTROLLER FACADE
         # ==========================================
         self.raw_table = self.data_screen.raw_table
+
+        # ---> THE FIX: Exposing the new dropdown to the controller <---
+        self.filter_team = self.gantt_screen.filter_team
 
         self.filter_req = self.gantt_screen.filter_req
         self.filter_status = self.gantt_screen.filter_status

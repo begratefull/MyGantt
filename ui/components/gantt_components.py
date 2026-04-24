@@ -3,19 +3,16 @@ gantt_components.py
 
 Contains custom QGraphicsItems used for rendering the interactive Gantt chart.
 These components handle their own drawing, hover states, and drag/drop interactions.
+
+Phase 3 Updates:
+- Removed hardcoded TEAM_CONFIG.
+- Updated refresh_visuals() to dynamically apply the HEX_COLOR passed from the controller,
+  ensuring app-wide color synchronization.
 """
 
 from PySide6.QtWidgets import QGraphicsObject, QGraphicsItem, QMenu
 from PySide6.QtGui import QBrush, QColor, QPen, QPainter, QFontMetrics, QPolygonF
 from PySide6.QtCore import Qt, QRectF, Signal, QTimer, QPointF
-
-TEAM_CONFIG = {
-    "ADAM": "#2E7D32",
-    "DAVID": "#C62828",
-    "DAVE": "#C62828",
-    "ANDY": "#1565C0",
-    "MATT": "#EF6C00",
-}
 
 
 class DueDateMarker(QGraphicsItem):
@@ -74,15 +71,11 @@ class GanttBlock(QGraphicsObject):
         est_start = str(self.data.get('EST START DATE', '')).strip()
         est_days = str(self.data.get('EST DAYS', '')).strip()
 
-        self.base_color = QColor("#888888")
-        if assignee == "MULTIPLE":
-            self.base_color = QColor("#AAAAAA")
-        else:
-            for name, hex_color in TEAM_CONFIG.items():
-                if name in assignee:
-                    self.base_color = QColor(hex_color)
-                    break
+        # ---> THE APP-WIDE COLOR FIX <---
+        # Pull the exact hex color injected by the Controller
+        hex_color = str(self.data.get('HEX_COLOR', '#007ACC')).strip()
 
+        self.base_color = QColor(hex_color)
         self.text_color = QColor("#FFFFFF")
 
         actual_color = QColor(self.base_color)
