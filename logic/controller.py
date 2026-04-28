@@ -30,7 +30,6 @@ class AppController:
         self.model = model
         self.history = HistoryManager()
 
-        # --- REDESIGNED: Centralized Configuration & State Management ---
         self.config_file = "app_config.json"
         self.config_data = self.load_config()
         self.excel_path = self.config_data.get('excel_path', '')
@@ -55,16 +54,18 @@ class AppController:
         self.view.team_screen.engineer_selected.connect(self.handle_engineer_selected)
         self.refresh_team_view()
 
-        # Route all dropdown changes through the new preference saver
+        # --- REDESIGNED: Decoupled Filter Routing ---
+        # Dashboard filter only saves config (DashboardWidget handles its own UI updates internally)
         if hasattr(self.view, 'dash_screen'):
-            self.view.dash_screen.filter_team.currentTextChanged.connect(lambda text: self.on_filter_changed())
+            self.view.dash_screen.filter_team.currentTextChanged.connect(lambda text: self.on_dash_filter_changed())
 
+        # Gantt filters trigger a full background data refresh
         if hasattr(self.view, 'filter_team'):
-            self.view.filter_team.currentTextChanged.connect(lambda text: self.on_filter_changed())
+            self.view.filter_team.currentTextChanged.connect(lambda text: self.on_gantt_filter_changed())
 
-        self.view.filter_req.currentTextChanged.connect(lambda text: self.on_filter_changed())
-        self.view.filter_status.currentTextChanged.connect(lambda text: self.on_filter_changed())
-        self.view.gantt_screen.sort_by.currentTextChanged.connect(lambda text: self.on_filter_changed())
+        self.view.filter_req.currentTextChanged.connect(lambda text: self.on_gantt_filter_changed())
+        self.view.filter_status.currentTextChanged.connect(lambda text: self.on_gantt_filter_changed())
+        self.view.gantt_screen.sort_by.currentTextChanged.connect(lambda text: self.on_gantt_filter_changed())
 
         self.view.gantt_scene.selectionChanged.connect(self.handle_block_selection)
         self.view.info_table.itemSelectionChanged.connect(self.handle_table_selection)
@@ -105,9 +106,10 @@ class AppController:
             print(f"Failed to save config: {e}")
 
     def save_preferences(self) -> None:
-        """Reads current UI states and packages them for the config file."""
+        """Reads current UI states and packages them for the config file. Separates Dash and Gantt."""
         prefs = {
-            'team': self.view.filter_team.currentText() if hasattr(self.view, 'filter_team') else "All Teams",
+            'gantt_team': self.view.filter_team.currentText() if hasattr(self.view, 'filter_team') else "All Teams",
+            'dash_team': self.view.dash_screen.filter_team.currentText() if hasattr(self.view, 'dash_screen') else "All Teams",
             'req': self.view.filter_req.currentText() if hasattr(self.view, 'filter_req') else "All Reqs",
             'status': self.view.filter_status.currentText() if hasattr(self.view, 'filter_status') else "Active",
             'sort': self.view.gantt_screen.sort_by.currentText() if hasattr(self.view.gantt_screen, 'sort_by') else "Start Date"
@@ -115,8 +117,12 @@ class AppController:
         self.config_data['filters'] = prefs
         self.save_config()
 
-    def on_filter_changed(self) -> None:
-        """Master hook for any user filtering/sorting. Saves prefs and refreshes."""
+    def on_dash_filter_changed(self) -> None:
+        """Saves preference when Dashboard team changes, without triggering Gantt worker."""
+        self.save_preferences()
+
+    def on_gantt_filter_changed(self) -> None:
+        """Master hook for Gantt user filtering/sorting. Saves prefs and refreshes Gantt data."""
         self.save_preferences()
         self.refresh_tables(maintain_state=False)
 
@@ -133,23 +139,25 @@ class AppController:
     def inject_startup_defaults(self) -> None:
         """Injects saved settings on application launch before the first data pull."""
         prefs = self.config_data.get('filters', {})
-        team_pref = prefs.get('team', 'Custom Team')
+        gantt_team_pref = prefs.get('gantt_team', 'Custom Team')
+        dash_team_pref = prefs.get('dash_team', 'Custom Team')
+
         req_pref = prefs.get('req', 'All Reqs')
         status_pref = prefs.get('status', 'Active')
         sort_pref = prefs.get('sort', 'Start Date')
 
         if hasattr(self.view, 'dash_screen'):
             self.view.dash_screen.filter_team.blockSignals(True)
-            if self.view.dash_screen.filter_team.findText(team_pref) == -1:
-                self.view.dash_screen.filter_team.addItem(team_pref)
-            self.view.dash_screen.filter_team.setCurrentText(team_pref)
+            if self.view.dash_screen.filter_team.findText(dash_team_pref) == -1:
+                self.view.dash_screen.filter_team.addItem(dash_team_pref)
+            self.view.dash_screen.filter_team.setCurrentText(dash_team_pref)
             self.view.dash_screen.filter_team.blockSignals(False)
 
         if hasattr(self.view, 'filter_team'):
             self.view.filter_team.blockSignals(True)
-            if self.view.filter_team.findText(team_pref) == -1:
-                self.view.filter_team.addItem(team_pref)
-            self.view.filter_team.setCurrentText(team_pref)
+            if self.view.filter_team.findText(gantt_team_pref) == -1:
+                self.view.filter_team.addItem(gantt_team_pref)
+            self.view.filter_team.setCurrentText(gantt_team_pref)
             self.view.filter_team.blockSignals(False)
 
         if hasattr(self.view, 'filter_req'):
@@ -216,7 +224,7 @@ class AppController:
         self.selected_id_to_restore = self.view.inp_smart_id.text() if maintain_state and not self.view.kpi_panel.isHidden() else None
         self.is_maintaining_state = maintain_state
 
-        team_filter = self.view.filter_team.currentText() if hasattr(self.view, 'filter_team') else "All Teams"
+        gantt_team_filter = self.view.filter_team.currentText() if hasattr(self.view, 'filter_team') else "All Teams"
         req_filter = self.view.filter_req.currentText()
         status_filter = self.view.filter_status.currentText()
         sort_by = self.view.gantt_screen.sort_by.currentText()
@@ -230,7 +238,7 @@ class AppController:
 
         self._old_workers = [w for w in self._old_workers if w.isRunning()]
 
-        self.refresh_worker = DataRefreshWorker(self.model, staged_edits, team_filter, req_filter, status_filter, sort_by, maintain_ids)
+        self.refresh_worker = DataRefreshWorker(self.model, staged_edits, gantt_team_filter, req_filter, status_filter, sort_by, maintain_ids)
         self.refresh_worker.data_ready.connect(self.on_data_refreshed)
         self.refresh_worker.start()
 
@@ -260,11 +268,11 @@ class AppController:
             dash_combo.blockSignals(False)
 
         if hasattr(self.view, 'filter_team'):
-            current_team = self.view.filter_team.currentText()
+            current_gantt_team = self.view.filter_team.currentText()
             self.view.filter_team.blockSignals(True)
             self.view.filter_team.clear()
             self.view.filter_team.addItems(unique_teams)
-            if current_team in unique_teams: self.view.filter_team.setCurrentText(current_team)
+            if current_gantt_team in unique_teams: self.view.filter_team.setCurrentText(current_gantt_team)
             self.view.filter_team.blockSignals(False)
 
         current_req = self.view.filter_req.currentText()
@@ -317,6 +325,7 @@ class AppController:
         target = self.selected_id_to_restore if self.is_maintaining_state else ""
         self._rebuild_and_render_canvas(target)
 
+        # Dashboard receives the full payload and does its own filtering internally
         if hasattr(self.view, 'dash_screen'):
             self.view.dash_screen.update_dashboard(full_dashboard_df)
 
