@@ -11,11 +11,9 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     print("2. Applying theme...")
-    # Apply the global stylesheet to the entire app
     app.setStyleSheet(DARK_THEME)
 
     print("3. Initializing Model...")
-    # Initialize the three parts of our MVC architecture
     model = WorkloadManager()
 
     print("4. Initializing View (Main Window)...")
@@ -25,8 +23,7 @@ if __name__ == "__main__":
     controller = AppController(view, model)
 
     print("6. Showing window...")
-    # Show the window and run the app
-    view.show()
+    view.showMaximized()
 
     print("7. Launch successful!")
     sys.exit(app.exec())

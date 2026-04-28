@@ -1,12 +1,7 @@
 """
-window.py
-
 The main QMainWindow for the MyGantt application.
 Responsible for assembling the layout, sidebar navigation,
 and linking the Controller to the UI components.
-
-Phase 3 Updates:
-- Exposed filter_team to the controller facade so it can be dynamically populated.
 """
 
 import os
@@ -36,7 +31,6 @@ class MyGanttWindow(QMainWindow):
         main_layout.setContentsMargins(15, 15, 15, 15)
         main_layout.setSpacing(15)
 
-        # --- Sidebar Nav ---
         self.sidebar_frame = QFrame()
         self.sidebar_frame.setObjectName("sidebarFrame")
         self.sidebar_frame.setFixedWidth(70)
@@ -58,7 +52,6 @@ class MyGanttWindow(QMainWindow):
         self.nav_data_btn = QPushButton("")
         self.nav_data_btn.setIcon(QIcon(os.path.join(base_path, "resources", "data.svg")))
 
-        # Sync Button in Sidebar
         self.nav_sync_btn = QPushButton("")
         self.nav_sync_btn.setIcon(QIcon(os.path.join(base_path, "resources", "refresh.svg")))
         self.nav_sync_btn.setToolTip("Sync Workload from Excel")
@@ -68,7 +61,6 @@ class MyGanttWindow(QMainWindow):
             btn.setFixedSize(50, 50)
             btn.setIconSize(QSize(24, 24))
 
-        # Add buttons with a stretch to push Sync to the bottom
         self.sidebar_layout.addWidget(self.nav_dash_btn)
         self.sidebar_layout.addWidget(self.nav_gantt_btn)
         self.sidebar_layout.addWidget(self.nav_team_btn)
@@ -76,7 +68,6 @@ class MyGanttWindow(QMainWindow):
         self.sidebar_layout.addStretch()
         self.sidebar_layout.addWidget(self.nav_sync_btn)
 
-        # --- Main View Stack ---
         self.main_card_frame = QFrame()
         self.main_card_frame.setObjectName("mainCardFrame")
         self.card_layout = QVBoxLayout(self.main_card_frame)
@@ -90,30 +81,24 @@ class MyGanttWindow(QMainWindow):
         self.team_screen = TeamManagementWidget()
         self.data_screen = DataViewWidget()
 
-        self.stacked_widget.addWidget(self.dash_screen)  # Index 0
-        self.stacked_widget.addWidget(self.gantt_screen) # Index 1
-        self.stacked_widget.addWidget(self.team_screen)  # Index 2
-        self.stacked_widget.addWidget(self.data_screen)  # Index 3
+        self.stacked_widget.addWidget(self.dash_screen)
+        self.stacked_widget.addWidget(self.gantt_screen)
+        self.stacked_widget.addWidget(self.team_screen)
+        self.stacked_widget.addWidget(self.data_screen)
 
         self.nav_dash_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(0))
         self.nav_gantt_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(1))
         self.nav_team_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(2))
         self.nav_data_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(3))
 
-        # ---> THE MISSING LINES THAT BROKE THE WINDOW <---
         main_layout.addWidget(self.sidebar_frame)
         main_layout.addWidget(self.main_card_frame, 1)
 
-        # ==========================================
-        # CONTROLLER FACADE
-        # ==========================================
         self.raw_table = self.data_screen.raw_table
-
-        # ---> THE FIX: Exposing the new dropdown to the controller <---
         self.filter_team = self.gantt_screen.filter_team
-
         self.filter_req = self.gantt_screen.filter_req
         self.filter_status = self.gantt_screen.filter_status
+
         self.gantt_scene = self.gantt_screen.gantt_scene
         self.gantt_view = self.gantt_screen.gantt_view
         self.header_scene = self.gantt_screen.header_scene

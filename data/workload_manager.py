@@ -109,7 +109,8 @@ class WorkloadManager:
             "ASSIGNED TO", "DATE TO ENG", "ENG START DATE", "EST START DATE", "EST DAYS", "EST END DATE",
             "ESD", "ENG DUE DATE", "COMPLETE DATE",
             "EST ESD VARIANCE", "EST ENG VARIANCE", "COMPLETION VARIANCE",
-            "QUEUE_DAYS", "PROCESS_DAYS", "SELL $", "LINE_COUNT"
+            "QUEUE_DAYS", "PROCESS_DAYS", "SELL $", "LINE_COUNT",
+            "LUMINARIE SPECIFICATION", "PART NUMBER", "FAMILY", "CATALOG CODE", "CATALOG"
         ]
 
         available_cols = [c for c in planning_headers if c in df.columns]

@@ -37,13 +37,16 @@ class DataRefreshWorker(QThread):
     data_ready = Signal(object, object, object)
 
     def __init__(self, model: Any, staged_edits: Dict[str, Any], team_filter: str,
-                 req_filter: str, status_filter: str, maintain_ids: Optional[List[str]]) -> None:
+                 req_filter: str, status_filter: str, sort_by: str, maintain_ids: Optional[List[str]]) -> None:
         super().__init__()
         self.model = model
         self.staged_edits = staged_edits
         self.team_filter = team_filter
         self.req_filter = req_filter
         self.status_filter = status_filter
+
+        # --- ADDED: Capture requested sorting method ---
+        self.sort_by = sort_by
         self.maintain_ids = maintain_ids
 
     def run(self) -> None:
@@ -101,11 +104,20 @@ class DataRefreshWorker(QThread):
                 new_ids = [uid for uid in plan_df.index if uid not in current_ids]
                 plan_df = plan_df.loc[valid_ids + new_ids].reset_index()
             else:
-                plan_df['SORT_DATE'] = pd.to_datetime(plan_df['ENG START DATE'].replace('', pd.NaT)).combine_first(
-                    pd.to_datetime(plan_df['EST START DATE'].replace('', pd.NaT))).combine_first(
-                    pd.to_datetime(plan_df['ENG DUE DATE'].replace('', pd.NaT)))
 
-                plan_df = plan_df.sort_values(by=['STATUS', 'SORT_DATE'], ascending=[True, True])
+                # --- NEW: Dynamic Sorting based on UI selection ---
+                if self.sort_by == "Eng Due Date":
+                    plan_df['SORT_DATE'] = pd.to_datetime(plan_df['ENG DUE DATE'].replace('', pd.NaT))
+                elif self.sort_by == "ESD":
+                    plan_df['SORT_DATE'] = pd.to_datetime(plan_df['ESD'].replace('', pd.NaT))
+                else:
+                    # Default: "Start Date"
+                    plan_df['SORT_DATE'] = pd.to_datetime(plan_df['ENG START DATE'].replace('', pd.NaT)).combine_first(
+                        pd.to_datetime(plan_df['EST START DATE'].replace('', pd.NaT))).combine_first(
+                        pd.to_datetime(plan_df['ENG DUE DATE'].replace('', pd.NaT)))
+
+                # Secondary sorts ensure that project groupings always stay physically glued together!
+                plan_df = plan_df.sort_values(by=['STATUS', 'SORT_DATE', 'PROJECT_ID', 'SMART_ID'], ascending=[True, True, True, True])
                 plan_df = plan_df.drop(columns=['SORT_DATE'])
 
             self.data_ready.emit(raw_df, plan_df.reset_index(drop=True), full_dashboard_df)

@@ -37,19 +37,27 @@ class ExcelParser:
         quote = str(row.get('QUOTE NO', '')).strip()
         line = str(row.get('LINE ITEM', '')).strip()
 
+        # THE DATA BLEED FIX: Extract the Requirement Phase
+        req = str(row.get('REQUIREMENT', '')).strip()
+
         if order and order.upper() not in ['NAN', '']:
             base = order
         elif quote and quote.upper() not in ['NAN', '']:
             base = quote
         else:
             project = str(row.get('PROJECT NAME', '')).strip()
-            req = str(row.get('REQUIREMENT', '')).strip()
             short_hash = hashlib.md5(f"{project}-{req}".encode('utf-8')).hexdigest()[:6].upper()
             base = f"UNK-{short_hash}"
 
+        parts = [base]
         if line and line.upper() not in ['NAN', '']:
-            return f"{base}-{line}"
-        return base
+            parts.append(line)
+
+        # Append the Requirement phase to physically separate Production lines from Quotes/Approvals
+        if req:
+            parts.append(re.sub(r'\s+', '', req).upper())
+
+        return "-".join(parts)
 
     @staticmethod
     def _format_date(value):
@@ -110,8 +118,6 @@ class ExcelParser:
             if end_idx != -1:
                 df = df.iloc[:end_idx]
 
-            # --- NEW: Strip Empty Rows ---
-            # If the row has no Order Number, no Quote Number, AND no Project Name, it's considered empty junk.
             if all(c in df.columns for c in ["ORDER NUMBER", "QUOTE NO", "PROJECT NAME"]):
                 mask = (df['ORDER NUMBER'] != "") | (df['QUOTE NO'] != "") | (df['PROJECT NAME'] != "")
                 df = df[mask].reset_index(drop=True)

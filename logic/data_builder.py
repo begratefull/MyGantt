@@ -11,24 +11,13 @@ import pandas as pd
 
 
 class GanttDataBuilder:
-    """
-    A utility class responsible for taking flat DataFrames and crunching
-    the mathematics required to build parent/child relationships,
-    aggregate dates, and assign theme colors for the Gantt View.
-    """
 
     @staticmethod
     def clean_requirement_text(req_text: Any) -> str:
-        """Strips out redundant words like 'drawing' to keep UI labels clean."""
         return re.sub(r'(?i)drawing', '', str(req_text)).strip()
 
     @staticmethod
-    def build_visual_hierarchy(df: pd.DataFrame, expanded_projects: Set[str], color_map: Dict[str, str]) -> List[
-        Dict[str, Any]]:
-        """
-        Transforms a raw project DataFrame into a structured list of dictionaries
-        representing Parent summary blocks and Child task blocks.
-        """
+    def build_visual_hierarchy(df: pd.DataFrame, expanded_projects: Set[str], color_map: Dict[str, str]) -> List[Dict[str, Any]]:
         visual_rows: List[Dict[str, Any]] = []
         if df.empty:
             return visual_rows
@@ -36,57 +25,67 @@ class GanttDataBuilder:
         grouped = df.groupby('PROJECT_ID', sort=False)
 
         for project_id, group in grouped:
-            # 1. Calculate Agreggate Start and End Dates
-            starts = pd.to_datetime(group['ENG START DATE'].replace('', pd.NaT)).combine_first(
-                pd.to_datetime(group['EST START DATE'].replace('', pd.NaT)))
-            ends = pd.to_datetime(group['EST END DATE'].replace('', pd.NaT)).combine_first(
-                pd.to_datetime(group['COMPLETE DATE'].replace('', pd.NaT)))
 
-            min_start = starts.min() if not starts.isna().all() else pd.NaT
-            max_end = ends.max() if not ends.isna().all() else pd.NaT
+            real_starts = pd.to_datetime(group['ENG START DATE'].replace('', pd.NaT)).dropna()
+            real_ends = pd.to_datetime(group['COMPLETE DATE'].replace('', pd.NaT)).dropna()
 
-            # 2. Calculate Total Business Days
+            est_starts = pd.to_datetime(group['EST START DATE'].replace('', pd.NaT)).dropna()
+
+            est_ends = pd.Series(dtype='datetime64[ns]')
+            if not est_starts.empty:
+                valid_idx = est_starts.index
+                est_days = pd.to_numeric(group.loc[valid_idx, 'EST DAYS'], errors='coerce').fillna(5).astype(int)
+
+                starts_np = est_starts.values.astype('datetime64[D]')
+                days_np = est_days.values
+                ends_np = np.busday_offset(starts_np, days_np)
+
+                # THE CRASH FIX: Explicitly cast the NumPy array back into a Pandas Series!
+                est_ends = pd.Series(pd.to_datetime(ends_np), index=valid_idx)
+
+            all_starts = pd.concat([real_starts, est_starts])
+            all_ends = pd.concat([real_ends, est_ends])
+
+            min_start = all_starts.min() if not all_starts.empty else pd.NaT
+            max_end = all_ends.max() if not all_ends.empty else pd.NaT
+
             parent_days = 5
             if pd.notna(min_start) and pd.notna(max_end):
                 days = np.busday_count(min_start.date(), max_end.date())
                 parent_days = max(1, int(days))
 
+            parent_eng_start = real_starts.min() if not real_starts.empty else pd.NaT
+            parent_comp_date = real_ends.max() if not real_ends.empty else pd.NaT
+
             first_row = group.iloc[0]
             all_complete = all(group['STATUS'].str.strip().str.upper() == 'COMPLETE')
             parent_status = 'COMPLETE' if all_complete else 'ACTIVE'
 
-            # 3. Determine Parent Assignee
             assignees = [str(x).strip().upper() for x in group['ASSIGNED TO'].unique() if
-                         str(x).strip().upper() not in ('', 'UNASSIGNED')]
-            parent_assignee = assignees[0] if len(assignees) == 1 else "MULTIPLE" if len(
-                assignees) > 1 else "UNASSIGNED"
+                         str(x).strip().upper() not in ('', 'UNASSIGNED', 'NAN')]
+            parent_assignee = assignees[0] if len(assignees) == 1 else "MULTIPLE" if len(assignees) > 1 else "UNASSIGNED"
 
-            # 4. Determine Parent Block Color
-            parent_color = color_map.get(parent_assignee, "#007ACC")  # Default Blue
-            if parent_assignee == "MULTIPLE":
-                parent_color = "#888888"  # Grey
-            if parent_assignee == "UNASSIGNED":
-                parent_color = "#555555"  # Dark Grey
+            parent_color = color_map.get(parent_assignee, "#555555")
+            if parent_assignee == "MULTIPLE": parent_color = "#888888"
+            if parent_assignee in ["UNASSIGNED", "TBD", "NAN", ""]: parent_color = "#555555"
 
             reqs = group['REQUIREMENT'].unique()
             raw_req = reqs[0] if len(reqs) == 1 else "Multiple"
 
-            # 5. Calculate Variances
-            due_dates = pd.to_datetime(group['ENG DUE DATE'].replace('', pd.NaT))
-            min_due = due_dates.min() if not due_dates.isna().all() else pd.NaT
+            due_dates = pd.to_datetime(group['ENG DUE DATE'].replace('', pd.NaT)).dropna()
+            max_due = due_dates.max() if not due_dates.empty else pd.NaT
 
-            esd_dates = pd.to_datetime(group['ESD'].replace('', pd.NaT))
-            min_esd = esd_dates.min() if not esd_dates.isna().all() else pd.NaT
+            esd_dates = pd.to_datetime(group['ESD'].replace('', pd.NaT)).dropna()
+            min_esd = esd_dates.min() if not esd_dates.empty else pd.NaT
 
             parent_eng_var = ""
-            if pd.notna(max_end) and pd.notna(min_due):
-                parent_eng_var = f"{int(np.busday_count(max_end.date(), min_due.date()))} days"
+            if pd.notna(max_end) and pd.notna(max_due):
+                parent_eng_var = f"{int(np.busday_count(max_end.date(), max_due.date()))} days"
 
             parent_esd_var = ""
             if pd.notna(max_end) and pd.notna(min_esd):
                 parent_esd_var = f"{int(np.busday_count(max_end.date(), min_esd.date()))} days"
 
-            # 6. Construct the Parent Row Dictionary
             parent_row = {
                 'IS_PARENT': True,
                 'PROJECT_ID': project_id,
@@ -97,17 +96,20 @@ class GanttDataBuilder:
                 'STATUS': parent_status,
                 'ASSIGNED TO': parent_assignee,
                 'HEX_COLOR': parent_color,
+
+                'ENG START DATE': parent_eng_start.strftime('%m/%d/%Y') if pd.notna(parent_eng_start) else "",
+                'COMPLETE DATE': parent_comp_date.strftime('%m/%d/%Y') if pd.notna(parent_comp_date) else "",
+
                 'EST START DATE': min_start.strftime('%m/%d/%Y') if pd.notna(min_start) else "",
                 'EST END DATE': max_end.strftime('%m/%d/%Y') if pd.notna(max_end) else "",
                 'EST DAYS': str(parent_days),
-                'ENG DUE DATE': min_due.strftime('%m/%d/%Y') if pd.notna(min_due) else "",
+                'ENG DUE DATE': max_due.strftime('%m/%d/%Y') if pd.notna(max_due) else "",
                 'ESD': min_esd.strftime('%m/%d/%Y') if pd.notna(min_esd) else "",
                 'EST ENG VARIANCE': parent_eng_var,
                 'EST ESD VARIANCE': parent_esd_var
             }
             visual_rows.append(parent_row)
 
-            # 7. Append Children if Parent is Expanded
             if project_id in expanded_projects:
                 for idx, row in group.iterrows():
                     child_row = row.to_dict()
@@ -115,8 +117,12 @@ class GanttDataBuilder:
                     child_row['REQUIREMENT'] = GanttDataBuilder.clean_requirement_text(child_row.get('REQUIREMENT', ''))
 
                     child_assignee = str(child_row.get('ASSIGNED TO', '')).strip().upper()
-                    child_color = color_map.get(child_assignee, "#007ACC") if child_assignee not in ["", "UNASSIGNED",
-                                                                                                     "NAN"] else "#555555"
+
+                    if child_assignee in ["", "UNASSIGNED", "NAN", "TBD"]:
+                        child_color = "#555555"
+                    else:
+                        child_color = color_map.get(child_assignee, "#555555")
+
                     child_row['HEX_COLOR'] = child_color
 
                     visual_rows.append(child_row)

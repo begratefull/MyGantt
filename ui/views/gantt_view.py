@@ -1,12 +1,11 @@
 """
 Provides the Interactive Gantt Chart interface.
-This view coordinates the left-hand information table, the scrollable
-interactive Gantt canvas, and the dynamic KPI Job Inspector panel.
 """
 
 from typing import Optional, List, Dict, Any
 
 import pandas as pd
+
 from PySide6.QtCore import Qt, Signal, QRectF, QTimer
 from PySide6.QtGui import QPainter, QColor, QPen, QMouseEvent, QFont
 from PySide6.QtWidgets import (
@@ -20,10 +19,6 @@ from ui.components.gantt_components import GanttBlock, DueDateMarker
 
 
 class GanttView(QGraphicsView):
-    """
-    Custom QGraphicsView for the Gantt canvas.
-    Captures empty clicks to deselect items and hide the KPI panel.
-    """
     empty_clicked = Signal()
 
     def __init__(self, scene: QGraphicsScene) -> None:
@@ -34,7 +29,6 @@ class GanttView(QGraphicsView):
         self.setObjectName("CanvasView")
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
-        """Emits a signal when the user clicks on an empty area of the canvas."""
         super().mousePressEvent(event)
         if event.button() == Qt.LeftButton:
             if not self.itemAt(event.pos()) and self.empty_clicked:
@@ -42,18 +36,12 @@ class GanttView(QGraphicsView):
 
 
 class GanttGridScene(QGraphicsScene):
-    """
-    Custom QGraphicsScene that paints an infinite grid background
-    based on the specified day width and row height.
-    """
-
     def __init__(self, day_width: int, row_height: int, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self.day_width = day_width
         self.row_height = row_height
 
     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:
-        """Paints the dark background and the row/column grid lines."""
         painter.fillRect(rect, QColor("#1E1E1E"))
 
         row_pen = QPen(QColor("#252526"))
@@ -72,13 +60,8 @@ class GanttGridScene(QGraphicsScene):
 
 
 class GanttScreenWidget(QWidget):
-    """
-    The main wrapper widget for the Gantt Screen.
-    Contains the filters, the synchronized table/canvas splitter, and the KPI inspector.
-    """
 
-    # Emitted up to the controller when blocks are moved or assigned
-    block_dropped_signal = Signal(str, float, float, bool, float)
+    block_dropped_signal = Signal(str, float, float, bool, float, float)
     assignee_changed_signal = Signal(str, str)
 
     def __init__(self) -> None:
@@ -92,13 +75,9 @@ class GanttScreenWidget(QWidget):
         self._setup_ui()
 
     def _setup_ui(self) -> None:
-        """Initializes the layout and UI components for the Gantt view."""
         gantt_main_layout = QVBoxLayout(self)
         gantt_main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # ==========================================
-        # HEADER & FILTERS
-        # ==========================================
         gantt_header_layout = QHBoxLayout()
         gantt_header_layout.setContentsMargins(0, 0, 0, 10)
 
@@ -124,11 +103,19 @@ class GanttScreenWidget(QWidget):
         gantt_header_layout.addWidget(self.filter_team)
         gantt_header_layout.addWidget(self.filter_req)
         gantt_header_layout.addWidget(self.filter_status)
+
+        # --- ADDED: Sorting Dropdown ---
+        gantt_header_layout.addSpacing(10)
+        sort_lbl = QLabel("Sort By:")
+        sort_lbl.setObjectName("FilterLabel")
+        gantt_header_layout.addWidget(sort_lbl)
+
+        self.sort_by = QComboBox()
+        self.sort_by.addItems(["Start Date", "Eng Due Date", "ESD"])
+        gantt_header_layout.addWidget(self.sort_by)
+
         gantt_main_layout.addLayout(gantt_header_layout)
 
-        # ==========================================
-        # MAIN BODY (Splitter & KPI Panel)
-        # ==========================================
         gantt_body_layout = QHBoxLayout()
         gantt_body_layout.setSpacing(15)
 
@@ -140,7 +127,6 @@ class GanttScreenWidget(QWidget):
 
         self.gantt_splitter = QSplitter(Qt.Horizontal)
 
-        # --- 1. Left Data Table ---
         self.info_table = QTableWidget()
         self.info_table.setObjectName("LeftTable")
         self.info_table.setColumnCount(5)
@@ -161,7 +147,6 @@ class GanttScreenWidget(QWidget):
         self.info_table.horizontalHeader().setStretchLastSection(True)
         self.info_table.setMinimumWidth(250)
 
-        # --- 2. Interactive Canvas Container ---
         self.canvas_container = QFrame()
         canvas_layout = QVBoxLayout(self.canvas_container)
         canvas_layout.setContentsMargins(0, 0, 0, 0)
@@ -178,7 +163,6 @@ class GanttScreenWidget(QWidget):
         self.gantt_scene = GanttGridScene(day_width=self.day_width, row_height=self.row_height)
         self.gantt_view = GanttView(self.gantt_scene)
 
-        # Sync scrolling
         self.gantt_view.horizontalScrollBar().valueChanged.connect(self.header_view.horizontalScrollBar().setValue)
         self.header_view.horizontalScrollBar().valueChanged.connect(self.gantt_view.horizontalScrollBar().setValue)
         self.info_table.verticalScrollBar().valueChanged.connect(self.gantt_view.verticalScrollBar().setValue)
@@ -191,12 +175,11 @@ class GanttScreenWidget(QWidget):
         self.gantt_splitter.addWidget(self.canvas_container)
         self.gantt_splitter.setStretchFactor(0, 0)
         self.gantt_splitter.setStretchFactor(1, 1)
-        self.gantt_splitter.setSizes([350, 800])
+
+        # --- EXPANDED: Wider default left pane ---
+        self.gantt_splitter.setSizes([650, 800])
         unified_layout.addWidget(self.gantt_splitter)
 
-        # ==========================================
-        # KPI INSPECTOR PANEL (Right Sidebar)
-        # ==========================================
         self.kpi_panel = QFrame()
         self.kpi_panel.setObjectName("TableWell")
         self.kpi_panel.setFixedWidth(300)
@@ -261,12 +244,7 @@ class GanttScreenWidget(QWidget):
 
         gantt_main_layout.addLayout(gantt_body_layout, 1)
 
-    # ==========================================
-    # DATA RENDERING & CANVAS LOGIC
-    # ==========================================
-
     def populate_kpi_inspector(self, data: Dict[str, Any]) -> None:
-        """Fills out the right-hand KPI panel with the selected block's data."""
         self.inp_smart_id.setText(str(data.get('SMART_ID', '')))
 
         is_parent = data.get('IS_PARENT', False)
@@ -277,15 +255,31 @@ class GanttScreenWidget(QWidget):
         self.kpi_quote.setText(str(data.get('QUOTE NO', '--')))
         self.kpi_req.setText(str(data.get('REQUIREMENT', '--')))
 
-        assignee = str(data.get('ASSIGNED TO', '')).strip()
+        assignee = str(data.get('ASSIGNED TO', '')).strip().upper()
+        if not assignee or assignee == 'NAN':
+            assignee = "UNASSIGNED"
+
+        match_idx = 0
+        for i in range(self.inp_assignee.count()):
+            if self.inp_assignee.itemText(i).strip().upper() == assignee:
+                match_idx = i
+                break
+
         self.inp_assignee.blockSignals(True)
-        self.inp_assignee.setCurrentText(assignee)
+        self.inp_assignee.setCurrentIndex(match_idx)
         self.inp_assignee.setEnabled(True)
         self.inp_assignee.blockSignals(False)
 
         self.inp_est_days.blockSignals(True)
         self.inp_est_days.setText(str(data.get('EST DAYS', '')))
-        self.inp_est_days.setEnabled(True)
+
+        if is_parent:
+            self.inp_est_days.setEnabled(False)
+            self.inp_est_days.setToolTip("Parent durations are calculated automatically from their sub-lines. Stretch a sub-line to extend this project.")
+        else:
+            self.inp_est_days.setEnabled(True)
+            self.inp_est_days.setToolTip("Type a number of days to override the duration.")
+
         self.inp_est_days.blockSignals(False)
 
         self.kpi_eng_due.setText(str(data.get('ENG DUE DATE', '--')))
@@ -294,8 +288,9 @@ class GanttScreenWidget(QWidget):
         self.kpi_esd_var.setText(str(data.get('EST ESD VARIANCE', '--')))
 
     def populate_left_table(self, visual_rows: List[Dict[str, Any]], expanded_projects: set) -> None:
-        """Fills the left-hand text table with project data."""
         table = self.info_table
+
+        table.clearSpans()
         table.setRowCount(len(visual_rows))
         table.setWordWrap(False)
 
@@ -306,11 +301,12 @@ class GanttScreenWidget(QWidget):
         header.setSectionResizeMode(3, QHeaderView.Interactive)
         header.setSectionResizeMode(4, QHeaderView.Interactive)
 
-        table.setColumnWidth(0, 85)
-        table.setColumnWidth(1, 100)
-        table.setColumnWidth(2, 220)
-        table.setColumnWidth(3, 80)
-        table.setColumnWidth(4, 90)
+        # --- EXPANDED: Wider default columns ---
+        table.setColumnWidth(0, 110)
+        table.setColumnWidth(1, 110)
+        table.setColumnWidth(2, 260)
+        table.setColumnWidth(3, 85)
+        table.setColumnWidth(4, 75)
 
         font_parent = QFont("Segoe UI", 9, QFont.Bold)
         font_child = QFont("Segoe UI", 9)
@@ -319,36 +315,54 @@ class GanttScreenWidget(QWidget):
             table.setRowHeight(row_idx, self.row_height)
 
             is_parent = row.get('IS_PARENT', False)
-            prefix = "▼ " if is_parent and row.get('PROJECT_ID') in expanded_projects else "▶ " if is_parent else "    "
 
-            req_text = f"{prefix}{str(row.get('REQUIREMENT', ''))}"
-            project_text = str(row.get('PROJECT NAME', ''))
+            if is_parent:
+                prefix = "▼ " if row.get('PROJECT_ID') in expanded_projects else "▶ "
+                req_text = f"{prefix}{str(row.get('REQUIREMENT', ''))}"
+                project_text = str(row.get('PROJECT NAME', ''))
 
-            items = [
-                QTableWidgetItem(req_text),
-                QTableWidgetItem(str(row.get('QUOTE NO', ''))),
-                QTableWidgetItem(project_text),
-                QTableWidgetItem(str(row.get('ESD', ''))),
-                QTableWidgetItem(str(row.get('STATUS', '')))
-            ]
+                items = [
+                    QTableWidgetItem(req_text),
+                    QTableWidgetItem(str(row.get('QUOTE NO', ''))),
+                    QTableWidgetItem(project_text),
+                    QTableWidgetItem(str(row.get('ESD', ''))),
+                    QTableWidgetItem(str(row.get('STATUS', '')))
+                ]
 
-            items[0].setToolTip(req_text.strip("▼▶ "))
-            items[2].setToolTip(project_text)
+                items[0].setToolTip(req_text.strip("▼▶ "))
+                items[2].setToolTip(project_text)
 
-            for col, item in enumerate(items):
-                item.setFont(font_parent if is_parent else font_child)
-                table.setItem(row_idx, col, item)
+                for col, item in enumerate(items):
+                    item.setFont(font_parent)
+                    table.setItem(row_idx, col, item)
+            else:
+                part_no = str(row.get('LUMINARIE SPECIFICATION',
+                            row.get('CONFIGURED STRING',
+                            row.get('PART NUMBER',
+                            row.get('CATALOG CODE',
+                            row.get('CATALOG',
+                            row.get('FAMILY', ''))))))).strip()
+
+                if not part_no or part_no.lower() == 'nan':
+                    part_no = "Unknown Specification"
+
+                child_text = f"      {part_no}"
+
+                item = QTableWidgetItem(child_text)
+                item.setFont(font_child)
+                item.setToolTip(part_no)
+
+                table.setItem(row_idx, 0, item)
+                table.setSpan(row_idx, 0, 1, 5)
 
     @staticmethod
     def get_business_day_offset(start_date: pd.Timestamp, target_date: pd.Timestamp) -> int:
-        """Calculates the number of business days between two dates."""
         if pd.isna(target_date) or pd.isna(start_date):
             return 0
         days = pd.bdate_range(start=start_date, end=target_date)
         return len(days) - 1 if len(days) > 0 else 0
 
     def draw_gantt_canvas(self, visual_rows: List[Dict[str, Any]], dynamic_engineers: List[str]) -> None:
-        """Plots blocks onto the right-hand canvas using calculated coordinates."""
         self.header_scene.clear()
         self.gantt_scene.clear()
 
@@ -360,7 +374,7 @@ class GanttScreenWidget(QWidget):
 
         if all_starts:
             start_series = pd.to_datetime(all_starts)
-            day_zero = start_series.min()
+            day_zero = min(start_series.min(), pd.Timestamp.today().normalize())
         else:
             day_zero = pd.Timestamp.today().normalize()
 
@@ -424,26 +438,22 @@ class GanttScreenWidget(QWidget):
                 dynamic_engineers=dynamic_engineers,
                 is_parent=is_parent
             )
-            # Pass interactions up via signal
             block.block_dropped.connect(self.block_dropped_signal.emit)
             block.assignee_changed.connect(self.assignee_changed_signal.emit)
             self.gantt_scene.addItem(block)
 
-            if not is_parent:
-                due_dt = pd.to_datetime(row.get('ENG DUE DATE', '')) if str(row.get('ENG DUE DATE', '')) else pd.NaT
-                if pd.notna(due_dt):
-                    due_offset = self.get_business_day_offset(day_zero, due_dt)
-                    due_x = due_offset * self.day_width
-                    if due_x >= 0:
-                        self.gantt_scene.addItem(DueDateMarker(due_x, y, self.row_height))
+            due_dt = pd.to_datetime(row.get('ENG DUE DATE', '')) if str(row.get('ENG DUE DATE', '')) else pd.NaT
+            if pd.notna(due_dt):
+                due_offset = self.get_business_day_offset(day_zero, due_dt)
+                due_x = due_offset * self.day_width
+                if due_x >= 0:
+                    self.gantt_scene.addItem(DueDateMarker(due_x, y, self.row_height))
 
         if not self.initial_scroll_done and today_x >= 0:
             scroll_x = max(0, today_x - (today.weekday() * self.day_width) - self.day_width)
             QTimer.singleShot(0, lambda: self.gantt_view.horizontalScrollBar().setValue(scroll_x))
             self.initial_scroll_done = True
 
-    def render_gantt(self, visual_rows: List[Dict[str, Any]], dynamic_engineers: List[str],
-                     expanded_projects: set) -> None:
-        """Master method to populate both the data table and drawing canvas simultaneously."""
+    def render_gantt(self, visual_rows: List[Dict[str, Any]], dynamic_engineers: List[str], expanded_projects: set) -> None:
         self.populate_left_table(visual_rows, expanded_projects)
         self.draw_gantt_canvas(visual_rows, dynamic_engineers)
