@@ -22,6 +22,9 @@ class MyGanttWindow(QMainWindow):
         self.setWindowTitle("MyGantt")
         self.resize(1500, 1000)
 
+        base_path = os.path.dirname(__file__)
+        self.setWindowIcon(QIcon(os.path.join(base_path, "resources", "app_icon.svg")))
+
         self.statusBar().showMessage("Ready")
         self.statusBar().setStyleSheet("color: #AAAAAA; background-color: #1E1E1E; border-top: 1px solid #3E3E42;")
 
