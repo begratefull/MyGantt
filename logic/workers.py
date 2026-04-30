@@ -116,9 +116,12 @@ class DataRefreshWorker(QThread):
                         pd.to_datetime(plan_df['EST START DATE'].replace('', pd.NaT))).combine_first(
                         pd.to_datetime(plan_df['ENG DUE DATE'].replace('', pd.NaT)))
 
-                # Secondary sorts ensure that project groupings always stay physically glued together!
-                plan_df = plan_df.sort_values(by=['STATUS', 'SORT_DATE', 'PROJECT_ID', 'SMART_ID'], ascending=[True, True, True, True])
-                plan_df = plan_df.drop(columns=['SORT_DATE'])
+                    # Secondary sorts ensure that project groupings always stay physically glued together
+                    plan_df = plan_df.sort_values(
+                        by=['SORT_DATE', 'STATUS', 'PROJECT_ID', 'SMART_ID'],
+                        ascending=[True, True, True, True]
+                    )
+                    plan_df = plan_df.drop(columns=['SORT_DATE'])
 
             self.data_ready.emit(raw_df, plan_df.reset_index(drop=True), full_dashboard_df)
 

@@ -79,13 +79,22 @@ class DashboardService:
         return metrics
 
     @staticmethod
-    def _apply_mask(df: pd.DataFrame, col: str, search_terms: str) -> pd.DataFrame:
+    def _apply_exact_mask(df: pd.DataFrame, col: str, exact_val: str) -> pd.DataFrame:
+        if df.empty or col not in df.columns: return pd.DataFrame(columns=df.columns)
+        mask = df[col].str.strip().str.upper() == exact_val.strip().upper()
+        return df[mask]
+
+    @staticmethod
+    def _apply_regex_mask(df: pd.DataFrame, col: str, search_terms: str) -> pd.DataFrame:
         if df.empty or col not in df.columns: return pd.DataFrame(columns=df.columns)
         mask = df[col].str.contains(search_terms, case=False, na=False)
         return df[mask]
 
     @staticmethod
-    def calculate_advanced_kpis(active_df: pd.DataFrame, comp_df: pd.DataFrame) -> Dict[str, Any]:
+    def calculate_advanced_kpis(active_df: pd.DataFrame, comp_df: pd.DataFrame, full_df: pd.DataFrame, current_team_filter: str) -> Dict[str, Any]:
+        """
+        Dynamically calculates KPIs based on the selected team context.
+        """
         today = pd.Timestamp.today().normalize()
         ytd_start = pd.Timestamp(year=today.year, month=1, day=1)
         cur_start = today - pd.Timedelta(days=7)
@@ -94,49 +103,90 @@ class DashboardService:
         comp_ytd = DashboardService._filter_completed_by_date(comp_df, ytd_start)
         comp_cur = DashboardService._filter_completed_by_date(comp_df, cur_start)
 
-        type_col = 'TYPE' if 'TYPE' in curr_active_df.columns else 'REQUIREMENT'
-
-        mod_act = DashboardService._apply_mask(curr_active_df, type_col, 'MOD')
-        cus_act = DashboardService._apply_mask(curr_active_df, type_col, 'CUS')
-        mod_ytd = DashboardService._apply_mask(comp_ytd, type_col, 'MOD')
-        cus_ytd = DashboardService._apply_mask(comp_ytd, type_col, 'CUS')
-        mod_cur = DashboardService._apply_mask(comp_cur, type_col, 'MOD')
-        cus_cur = DashboardService._apply_mask(comp_cur, type_col, 'CUS')
-
+        # 1. Global Metrics
         sub_regex = 'APP|SUB|QUOT|QUOTE|APPROVAL|SUBMITTAL'
-
-        mod_prod_act = DashboardService._apply_mask(mod_act, 'REQUIREMENT', 'PROD')
-        mod_sub_act = DashboardService._apply_mask(mod_act, 'REQUIREMENT', sub_regex)
-        mod_prod_ytd, mod_sub_ytd = DashboardService._apply_mask(mod_ytd, 'REQUIREMENT', 'PROD'), DashboardService._apply_mask(mod_ytd, 'REQUIREMENT', sub_regex)
-        mod_prod_cur, mod_sub_cur = DashboardService._apply_mask(mod_cur, 'REQUIREMENT', 'PROD'), DashboardService._apply_mask(mod_cur, 'REQUIREMENT', sub_regex)
-
-        cus_prod_act = DashboardService._apply_mask(cus_act, 'REQUIREMENT', 'PROD')
-        cus_sub_act = DashboardService._apply_mask(cus_act, 'REQUIREMENT', sub_regex)
-        cus_prod_ytd, cus_sub_ytd = DashboardService._apply_mask(cus_ytd, 'REQUIREMENT', 'PROD'), DashboardService._apply_mask(cus_ytd, 'REQUIREMENT', sub_regex)
-        cus_prod_cur, cus_sub_cur = DashboardService._apply_mask(cus_cur, 'REQUIREMENT', 'PROD'), DashboardService._apply_mask(cus_cur, 'REQUIREMENT', sub_regex)
+        is_prod_act = curr_active_df['REQUIREMENT'].str.contains('PROD', case=False, na=False) if 'REQUIREMENT' in curr_active_df.columns else pd.Series(False, index=curr_active_df.index)
+        is_sub_act = curr_active_df['REQUIREMENT'].str.contains(sub_regex, case=False, na=False) if 'REQUIREMENT' in curr_active_df.columns else pd.Series(False, index=curr_active_df.index)
 
         global_ytd = DashboardService._calc_subset_metrics(curr_active_df, comp_ytd)
         global_cur = DashboardService._calc_subset_metrics(curr_active_df, comp_cur)
 
-        return {
+        kpis = {
             'global': {
-                'backlog': int(curr_active_df['LINE_COUNT'].sum()) if 'LINE_COUNT' in curr_active_df.columns else 0,
+                'backlog_total': int(curr_active_df['LINE_COUNT'].sum()) if 'LINE_COUNT' in curr_active_df.columns else 0,
+                'backlog_prod': int(curr_active_df[is_prod_act]['LINE_COUNT'].sum()) if 'LINE_COUNT' in curr_active_df.columns else 0,
+                'backlog_sub': int(curr_active_df[is_sub_act]['LINE_COUNT'].sum()) if 'LINE_COUNT' in curr_active_df.columns else 0,
                 'delivery_ytd': global_ytd['on_time'],
                 'delivery_cur': global_cur['on_time']
             },
-            'mod': {
-                'prod': {'ytd': DashboardService._calc_subset_metrics(mod_prod_act, mod_prod_ytd), 'cur': DashboardService._calc_subset_metrics(mod_prod_act, mod_prod_cur)},
-                'sub': {'ytd': DashboardService._calc_subset_metrics(mod_sub_act, mod_sub_ytd), 'cur': DashboardService._calc_subset_metrics(mod_sub_act, mod_sub_cur)}
-            },
-            'cus': {
-                'prod': {'ytd': DashboardService._calc_subset_metrics(cus_prod_act, cus_prod_ytd), 'cur': DashboardService._calc_subset_metrics(cus_prod_act, cus_prod_cur)},
-                'sub': {'ytd': DashboardService._calc_subset_metrics(cus_sub_act, cus_sub_ytd), 'cur': DashboardService._calc_subset_metrics(cus_sub_act, cus_sub_cur)}
-            }
+            'view_type': 'health',
+            'cards': []
         }
+
+        # 2. Context-Aware Card Generation
+        team_upper = current_team_filter.strip().upper()
+        type_col = 'TYPE' if 'TYPE' in curr_active_df.columns else 'REQUIREMENT'
+
+        if team_upper == "ALL TEAMS":
+            kpis['view_type'] = 'flow'
+            for t_name in ["CUSTOM TEAM", "STANDARD TEAM"]:
+                t_full = full_df[full_df['CALC_TEAM'] == t_name] if 'CALC_TEAM' in full_df.columns else pd.DataFrame()
+                t_act = curr_active_df[curr_active_df['CALC_TEAM'] == t_name] if 'CALC_TEAM' in curr_active_df.columns else pd.DataFrame()
+                t_comp = comp_cur[comp_cur['CALC_TEAM'] == t_name] if 'CALC_TEAM' in comp_cur.columns else pd.DataFrame()
+
+                dates_in = pd.to_datetime(t_full['DATE TO ENG'].replace('', pd.NaT), errors='coerce') if 'DATE TO ENG' in t_full.columns else pd.Series(dtype=float)
+                incoming = int((dates_in >= cur_start).sum())
+                outgoing = int(t_comp['LINE_COUNT'].sum()) if 'LINE_COUNT' in t_comp.columns else 0
+                backlog = int(t_act['LINE_COUNT'].sum()) if 'LINE_COUNT' in t_act.columns else 0
+
+                kpis['cards'].append({
+                    'title': f"{t_name.title()} Flow (Last 7 Days)",
+                    'incoming': incoming,
+                    'outgoing': outgoing,
+                    'net': incoming - outgoing,
+                    'backlog': backlog
+                })
+
+        else:
+            kpis['view_type'] = 'health'
+            line_types = []
+
+            # REMOVED: 'PART' and 'PART-MC'. FIXED: 'STD-M'
+            if team_upper == "CUSTOM TEAM":
+                line_types = ['MOD', 'CUS']
+            elif team_upper == "STANDARD TEAM":
+                line_types = ['STD', 'STD-M']
+
+            for l_type in line_types:
+                t_act = DashboardService._apply_exact_mask(curr_active_df, type_col, l_type)
+                t_ytd = DashboardService._apply_exact_mask(comp_ytd, type_col, l_type)
+                t_cur = DashboardService._apply_exact_mask(comp_cur, type_col, l_type)
+
+                prod_act = DashboardService._apply_regex_mask(t_act, 'REQUIREMENT', 'PROD')
+                sub_act = DashboardService._apply_regex_mask(t_act, 'REQUIREMENT', sub_regex)
+
+                prod_ytd = DashboardService._apply_regex_mask(t_ytd, 'REQUIREMENT', 'PROD')
+                sub_ytd = DashboardService._apply_regex_mask(t_ytd, 'REQUIREMENT', sub_regex)
+
+                prod_cur = DashboardService._apply_regex_mask(t_cur, 'REQUIREMENT', 'PROD')
+                sub_cur = DashboardService._apply_regex_mask(t_cur, 'REQUIREMENT', sub_regex)
+
+                kpis['cards'].append({
+                    'title': f"{l_type} Health",
+                    'prod': {
+                        'ytd': DashboardService._calc_subset_metrics(prod_act, prod_ytd),
+                        'cur': DashboardService._calc_subset_metrics(prod_act, prod_cur)
+                    },
+                    'sub': {
+                        'ytd': DashboardService._calc_subset_metrics(sub_act, sub_ytd),
+                        'cur': DashboardService._calc_subset_metrics(sub_act, sub_cur)
+                    }
+                })
+
+        return kpis
 
     @staticmethod
     def get_detailed_donut_data(df: pd.DataFrame) -> Dict[str, Dict[str, Any]]:
-        """Prepares detailed hierarchical data for the interactive hover charts."""
         distribution = {}
         curr_active_df = DashboardService._get_current_backlog(df)
         if curr_active_df.empty or 'ASSIGNED TO' not in curr_active_df.columns: return distribution

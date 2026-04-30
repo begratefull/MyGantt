@@ -13,7 +13,7 @@ from PySide6.QtCharts import (
     QChart, QChartView, QPieSeries, QPieSlice, QBarSeries, QBarSet,
     QBarCategoryAxis, QValueAxis, QLineSeries, QAreaSeries
 )
-from PySide6.QtCore import Qt, QPoint
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter, QColor, QPen, QFont
 
 from logic.dashboard_service import DashboardService
@@ -28,6 +28,7 @@ class DashboardWidget(QWidget):
 
         self._current_eng_dist: Dict[str, Any] = {}
         self._global_req_dist: Dict[str, int] = {}
+        self._dynamic_card_widgets: List[QWidget] = []
 
         self.dynamic_color_map: Dict[str, str] = {}
         self.palette: List[str] = [
@@ -66,25 +67,22 @@ class DashboardWidget(QWidget):
 
         # Left Column: KPI Grid (Cards)
         left_pane = QWidget()
-        cards_grid = QGridLayout(left_pane)
-        cards_grid.setContentsMargins(0, 0, 0, 0)
-        cards_grid.setSpacing(15)
+        self.cards_grid = QGridLayout(left_pane)
+        self.cards_grid.setContentsMargins(0, 0, 0, 0)
+        self.cards_grid.setSpacing(15)
 
         self.card_delivery = self._build_delivery_card()
         self.card_backlog = self._build_backlog_card()
-        self.card_mod = self._build_vertical_health_card("MOD Health")
-        self.card_cus = self._build_vertical_health_card("CUS Health")
 
-        cards_grid.addWidget(self.card_delivery['frame'], 0, 0)
-        cards_grid.addWidget(self.card_backlog['frame'], 0, 1)
-        cards_grid.addWidget(self.card_mod['frame'], 1, 0)
-        cards_grid.addWidget(self.card_cus['frame'], 1, 1)
+        # Row 0: Global Health
+        self.cards_grid.addWidget(self.card_delivery['frame'], 0, 0)
+        self.cards_grid.addWidget(self.card_backlog['frame'], 0, 1)
 
         # Right Column: Interactive Master-Detail Pies
         self.dist_ui = self._build_interactive_chart_panel()
 
-        top_half_layout.addWidget(left_pane, 4)  # 40% width
-        top_half_layout.addWidget(self.dist_ui['card'], 6)  # 60% width
+        top_half_layout.addWidget(left_pane, 4)
+        top_half_layout.addWidget(self.dist_ui['card'], 6)
 
         main_layout.addLayout(top_half_layout, 1)
 
@@ -101,20 +99,24 @@ class DashboardWidget(QWidget):
     def _build_delivery_card(self) -> Dict[str, Any]:
         frame = QFrame()
         frame.setObjectName("DashCard")
-        frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        # Let the card shrink-wrap its vertical content naturally
+        frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+
         layout = QVBoxLayout(frame)
-        layout.setAlignment(Qt.AlignCenter)
+        layout.setContentsMargins(15, 15, 15, 15)
 
         title = QLabel("Global Delivery %")
         title.setObjectName("CardTitle")
-        layout.addWidget(title, alignment=Qt.AlignCenter)
 
         val_cur = QLabel("--")
         val_cur.setObjectName("DashMetric")
-        layout.addWidget(val_cur, alignment=Qt.AlignCenter)
 
         val_ytd = QLabel("YTD: --")
         val_ytd.setObjectName("FilterLabel")
+
+        layout.addWidget(title, alignment=Qt.AlignTop | Qt.AlignHCenter)
+        layout.addSpacing(10)
+        layout.addWidget(val_cur, alignment=Qt.AlignCenter)
         layout.addWidget(val_ytd, alignment=Qt.AlignCenter)
 
         return {'frame': frame, 'cur': val_cur, 'ytd': val_ytd}
@@ -122,35 +124,38 @@ class DashboardWidget(QWidget):
     def _build_backlog_card(self) -> Dict[str, Any]:
         frame = QFrame()
         frame.setObjectName("DashCard")
-        frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        # Let the card shrink-wrap its vertical content naturally
+        frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+
         layout = QVBoxLayout(frame)
-        layout.setAlignment(Qt.AlignCenter)
+        layout.setContentsMargins(15, 15, 15, 15)
 
         title = QLabel("Active Backlog")
         title.setObjectName("CardTitle")
-        layout.addWidget(title, alignment=Qt.AlignCenter)
 
         val = QLabel("--")
         val.setObjectName("DashMetric")
-        layout.addWidget(val, alignment=Qt.AlignCenter)
 
-        sub = QLabel("Current lines in queue")
+        sub = QLabel("Prod: -- | Sub: --")
         sub.setObjectName("FilterLabel")
+
+        layout.addWidget(title, alignment=Qt.AlignTop | Qt.AlignHCenter)
+        layout.addSpacing(10)
+        layout.addWidget(val, alignment=Qt.AlignCenter)
         layout.addWidget(sub, alignment=Qt.AlignCenter)
 
-        return {'frame': frame, 'val': val}
+        return {'frame': frame, 'val': val, 'sub': sub}
 
     def _build_vertical_health_card(self, title_text: str) -> Dict[str, Any]:
-        """Builds a card housing Production on top of Submittals vertically."""
         frame = QFrame()
         frame.setObjectName("DashCard")
-        frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(15, 15, 15, 15)
 
         title = QLabel(title_text)
         title.setObjectName("CardTitle")
-        layout.addWidget(title, alignment=Qt.AlignCenter)
+        layout.addWidget(title, alignment=Qt.AlignTop | Qt.AlignHCenter)
 
         def build_sub_section(header_text: str):
             lbl = QLabel(header_text)
@@ -182,14 +187,12 @@ class DashboardWidget(QWidget):
         p_lbl, p_grid, p_v_c, p_v_y, p_q_c, p_q_y = build_sub_section("Production")
         s_lbl, s_grid, s_v_c, s_v_y, s_q_c, s_q_y = build_sub_section("Submittals")
 
+        layout.addSpacing(10)
         layout.addWidget(p_lbl)
         layout.addLayout(p_grid)
 
-        # Separator line
-        sep = QFrame()
-        sep.setFrameShape(QFrame.HLine)
-        sep.setStyleSheet("background-color: #333333; margin: 5px 0px;")
-        layout.addWidget(sep)
+        # REPLACED the HLine with a heavy 25px pad
+        layout.addSpacing(25)
 
         layout.addWidget(s_lbl)
         layout.addLayout(s_grid)
@@ -200,18 +203,61 @@ class DashboardWidget(QWidget):
             's_var_cur': s_v_c, 's_var_ytd': s_v_y, 's_q_cur': s_q_c, 's_q_ytd': s_q_y
         }
 
+    def _build_flow_card(self, title_text: str) -> Dict[str, Any]:
+        frame = QFrame()
+        frame.setObjectName("DashCard")
+        frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(15, 15, 15, 15)
+
+        title = QLabel(title_text)
+        title.setObjectName("CardTitle")
+        layout.addWidget(title, alignment=Qt.AlignTop | Qt.AlignHCenter)
+
+        layout.addSpacing(10)
+
+        grid = QGridLayout()
+        grid.setSpacing(10)
+
+        lbl_in = QLabel("Incoming:"); lbl_in.setObjectName("FilterLabel")
+        val_in = QLabel("--"); val_in.setObjectName("KpiBlockValue")
+        grid.addWidget(lbl_in, 0, 0); grid.addWidget(val_in, 0, 1, alignment=Qt.AlignCenter)
+
+        lbl_out = QLabel("Outgoing:"); lbl_out.setObjectName("FilterLabel")
+        val_out = QLabel("--"); val_out.setObjectName("KpiBlockValue")
+        grid.addWidget(lbl_out, 1, 0); grid.addWidget(val_out, 1, 1, alignment=Qt.AlignCenter)
+
+        lbl_net = QLabel("Net Change:"); lbl_net.setObjectName("FilterLabel")
+        val_net = QLabel("--"); val_net.setObjectName("KpiBlockValue")
+        grid.addWidget(lbl_net, 2, 0); grid.addWidget(val_net, 2, 1, alignment=Qt.AlignCenter)
+
+        layout.addLayout(grid)
+
+        # REPLACED the HLine with a heavy 25px pad
+        layout.addSpacing(25)
+
+        b_layout = QHBoxLayout()
+        b_lbl = QLabel("Total Backlog:"); b_lbl.setObjectName("FilterLabel")
+        val_b = QLabel("--"); val_b.setObjectName("KpiBlockValue")
+        b_layout.addWidget(b_lbl); b_layout.addStretch(); b_layout.addWidget(val_b)
+        layout.addLayout(b_layout)
+
+        return {
+            'frame': frame,
+            'in': val_in, 'out': val_out, 'net': val_net, 'backlog': val_b
+        }
+
     def _build_interactive_chart_panel(self) -> Dict[str, Any]:
-        """Builds a horizontal panel with two pie charts."""
         card = QFrame()
         card.setObjectName("DashCard")
         layout = QHBoxLayout(card)
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setContentsMargins(15, 15, 15, 15)
 
-        # Left Side: Assignee Chart
         left_layout = QVBoxLayout()
-        left_title = QLabel("Hover an Assignee:")
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_title = QLabel("Hover an Assignee")
         left_title.setObjectName("CardTitle")
-        left_layout.addWidget(left_title, alignment=Qt.AlignCenter)
+        left_layout.addWidget(left_title, alignment=Qt.AlignTop | Qt.AlignHCenter)
 
         self.chart_assignee = QChart()
         self.chart_assignee.setTheme(QChart.ChartThemeDark)
@@ -223,11 +269,11 @@ class DashboardWidget(QWidget):
         view_assignee.setRenderHint(QPainter.Antialiasing)
         left_layout.addWidget(view_assignee, 1)
 
-        # Right Side: Requirement Chart
         right_layout = QVBoxLayout()
+        right_layout.setContentsMargins(0, 0, 0, 0)
         self.lbl_req_title = QLabel("Team Requirement Breakdown")
         self.lbl_req_title.setObjectName("CardTitle")
-        right_layout.addWidget(self.lbl_req_title, alignment=Qt.AlignCenter)
+        right_layout.addWidget(self.lbl_req_title, alignment=Qt.AlignTop | Qt.AlignHCenter)
 
         self.chart_req = QChart()
         self.chart_req.setTheme(QChart.ChartThemeDark)
@@ -248,12 +294,12 @@ class DashboardWidget(QWidget):
         card = QFrame()
         card.setObjectName("DashCard")
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setContentsMargins(15, 15, 15, 15)
 
         top_bar = QHBoxLayout()
         title_lbl = QLabel(title)
         title_lbl.setObjectName("CardTitle")
-        top_bar.addWidget(title_lbl)
+        top_bar.addWidget(title_lbl, alignment=Qt.AlignVCenter | Qt.AlignLeft)
         top_bar.addStretch()
 
         date_filter = QComboBox()
@@ -295,6 +341,16 @@ class DashboardWidget(QWidget):
         if 'QUOT' in req_upper: return "#2196F3"
         if 'APP' in req_upper or 'SUB' in req_upper: return "#FF9800"
         return self.get_dynamic_color(req_upper)
+
+    def _abbr_req(self, req: str) -> str:
+        r = str(req).upper().strip()
+        if 'PROD' in r: return 'PROD'
+        if 'APP' in r: return 'APP'
+        if 'SUB' in r: return 'SUB'
+        if 'QUOT' in r: return 'QUOT'
+        if 'SUPPORT' in r: return 'SUPP'
+        if 'DOC' in r: return 'DOC'
+        return r[:4]
 
     def get_relative_week_label(self, year_week_str: str) -> str:
         try:
@@ -338,49 +394,83 @@ class DashboardWidget(QWidget):
         df = self.master_df.copy()
         current_team = self.filter_team.currentText()
 
+        df['CALC_TEAM'] = df.apply(self._get_team_for_row, axis=1)
+
         if current_team != "All Teams":
-            df['CALC_TEAM'] = df.apply(self._get_team_for_row, axis=1)
-            df = df[df['CALC_TEAM'] == current_team.strip().upper()].copy()
+            filtered_df = df[df['CALC_TEAM'] == current_team.strip().upper()].copy()
+        else:
+            filtered_df = df.copy()
 
-        active_df, comp_df = DashboardService.split_base_data(df)
+        active_df, comp_df = DashboardService.split_base_data(filtered_df)
 
-        self.render_top_row(active_df, comp_df)
+        self.render_top_row(active_df, comp_df, df, current_team)
         self.render_interactive_pies(active_df)
         self.render_timeline_row(active_df, comp_df)
 
-    def render_top_row(self, active_df: pd.DataFrame, comp_df: pd.DataFrame) -> None:
-        kpis = DashboardService.calculate_advanced_kpis(active_df, comp_df)
+    def render_top_row(self, active_df: pd.DataFrame, comp_df: pd.DataFrame, full_df: pd.DataFrame, current_team: str) -> None:
+        for widget in self._dynamic_card_widgets:
+            self.cards_grid.removeWidget(widget)
+            widget.deleteLater()
+        self._dynamic_card_widgets.clear()
 
-        # Delivery & Backlog
+        kpis = DashboardService.calculate_advanced_kpis(active_df, comp_df, full_df, current_team)
+
         global_data = kpis['global']
         pct_cur = global_data['delivery_cur']
         self.card_delivery['cur'].setText(f"{pct_cur:.1f}%" if not pd.isna(pct_cur) else "--")
         self.card_delivery['cur'].setStyleSheet("color: #4CAF50;" if pct_cur >= 95.0 else "color: #FF5252;")
-        pct_ytd = global_data['delivery_ytd']
-        self.card_delivery['ytd'].setText(f"YTD: {pct_ytd:.1f}%" if not pd.isna(pct_ytd) else "YTD: --")
-        self.card_backlog['val'].setText(str(global_data['backlog']))
+        self.card_delivery['ytd'].setText(f"YTD: {global_data['delivery_ytd']:.1f}%" if not pd.isna(global_data['delivery_ytd']) else "YTD: --")
 
-        # Populate Vertical MOD and CUS Cards
-        def populate_card(ui: Dict, data_dict: Dict):
-            p_cur, p_ytd = data_dict['prod']['cur']['variance'], data_dict['prod']['ytd']['variance']
-            ui['p_var_cur'].setText(self._format_var(p_cur)); self._set_var_color(ui['p_var_cur'], p_cur)
-            ui['p_var_ytd'].setText(self._format_var(p_ytd)); self._set_var_color(ui['p_var_ytd'], p_ytd)
-            ui['p_q_cur'].setText(self._format_day(data_dict['prod']['cur']['queue']))
-            ui['p_q_ytd'].setText(self._format_day(data_dict['prod']['ytd']['queue']))
+        self.card_backlog['val'].setText(str(global_data['backlog_total']))
+        self.card_backlog['sub'].setText(f"Prod: {global_data['backlog_prod']} | Sub: {global_data['backlog_sub']}")
 
-            s_cur, s_ytd = data_dict['sub']['cur']['variance'], data_dict['sub']['ytd']['variance']
-            ui['s_var_cur'].setText(self._format_var(s_cur)); self._set_var_color(ui['s_var_cur'], s_cur)
-            ui['s_var_ytd'].setText(self._format_var(s_ytd)); self._set_var_color(ui['s_var_ytd'], s_ytd)
-            ui['s_q_cur'].setText(self._format_day(data_dict['sub']['cur']['queue']))
-            ui['s_q_ytd'].setText(self._format_day(data_dict['sub']['ytd']['queue']))
+        row_idx = 1
+        col_idx = 0
 
-        populate_card(self.card_mod, kpis['mod'])
-        populate_card(self.card_cus, kpis['cus'])
+        for card_data in kpis['cards']:
+            if kpis['view_type'] == 'health':
+                ui_card = self._build_vertical_health_card(card_data['title'])
+
+                p_cur, p_ytd = card_data['prod']['cur']['variance'], card_data['prod']['ytd']['variance']
+                ui_card['p_var_cur'].setText(self._format_var(p_cur)); self._set_var_color(ui_card['p_var_cur'], p_cur)
+                ui_card['p_var_ytd'].setText(self._format_var(p_ytd)); self._set_var_color(ui_card['p_var_ytd'], p_ytd)
+                ui_card['p_q_cur'].setText(self._format_day(card_data['prod']['cur']['queue']))
+                ui_card['p_q_ytd'].setText(self._format_day(card_data['prod']['ytd']['queue']))
+
+                s_cur, s_ytd = card_data['sub']['cur']['variance'], card_data['sub']['ytd']['variance']
+                ui_card['s_var_cur'].setText(self._format_var(s_cur)); self._set_var_color(ui_card['s_var_cur'], s_cur)
+                ui_card['s_var_ytd'].setText(self._format_var(s_ytd)); self._set_var_color(ui_card['s_var_ytd'], s_ytd)
+                ui_card['s_q_cur'].setText(self._format_day(card_data['sub']['cur']['queue']))
+                ui_card['s_q_ytd'].setText(self._format_day(card_data['sub']['ytd']['queue']))
+
+                frame = ui_card['frame']
+
+            else:
+                ui_card = self._build_flow_card(card_data['title'])
+                ui_card['in'].setText(str(card_data['incoming']))
+                ui_card['out'].setText(str(card_data['outgoing']))
+
+                net = card_data['net']
+                ui_card['net'].setText(f"{net:+d}")
+                if net > 0: ui_card['net'].setStyleSheet("color: #FF5252;")
+                elif net < 0: ui_card['net'].setStyleSheet("color: #4CAF50;")
+                else: ui_card['net'].setStyleSheet("color: #FFFFFF;")
+
+                ui_card['backlog'].setText(str(card_data['backlog']))
+
+                frame = ui_card['frame']
+
+            self.cards_grid.addWidget(frame, row_idx, col_idx)
+            self._dynamic_card_widgets.append(frame)
+
+            col_idx += 1
+            if col_idx > 1:
+                col_idx = 0
+                row_idx += 1
 
     # --- Interactive Master-Detail Pie Rendering ---
 
     def render_interactive_pies(self, active_df: pd.DataFrame) -> None:
-        """Sets up the Assignee pie chart and pre-calculates the global requirement totals."""
         self.chart_assignee.removeAllSeries()
 
         self._current_eng_dist = DashboardService.get_detailed_donut_data(active_df)
@@ -388,14 +478,12 @@ class DashboardWidget(QWidget):
             self.chart_req.removeAllSeries()
             return
 
-        # 1. Calculate Global Requirements for the default view
         global_reqs = {}
         for eng_data in self._current_eng_dist.values():
             for req, count in eng_data['reqs'].items():
                 global_reqs[req] = global_reqs.get(req, 0) + count
         self._global_req_dist = dict(sorted(global_reqs.items(), key=lambda item: item[1], reverse=True))
 
-        # 2. Build the Master Pie (Assignees)
         pie = QPieSeries()
         pie.setHoleSize(0.3)
         font = QFont("Segoe UI", 8, QFont.Bold)
@@ -408,37 +496,28 @@ class DashboardWidget(QWidget):
             slc.setLabelFont(font)
             slc.setBrush(QColor(self.get_dynamic_color(eng_name)))
             slc.setPen(QPen(QColor("#1E1E20"), 2))
-
-            # Connect the interactive hover signal!
             slc.hovered.connect(self._on_slice_hovered)
 
         self.chart_assignee.addSeries(pie)
-
-        # 3. Render the initial default global requirement view
         self._render_detail_pie("Team Requirement Breakdown", self._global_req_dist)
 
     def _on_slice_hovered(self, state: bool) -> None:
-        """Fired when user hovers over an engineer. Updates the detail pie chart."""
         slice_obj = self.sender()
         if not isinstance(slice_obj, QPieSlice): return
 
         if state:
-            # Hovered In: Extract the name from "MATT (15)" and show their specific requirements
             eng_name = slice_obj.label().split(' (')[0].strip()
             data = self._current_eng_dist.get(eng_name)
 
             if data and data['reqs']:
-                # Pop out the slice slightly to show it is selected
                 slice_obj.setExploded(True)
                 slice_obj.setExplodeDistanceFactor(0.05)
                 self._render_detail_pie(f"{eng_name}'s Backlog", data['reqs'])
         else:
-            # Hovered Out: Reset the explosion and revert back to global team view
             slice_obj.setExploded(False)
             self._render_detail_pie("Team Requirement Breakdown", self._global_req_dist)
 
     def _render_detail_pie(self, title: str, req_data: Dict[str, int]) -> None:
-        """Renders the right-side detail pie chart dynamically."""
         self.lbl_req_title.setText(title)
         self.chart_req.removeAllSeries()
 
@@ -449,7 +528,8 @@ class DashboardWidget(QWidget):
         font = QFont("Segoe UI", 8)
 
         for req_name, count in req_data.items():
-            slc = pie.append(f"{req_name} ({count})", count)
+            short_name = self._abbr_req(req_name)
+            slc = pie.append(f"{short_name} ({count})", count)
             slc.setLabelVisible(True)
             slc.setLabelColor(QColor("#CCCCCC"))
             slc.setLabelFont(font)

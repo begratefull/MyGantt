@@ -22,13 +22,21 @@ QFrame#TableWell {
 QFrame#DashCard { 
     background-color: #1E1E20; 
     border: 1px solid #3E3E42; 
-    border-radius: 8px; 
+    border-radius: 8px;
 }
 
 /* --- TYPOGRAPHY --- */
 QLabel#Header { font-size: 20px; font-weight: 700; color: #F0F0F0; padding-bottom: 5px; }
-QLabel#SubHeader { font-size: 11px; color: #AAAAAA; }
-QLabel#CardTitle { font-size: 15px; font-weight: bold; color: #E0E0E0; }
+QLabel#SubHeader { font-size: 12px; color: #AAAAAA; font-weight: bold; }
+
+/* APP-WIDE UNIFIED CARD TITLES */
+QLabel#CardTitle { 
+    font-size: 15px; 
+    font-weight: 800; 
+    color: #FFFFFF; 
+    padding-bottom: 2px;
+}
+
 QLabel#FilterLabel { color: #AAAAAA; font-weight: bold; font-size: 12px; margin-right: 5px; }
 
 /* Specific KPI Panel Text */
@@ -36,7 +44,7 @@ QLabel#KpiLabel { color: #AAAAAA; font-weight: bold; }
 QLabel#KpiValue { color: #4DB8FF; font-weight: bold; font-size: 14px; }
 
 /* Specific Dashboard Text */
-QLabel#DashMetric { font-size: 28px; font-weight: bold; color: #FFFFFF; }
+QLabel#DashMetric { font-size: 32px; font-weight: bold; color: #FFFFFF; }
 QLabel#DashTitle { color: #AAAAAA; font-weight: bold; font-size: 12px; }
 
 /* Unified KPI Blocks (Small nested data blocks) */
@@ -82,8 +90,15 @@ QPushButton:pressed { background-color: #1E1E1E; }
 QPushButton#PrimaryButton { background-color: #1F6AA5; border: none; color: white; }
 QPushButton#PrimaryButton:hover { background-color: #144870; }
 
-QPushButton#NavButton { background-color: transparent; border: none; border-radius: 8px; }
+QPushButton#NavButton { background-color: transparent; border: none; border-radius: 8px; text-align: left; padding-left: 10px; }
 QPushButton#NavButton:hover { background-color: #3E3E42; }
+
+/* ---> Active Navigation Highlight <--- */
+QPushButton#NavButton:checked { 
+    background-color: #007ACC; 
+    border-radius: 4px; 
+    border-left: 4px solid #4DB8FF; 
+}
 
 /* --- INPUTS & DROPDOWNS --- */
 QLineEdit { background-color: #191919; border: 1px solid #3E3E42; border-radius: 4px; padding: 6px 10px; color: #F0F0F0; selection-background-color: #1F6AA5; }

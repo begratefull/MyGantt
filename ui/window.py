@@ -64,11 +64,18 @@ class MyGanttWindow(QMainWindow):
             btn.setFixedSize(50, 50)
             btn.setIconSize(QSize(24, 24))
 
+        # Make the navigation buttons checkable so they can be highlighted
+        self.nav_dash_btn.setCheckable(True)
+        self.nav_gantt_btn.setCheckable(True)
+        self.nav_team_btn.setCheckable(True)
+        self.nav_data_btn.setCheckable(True)
+
+        # Reordered the layout addition to push Team, Data, and Sync to the bottom
         self.sidebar_layout.addWidget(self.nav_dash_btn)
         self.sidebar_layout.addWidget(self.nav_gantt_btn)
+        self.sidebar_layout.addStretch()
         self.sidebar_layout.addWidget(self.nav_team_btn)
         self.sidebar_layout.addWidget(self.nav_data_btn)
-        self.sidebar_layout.addStretch()
         self.sidebar_layout.addWidget(self.nav_sync_btn)
 
         self.main_card_frame = QFrame()
@@ -89,10 +96,11 @@ class MyGanttWindow(QMainWindow):
         self.stacked_widget.addWidget(self.team_screen)
         self.stacked_widget.addWidget(self.data_screen)
 
-        self.nav_dash_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(0))
-        self.nav_gantt_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(1))
-        self.nav_team_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(2))
-        self.nav_data_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(3))
+        # Routed the clicks to our new switch_view method
+        self.nav_dash_btn.clicked.connect(lambda: self.switch_view(0))
+        self.nav_gantt_btn.clicked.connect(lambda: self.switch_view(1))
+        self.nav_team_btn.clicked.connect(lambda: self.switch_view(2))
+        self.nav_data_btn.clicked.connect(lambda: self.switch_view(3))
 
         main_layout.addWidget(self.sidebar_frame)
         main_layout.addWidget(self.main_card_frame, 1)
@@ -121,6 +129,17 @@ class MyGanttWindow(QMainWindow):
         self.kpi_eng_due = self.gantt_screen.kpi_eng_due
         self.kpi_eng_var = self.gantt_screen.kpi_eng_var
         self.kpi_esd_var = self.gantt_screen.kpi_esd_var
+
+        # Set the initial view and highlight state
+        self.switch_view(0)
+
+    def switch_view(self, index: int):
+        """Updates the stacked widget and handles nav button highlighting."""
+        self.stacked_widget.setCurrentIndex(index)
+        self.nav_dash_btn.setChecked(index == 0)
+        self.nav_gantt_btn.setChecked(index == 1)
+        self.nav_team_btn.setChecked(index == 2)
+        self.nav_data_btn.setChecked(index == 3)
 
     def show_status(self, message: str, timeout: int = 4000):
         self.statusBar().showMessage(message, timeout)
