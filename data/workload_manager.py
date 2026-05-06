@@ -56,9 +56,33 @@ class WorkloadManager:
         df['ASSIGNED TO'] = df.apply(
             lambda r: r['MAN_ASSIGNED'] if str(r.get('MAN_ASSIGNED', '')).strip() else r['RAW_ASSIGNED'], axis=1)
         df['ENG START DATE'] = df['RAW_START_DATE']
-        df['EST START DATE'] = df.apply(
-            lambda r: r['MAN_START_DATE'] if str(r.get('MAN_START_DATE', '')).strip() else r['RAW_START_DATE'], axis=1)
-        df['EST DAYS'] = df['MAN_EST_DAYS'].replace('', '5')
+
+        # --- UPDATED LOGIC: Automate Quote & Approval Defaults ---
+        # Convert due dates to actual datetime objects so we can do math on them
+        due_dates_dt = pd.to_datetime(df['ENG DUE DATE'], errors='coerce')
+
+        # Subtract 1 business day so the 1-day task ENDS on the due date
+        calc_starts = (due_dates_dt - pd.tseries.offsets.BusinessDay(1)).dt.strftime('%m/%d/%Y').fillna('')
+
+        # Identify lines where the requirement is a Quote or Approval
+        is_quote_app = df['REQUIREMENT'].str.contains('QUOT|APP', case=False, na=False)
+
+        # Determine the fallback dates and days
+        fallback_start_dates = np.where(is_quote_app & due_dates_dt.notna(), calc_starts, df['RAW_START_DATE'])
+        fallback_days = np.where(is_quote_app, '1', '5')
+
+        # Apply manual overrides if present, otherwise use fallbacks
+        df['EST START DATE'] = np.where(
+            df['MAN_START_DATE'].str.strip() != '',
+            df['MAN_START_DATE'],
+            fallback_start_dates
+        )
+
+        df['EST DAYS'] = np.where(
+            df['MAN_EST_DAYS'].str.strip() != '',
+            df['MAN_EST_DAYS'],
+            fallback_days
+        )
 
         # Create a Parent ID so we know which lines belong to which order/quote
         df['PROJECT_ID'] = df.apply(

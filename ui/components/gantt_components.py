@@ -72,6 +72,7 @@ class GanttBlock(QGraphicsObject):
         raw_start = str(self.data.get('ENG START DATE', '')).strip()
         est_start = str(self.data.get('EST START DATE', '')).strip()
         est_days = str(self.data.get('EST DAYS', '')).strip()
+        req = str(self.data.get('REQUIREMENT', '')).strip().upper()
 
         self.is_started = bool(raw_start)
         hex_color = str(self.data.get('HEX_COLOR', '#007ACC')).strip()
@@ -80,14 +81,28 @@ class GanttBlock(QGraphicsObject):
         self.text_color = QColor("#FFFFFF")
 
         actual_color = QColor(self.base_color)
-        actual_color.setAlpha(180)
         planned_color = QColor(self.base_color)
-        planned_color.setAlpha(120)
         ghost_color = QColor(self.base_color)
-        ghost_color.setAlpha(120)
+
+        # --- UPDATED LOGIC: Apply hierarchy to both Parents and Children ---
+        is_prod = 'PROD' in req
+
+        if not is_prod:
+            # Dimmer opacities for non-production lines
+            actual_color.setAlpha(90)
+            planned_color.setAlpha(50)
+            ghost_color.setAlpha(40)
+            self.text_color = QColor("#AAAAAA")
+        else:
+            # Standard opacities for Production lines
+            actual_color.setAlpha(180)
+            planned_color.setAlpha(120)
+            ghost_color.setAlpha(120)
 
         if self.is_parent:
-            self.text_color = QColor("#E0E0E0")
+            # Override text color slightly brighter for Prod parents, keep dim for non-prod
+            self.text_color = QColor("#E0E0E0") if is_prod else QColor("#888888")
+
             if assignee == "MULTIPLE":
                 self.brush = QBrush(self.base_color, Qt.BDiagPattern)
             elif assignee and assignee != "UNASSIGNED":

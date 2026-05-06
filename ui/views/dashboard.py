@@ -14,7 +14,7 @@ from PySide6.QtCharts import (
     QBarCategoryAxis, QValueAxis, QLineSeries, QAreaSeries
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QPainter, QColor, QPen, QFont
+from PySide6.QtGui import QPainter, QColor, QPen, QFont, QCursor
 
 from logic.dashboard_service import DashboardService
 
@@ -92,6 +92,25 @@ class DashboardWidget(QWidget):
 
         self.timeline_ui['date_filter'].currentTextChanged.connect(self.render_all)
 
+        # --- Set up the hidden floating tooltip ---
+        self.chart_tooltip = QFrame(self)
+        self.chart_tooltip.setObjectName("ChartTooltip")
+        # THIS IS THE MAGIC LINE that stops the flickering/disappearing!
+        self.chart_tooltip.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.chart_tooltip.hide()
+
+        self.tooltip_layout = QVBoxLayout(self.chart_tooltip)
+        self.tooltip_layout.setContentsMargins(10, 10, 10, 10)
+        self.tooltip_layout.setSpacing(5)
+
+        self.tooltip_header = QLabel("Week --")
+        self.tooltip_header.setObjectName("TooltipHeader")
+        self.tooltip_layout.addWidget(self.tooltip_header)
+
+        self.tooltip_content = QLabel("")
+        self.tooltip_content.setObjectName("TooltipText")
+        self.tooltip_layout.addWidget(self.tooltip_content)
+
     # ---------------------------------------------------------
     # UI Component Builders
     # ---------------------------------------------------------
@@ -99,24 +118,22 @@ class DashboardWidget(QWidget):
     def _build_delivery_card(self) -> Dict[str, Any]:
         frame = QFrame()
         frame.setObjectName("DashCard")
-        # Let the card shrink-wrap its vertical content naturally
         frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
-
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(15, 15, 15, 15)
 
         title = QLabel("Global Delivery %")
         title.setObjectName("CardTitle")
+        layout.addWidget(title, alignment=Qt.AlignTop | Qt.AlignHCenter)
+
+        layout.addSpacing(10)
 
         val_cur = QLabel("--")
         val_cur.setObjectName("DashMetric")
+        layout.addWidget(val_cur, alignment=Qt.AlignCenter)
 
         val_ytd = QLabel("YTD: --")
         val_ytd.setObjectName("FilterLabel")
-
-        layout.addWidget(title, alignment=Qt.AlignTop | Qt.AlignHCenter)
-        layout.addSpacing(10)
-        layout.addWidget(val_cur, alignment=Qt.AlignCenter)
         layout.addWidget(val_ytd, alignment=Qt.AlignCenter)
 
         return {'frame': frame, 'cur': val_cur, 'ytd': val_ytd}
@@ -124,24 +141,22 @@ class DashboardWidget(QWidget):
     def _build_backlog_card(self) -> Dict[str, Any]:
         frame = QFrame()
         frame.setObjectName("DashCard")
-        # Let the card shrink-wrap its vertical content naturally
         frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
-
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(15, 15, 15, 15)
 
         title = QLabel("Active Backlog")
         title.setObjectName("CardTitle")
+        layout.addWidget(title, alignment=Qt.AlignTop | Qt.AlignHCenter)
+
+        layout.addSpacing(10)
 
         val = QLabel("--")
         val.setObjectName("DashMetric")
+        layout.addWidget(val, alignment=Qt.AlignCenter)
 
         sub = QLabel("Prod: -- | Sub: --")
         sub.setObjectName("FilterLabel")
-
-        layout.addWidget(title, alignment=Qt.AlignTop | Qt.AlignHCenter)
-        layout.addSpacing(10)
-        layout.addWidget(val, alignment=Qt.AlignCenter)
         layout.addWidget(sub, alignment=Qt.AlignCenter)
 
         return {'frame': frame, 'val': val, 'sub': sub}
@@ -191,7 +206,6 @@ class DashboardWidget(QWidget):
         layout.addWidget(p_lbl)
         layout.addLayout(p_grid)
 
-        # REPLACED the HLine with a heavy 25px pad
         layout.addSpacing(25)
 
         layout.addWidget(s_lbl)
@@ -233,7 +247,6 @@ class DashboardWidget(QWidget):
 
         layout.addLayout(grid)
 
-        # REPLACED the HLine with a heavy 25px pad
         layout.addSpacing(25)
 
         b_layout = QHBoxLayout()
@@ -255,7 +268,9 @@ class DashboardWidget(QWidget):
 
         left_layout = QVBoxLayout()
         left_layout.setContentsMargins(0, 0, 0, 0)
-        left_title = QLabel("Hover an Assignee")
+
+        # --- FIXED: Changed Title to "Lines by Assignee" ---
+        left_title = QLabel("Lines by Assignee")
         left_title.setObjectName("CardTitle")
         left_layout.addWidget(left_title, alignment=Qt.AlignTop | Qt.AlignHCenter)
 
@@ -547,13 +562,21 @@ class DashboardWidget(QWidget):
 
         range_sel = self.timeline_ui['date_filter'].currentText()
         today = pd.Timestamp.today().normalize()
-        if range_sel == "Last 30 Days": start_date = today - pd.Timedelta(days=30)
-        elif range_sel == "Last 90 Days": start_date = today - pd.Timedelta(days=90)
-        elif range_sel == "Year to Date": start_date = pd.Timestamp(year=today.year, month=1, day=1)
-        else: start_date = pd.Timestamp.min
+        if range_sel == "Last 30 Days":
+            start_date = today - pd.Timedelta(days=30)
+        elif range_sel == "Last 90 Days":
+            start_date = today - pd.Timedelta(days=90)
+        elif range_sel == "Year to Date":
+            start_date = pd.Timestamp(year=today.year, month=1, day=1)
+        else:
+            start_date = pd.Timestamp.min
 
         weeks, reqs, df = DashboardService.prepare_timeline_data(comp_df, active_df, start_date)
         if df.empty or not weeks: return
+
+        # Store the dataframe so the hover function can read from it!
+        self._timeline_df = df
+        self._timeline_weeks = weeks
 
         bar_series = QBarSeries()
         bar_series.setBarWidth(0.9)
@@ -571,16 +594,31 @@ class DashboardWidget(QWidget):
 
             for wk in weeks:
                 mask_base = (df['REQUIREMENT'].replace('', 'Uncategorized') == r) & (df['YearWeek'] == wk)
-                act_sum = df[mask_base & (~df['IS_FORECAST'])]['VAR_DAYS'].sum()
-                for_sum = df[mask_base & (df['IS_FORECAST'])]['VAR_DAYS'].sum()
-                actual_set.append(act_sum)
-                forecast_set.append(for_sum)
-                min_y, max_y = min(min_y, act_sum, for_sum), max(max_y, act_sum, for_sum)
+
+                act_data = df[mask_base & (~df['IS_FORECAST'])]['VAR_DAYS']
+                act_val = float(act_data.mean()) if not act_data.empty else 0.0
+                if pd.isna(act_val): act_val = 0.0
+
+                for_data = df[mask_base & (df['IS_FORECAST'])]['VAR_DAYS']
+                for_val = float(for_data.mean()) if not for_data.empty else 0.0
+                if pd.isna(for_val): for_val = 0.0
+
+                actual_set.append(act_val)
+                forecast_set.append(for_val)
+                min_y, max_y = min(min_y, act_val, for_val), max(max_y, act_val, for_val)
+
+            # ---> NEW: Connect the hover signals! <---
+            actual_set.hovered.connect(
+                lambda status, index, req=r, is_fc=False: self._on_bar_hovered(status, index, req, is_fc))
+            forecast_set.hovered.connect(
+                lambda status, index, req=r, is_fc=True: self._on_bar_hovered(status, index, req, is_fc))
 
             bar_series.append(actual_set)
             bar_series.append(forecast_set)
 
         chart.addSeries(bar_series)
+
+        # --- EXISTING BOTTOM AXIS (Relative Weeks) ---
         axisX = QBarCategoryAxis()
         categories = [self.get_relative_week_label(wk) for wk in weeks]
         axisX.append(categories)
@@ -590,7 +628,30 @@ class DashboardWidget(QWidget):
         chart.addAxis(axisX, Qt.AlignBottom)
         bar_series.attachAxis(axisX)
 
+        # ---> NEW: TOP AXIS (Actual Dates) <---
+        axisX_top = QBarCategoryAxis()
+        top_categories = []
+        for wk in weeks:
+            try:
+                # %G = ISO year, %V = ISO week, %u = ISO weekday (1=Monday)
+                # This grabs the actual Monday date for that specific week
+                dt = pd.to_datetime(wk + '-1', format='%G-%V-%u')
+                top_categories.append(dt.strftime('%b %d'))
+            except Exception:
+                top_categories.append(wk)
+
+        axisX_top.append(top_categories)
+        font_top = QFont("Segoe UI", 7)
+        axisX_top.setLabelsFont(font_top)
+        axisX_top.setLabelsBrush(QColor("#777777"))  # Make it slightly dimmer than the bottom axis
+        chart.addAxis(axisX_top, Qt.AlignTop)
+        bar_series.attachAxis(axisX_top)
+
         axisY = QValueAxis()
+
+        # --- FIXED: Apply integer format for Y-axis precision ---
+        axisY.setLabelFormat("%d")
+
         padding = max(abs(max_y), abs(min_y)) * 0.2 + 2
         y_min, y_max = min_y - padding, max_y + padding
         axisY.setRange(y_min, y_max)
@@ -635,3 +696,64 @@ class DashboardWidget(QWidget):
             label = marker.label()
             if "(Forecast)" in label or label == "Target" or label == "Future Highlight":
                 marker.setVisible(False)
+
+    def _on_bar_hovered(self, status: bool, index: int, req_name: str, is_forecast: bool) -> None:
+        """Handles the display, data population, and coordinate mapping of the custom timeline tooltip."""
+        if not status:
+            self.chart_tooltip.hide()
+            return
+
+        try:
+            target_week = self._timeline_weeks[index]
+            week_label = self.get_relative_week_label(target_week)
+
+            mask = (self._timeline_df['REQUIREMENT'].replace('', 'Uncategorized') == req_name) & \
+                   (self._timeline_df['YearWeek'] == target_week) & \
+                   (self._timeline_df['IS_FORECAST'] == is_forecast)
+
+            subset = self._timeline_df[mask]
+
+            if subset.empty:
+                return
+
+            total_lines = subset['LINE_COUNT'].sum() if 'LINE_COUNT' in subset.columns else len(subset)
+            avg_var = subset['VAR_DAYS'].mean()
+
+            title_type = "Forecast" if is_forecast else "Completed"
+            self.tooltip_header.setText(f"{req_name} ({title_type}) | {week_label}")
+
+            details = [
+                f"<b>Total Lines:</b> {int(total_lines)}",
+                f"<b>Avg Variance:</b> {avg_var:+.1f} days",
+                "<br><b>Projects:</b>"
+            ]
+
+            # --- NEW: Group by Project Name and get average variance per project ---
+            # Fallback to PROJECT_ID if 'PROJECT NAME' column doesn't exist
+            proj_col = 'PROJECT NAME' if 'PROJECT NAME' in subset.columns else 'PROJECT_ID'
+
+            # Group by the project, average their variance, and sort so the latest (most negative) are at the top
+            proj_vars = subset.groupby(proj_col)['VAR_DAYS'].mean().sort_values(ascending=True)
+
+            # Build the list with color-coded HTML text
+            projects = list(proj_vars.items())
+            for p_name, p_var in projects[:5]:
+                color = "#FF5252" if p_var < 0 else "#4CAF50"
+                details.append(f"• {p_name}: <span style='color:{color};'>{p_var:+.1f}d</span>")
+
+            if len(projects) > 5:
+                details.append(f"<i>...and {len(projects) - 5} more</i>")
+
+            self.tooltip_content.setText("<br>".join(details))
+
+            global_pos = QCursor.pos()
+            local_pos = self.mapFromGlobal(global_pos)
+
+            self.chart_tooltip.move(local_pos.x() + 15, local_pos.y() + 15)
+            self.chart_tooltip.adjustSize()
+            self.chart_tooltip.show()
+            self.chart_tooltip.raise_()
+
+        except Exception as e:
+            print(f"Tooltip Error: {e}")
+            self.chart_tooltip.hide()

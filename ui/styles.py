@@ -132,4 +132,22 @@ QFrame#SeparatorLine { background-color: #3E3E42; }
 /* --- MENUS --- */
 QMenu { background-color: #252526; color: white; border: 1px solid #3E3E42; }
 QMenu::item:selected { background-color: #007ACC; }
+
+/* --- CUSTOM FLOATING TOOLTIP --- */
+QFrame#ChartTooltip {
+    background-color: rgba(30, 30, 32, 230); /* Slight transparency */
+    border: 1px solid #4DB8FF;
+    border-radius: 6px;
+}
+QLabel#TooltipHeader {
+    color: #FFFFFF;
+    font-weight: bold;
+    font-size: 13px;
+    border-bottom: 1px solid #3E3E42;
+    padding-bottom: 4px;
+}
+QLabel#TooltipText {
+    color: #CCCCCC;
+    font-size: 11px;
+}
 """
