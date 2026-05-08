@@ -4,6 +4,7 @@ away from the Dashboard UI, keeping the View strictly focused on rendering.
 """
 
 from typing import Dict, Any, Tuple, List
+import re
 
 import numpy as np
 import pandas as pd
@@ -92,9 +93,7 @@ class DashboardService:
 
     @staticmethod
     def calculate_advanced_kpis(active_df: pd.DataFrame, comp_df: pd.DataFrame, full_df: pd.DataFrame, current_team_filter: str) -> Dict[str, Any]:
-        """
-        Dynamically calculates KPIs based on the selected team context.
-        """
+        """Dynamically calculates KPIs based on the selected team context."""
         today = pd.Timestamp.today().normalize()
         ytd_start = pd.Timestamp(year=today.year, month=1, day=1)
         cur_start = today - pd.Timedelta(days=7)
@@ -103,7 +102,6 @@ class DashboardService:
         comp_ytd = DashboardService._filter_completed_by_date(comp_df, ytd_start)
         comp_cur = DashboardService._filter_completed_by_date(comp_df, cur_start)
 
-        # 1. Global Metrics
         sub_regex = 'APP|SUB|QUOT|QUOTE|APPROVAL|SUBMITTAL'
         is_prod_act = curr_active_df['REQUIREMENT'].str.contains('PROD', case=False, na=False) if 'REQUIREMENT' in curr_active_df.columns else pd.Series(False, index=curr_active_df.index)
         is_sub_act = curr_active_df['REQUIREMENT'].str.contains(sub_regex, case=False, na=False) if 'REQUIREMENT' in curr_active_df.columns else pd.Series(False, index=curr_active_df.index)
@@ -123,7 +121,6 @@ class DashboardService:
             'cards': []
         }
 
-        # 2. Context-Aware Card Generation
         team_upper = current_team_filter.strip().upper()
         type_col = 'TYPE' if 'TYPE' in curr_active_df.columns else 'REQUIREMENT'
 
@@ -245,23 +242,29 @@ class DashboardService:
     @staticmethod
     def get_engineer_performance(full_df: pd.DataFrame, engineer_name: str) -> Dict[str, Any]:
         """
-        Crunches YTD throughput, top 5 projects, and top 5 fixture families.
+        Crunches YTD throughput, top projects, and top 5 fixture families,
+        along with overall KPI totals.
         """
-        import re
-
         valid_types = ['STD', 'STD-M', 'MOD', 'CUS', 'PART', 'PART-MC', 'WARRANTY', 'SAMPLE', 'RENOV']
-
         eng_df = full_df[full_df['ASSIGNED TO'].str.strip().str.upper() == engineer_name.strip().upper()].copy()
 
         if eng_df.empty:
-            return {'throughput': {'prod': {}, 'sub': {}}, 'projects': [], 'radar': {'categories': [], 'prod': []}}
+            return {
+                'throughput': {'prod': {}, 'sub': {}},
+                'projects': [],
+                'radar': {'categories': [], 'prod': []},
+                'kpis': {'total_prod': 0, 'total_sub': 0}
+            }
 
         eng_df['CLEAN_TYPE'] = eng_df.get('TYPE', pd.Series(dtype=str)).str.strip().str.upper()
         eng_df = eng_df[eng_df['CLEAN_TYPE'].isin(valid_types)]
 
+        # --- Bulletproof Currency Parser ---
         def parse_sell(val):
+            if pd.isna(val) or val == "": return 0.0
             try:
-                return float(str(val).replace('$', '').replace(',', '').strip())
+                clean_str = re.sub(r'[^\d.]', '', str(val))
+                return float(clean_str) if clean_str else 0.0
             except:
                 return 0.0
 
@@ -270,14 +273,24 @@ class DashboardService:
         is_prod = eng_df['REQUIREMENT'].str.contains('PROD', case=False, na=False)
         is_sub = eng_df['REQUIREMENT'].str.contains('APP|SUB|QUOT|QUOTE|APPROVAL|SUBMITTAL', case=False, na=False)
 
-        # --- Throughput Calculation ---
+        prod_df = eng_df[is_prod]
+        sub_df = eng_df[is_sub]
+
+        # Calculate raw KPI totals
+        total_prod = int(prod_df['LINE_COUNT'].sum() if 'LINE_COUNT' in prod_df.columns else len(prod_df))
+        total_sub = int(sub_df['LINE_COUNT'].sum() if 'LINE_COUNT' in sub_df.columns else len(sub_df))
+
+        # --- Adjusted Throughput Calculation ---
         def calc_throughput(subset):
             stats = {}
             for l_type in valid_types:
                 type_df = subset[subset['CLEAN_TYPE'] == l_type]
                 lines = int(type_df['LINE_COUNT'].sum()) if 'LINE_COUNT' in type_df.columns else len(type_df)
                 if lines > 0:
-                    if 'DAYS IN ENG' in type_df.columns:
+                    # UPDATED to use PROCESS_DAYS instead of Queue/EST DAYS
+                    if 'PROCESS_DAYS' in type_df.columns:
+                        avg_days = type_df['PROCESS_DAYS'].apply(DashboardService.parse_variance).mean()
+                    elif 'DAYS IN ENG' in type_df.columns:
                         avg_days = pd.to_numeric(type_df['DAYS IN ENG'], errors='coerce').mean()
                     else:
                         avg_days = pd.to_numeric(type_df['EST DAYS'], errors='coerce').mean()
@@ -286,11 +299,11 @@ class DashboardService:
             return stats
 
         throughput = {
-            'prod': calc_throughput(eng_df[is_prod]),
-            'sub': calc_throughput(eng_df[is_sub])
+            'prod': calc_throughput(prod_df),
+            'sub': calc_throughput(sub_df)
         }
 
-        # --- Top High-Value Projects (Locked to 5) ---
+        # --- Top High-Value Projects ---
         def clean_project(name):
             name = str(name).replace('\n', ' ').strip()
             pattern = r'(?i)\s*(?:-|–|—|\()?\s*(?:REL\b|PHASE\b|PART\b|REORDER\b|REQUOTE\b|REPLACEMENT\b|ARO FLOW).*$'
@@ -308,13 +321,10 @@ class DashboardService:
 
         top_projects = proj_group.sort_values('total_sell', ascending=False).head(5).to_dict('records')
 
-        # --- Radar Chart (Production Only & Geometry Bug Fix) ---
+        # --- Radar Chart ---
         fam_col = 'FAMILY_PREFIX'
         if fam_col not in eng_df.columns:
             eng_df[fam_col] = 'UNKNOWN'
-
-        # FILTER TO PROD ONLY BEFORE WE CALCULATE TOP FAMILIES!
-        prod_df = eng_df[eng_df['REQUIREMENT'].str.contains('PROD', case=False, na=False)]
 
         valid_fams = prod_df[prod_df[fam_col] != 'UNKNOWN']
         top_fams = valid_fams[fam_col].value_counts().head(5).index.tolist()
@@ -328,8 +338,6 @@ class DashboardService:
             radar_data['categories'].append(fam)
             radar_data['prod'].append(p_lines)
 
-        # FIXED: PySide6 QCategoryAxis crashes geometric shapes if we use the exact same empty string
-        # We MUST pad with unique spaces (" ", "  ", "   ") so the axis creates distinct spokes!
         pad_spaces = 1
         while len(radar_data['categories']) < 5:
             radar_data['categories'].append(" " * pad_spaces)
@@ -339,5 +347,9 @@ class DashboardService:
         return {
             'throughput': throughput,
             'projects': top_projects,
-            'radar': radar_data
+            'radar': radar_data,
+            'kpis': {
+                'total_prod': total_prod,
+                'total_sub': total_sub
+            }
         }

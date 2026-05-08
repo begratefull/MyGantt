@@ -9,14 +9,14 @@ from typing import Dict, List, Tuple, Optional, Any
 import pandas as pd
 from PySide6.QtCharts import (
     QChart, QChartView, QPolarChart, QLineSeries, QBarSeries, QBarSet, QBarCategoryAxis,
-    QAreaSeries, QCategoryAxis, QValueAxis, QHorizontalBarSeries
+    QAreaSeries, QCategoryAxis, QValueAxis
 )
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTableWidget,
     QTableWidgetItem, QHeaderView, QFrame, QComboBox,
-    QPushButton, QAbstractItemView, QGridLayout, QFormLayout
+    QPushButton, QAbstractItemView, QGridLayout, QFormLayout, QProgressBar
 )
 
 
@@ -43,7 +43,24 @@ class TeamManagementWidget(QWidget):
         self._current_selected_color: str = self.palette[11]
         self.roster_data: Optional[pd.DataFrame] = None
 
+        # Store animations so PySide6's garbage collector doesn't destroy them
+        self.progress_animations = []
+
         self._setup_ui()
+
+    def _get_empty_dark_chart(self) -> QChart:
+        chart = QChart()
+        chart.setTheme(QChart.ChartThemeDark)
+        chart.setBackgroundBrush(Qt.NoBrush)
+        chart.layout().setContentsMargins(10, 10, 10, 10)
+        chart.legend().hide()
+        return chart
+
+    def _safe_set_chart(self, chart_view: QChartView, new_chart: QChart) -> None:
+        old_chart = chart_view.chart()
+        chart_view.setChart(new_chart)
+        if old_chart:
+            old_chart.deleteLater()
 
     def _setup_ui(self) -> None:
         main_layout = QHBoxLayout(self)
@@ -144,13 +161,96 @@ class TeamManagementWidget(QWidget):
         analytics_layout.setContentsMargins(20, 20, 20, 20)
         analytics_layout.setSpacing(20)
 
+        # Main Title Header - Bumped up font size!
         self.lbl_analytics_title = QLabel("Workload Analytics: Select an Engineer")
-        self.lbl_analytics_title.setObjectName("DashTitle")
+        self.lbl_analytics_title.setStyleSheet("color: #FFFFFF; font-size: 24px; font-weight: bold;")
         analytics_layout.addWidget(self.lbl_analytics_title)
 
-        throughput_layout = QHBoxLayout()
-        throughput_layout.setSpacing(15)
+        # Dashboard Body Split (Left Sidebar / Right Main Stage)
+        dashboard_body_layout = QHBoxLayout()
+        dashboard_body_layout.setSpacing(20)
 
+        # --- DASHBOARD LEFT SIDEBAR (KPIs, List, Circle) ---
+        dash_left_layout = QVBoxLayout()
+        dash_left_layout.setSpacing(15)
+
+        # Custom Progress Bar Leaderboard (With KPIs merged into header)
+        projects_frame = QFrame()
+        projects_frame.setObjectName("DashCard")
+        projects_layout = QVBoxLayout(projects_frame)
+
+        # 1. Cleaned up KPIs - no inner borders, pure data
+        kpi_layout = QHBoxLayout()
+        kpi_layout.setSpacing(20)
+
+        prod_layout = QVBoxLayout()
+        prod_title = QLabel("TOTAL PROD LINES")
+        prod_title.setStyleSheet("color: #888888; font-size: 11px; font-weight: bold;")
+        self.kpi_prod_lbl = QLabel("0")
+        self.kpi_prod_lbl.setStyleSheet("color: #FFFFFF; font-size: 28px; font-weight: bold;")
+        prod_layout.addWidget(prod_title)
+        prod_layout.addWidget(self.kpi_prod_lbl)
+
+        sub_layout = QVBoxLayout()
+        sub_title = QLabel("TOTAL SUB LINES")
+        sub_title.setStyleSheet("color: #888888; font-size: 11px; font-weight: bold;")
+        self.kpi_sub_lbl = QLabel("0")
+        self.kpi_sub_lbl.setStyleSheet("color: #FFFFFF; font-size: 28px; font-weight: bold;")
+        sub_layout.addWidget(sub_title)
+        sub_layout.addWidget(self.kpi_sub_lbl)
+
+        kpi_layout.addLayout(prod_layout)
+        kpi_layout.addLayout(sub_layout)
+
+        projects_layout.addLayout(kpi_layout)
+
+        # Sleek Divider
+        sep = QFrame()
+        sep.setFrameShape(QFrame.HLine)
+        sep.setStyleSheet("background-color: #2E2E32;")
+        projects_layout.addWidget(sep)
+
+        projects_title = QLabel("Top High-Value Projects")
+        projects_title.setStyleSheet("color: #FFFFFF; font-size: 14px; font-weight: bold; margin-top: 5px;")
+        projects_layout.addWidget(projects_title)
+
+        self.projects_container = QWidget()
+        self.projects_vbox = QVBoxLayout(self.projects_container)
+        self.projects_vbox.setAlignment(Qt.AlignTop)
+        self.projects_vbox.setContentsMargins(0, 10, 0, 0)
+        self.projects_vbox.setSpacing(15)
+
+        projects_layout.addWidget(self.projects_container, 1)
+        dash_left_layout.addWidget(projects_frame, 1)
+
+        # 3. Radar Chart
+        radar_frame = QFrame()
+        radar_frame.setObjectName("DashCard")
+        radar_layout = QVBoxLayout(radar_frame)
+        radar_title = QLabel("Top Fixture Families")
+        radar_title.setObjectName("CardTitle")
+        radar_layout.addWidget(radar_title)
+
+        empty_polar = QPolarChart()
+        empty_polar.setTheme(QChart.ChartThemeDark)
+        empty_polar.setBackgroundBrush(Qt.NoBrush)
+        empty_polar.layout().setContentsMargins(5, 5, 5, 5)
+
+        self.radar_view = QChartView(empty_polar)
+        self.radar_view.setRenderHint(QPainter.Antialiasing)
+        self.radar_view.setStyleSheet("background: transparent;")
+        radar_layout.addWidget(self.radar_view, 1)
+
+        dash_left_layout.addWidget(radar_frame, 1)
+
+        dashboard_body_layout.addLayout(dash_left_layout, 1)
+
+
+        # --- DASHBOARD RIGHT MAIN STAGE (Wide Charts) ---
+        dash_right_layout = QVBoxLayout()
+        dash_right_layout.setSpacing(15)
+
+        # 1. Production Throughput Chart (Top)
         self.prod_card = QFrame()
         self.prod_card.setObjectName("DashCard")
         self.prod_layout = QVBoxLayout(self.prod_card)
@@ -158,12 +258,14 @@ class TeamManagementWidget(QWidget):
         prod_title.setObjectName("CardTitle")
         self.prod_layout.addWidget(prod_title)
 
-        self.prod_chart_view = QChartView()
+        self.prod_chart_view = QChartView(self._get_empty_dark_chart())
         self.prod_chart_view.setRenderHint(QPainter.Antialiasing)
         self.prod_chart_view.setStyleSheet("background: transparent;")
         self.prod_layout.addWidget(self.prod_chart_view, 1)
-        throughput_layout.addWidget(self.prod_card)
 
+        dash_right_layout.addWidget(self.prod_card, 1)
+
+        # 2. Submittal Throughput Chart (Bottom)
         self.sub_card = QFrame()
         self.sub_card.setObjectName("DashCard")
         self.sub_layout = QVBoxLayout(self.sub_card)
@@ -171,51 +273,16 @@ class TeamManagementWidget(QWidget):
         sub_title.setObjectName("CardTitle")
         self.sub_layout.addWidget(sub_title)
 
-        self.sub_chart_view = QChartView()
+        self.sub_chart_view = QChartView(self._get_empty_dark_chart())
         self.sub_chart_view.setRenderHint(QPainter.Antialiasing)
         self.sub_chart_view.setStyleSheet("background: transparent;")
         self.sub_layout.addWidget(self.sub_chart_view, 1)
-        throughput_layout.addWidget(self.sub_card)
 
-        analytics_layout.addLayout(throughput_layout, 1)
+        dash_right_layout.addWidget(self.sub_card, 1)
 
-        deep_dive_layout = QHBoxLayout()
-        deep_dive_layout.setSpacing(15)
+        dashboard_body_layout.addLayout(dash_right_layout, 2)
 
-        radar_frame = QFrame()
-        radar_frame.setObjectName("DashCard")
-        radar_layout = QVBoxLayout(radar_frame)
-        radar_title = QLabel("Top Fixture Families (Production)")
-        radar_title.setObjectName("CardTitle")
-        radar_layout.addWidget(radar_title)
-
-        empty_chart = QPolarChart()
-        empty_chart.setTheme(QChart.ChartThemeDark)
-        empty_chart.setBackgroundBrush(Qt.NoBrush)
-        empty_chart.layout().setContentsMargins(20, 20, 20, 20)
-
-        self.radar_view = QChartView(empty_chart)
-        self.radar_view.setRenderHint(QPainter.Antialiasing)
-        self.radar_view.setStyleSheet("background: transparent;")
-        radar_layout.addWidget(self.radar_view, 1)
-
-        deep_dive_layout.addWidget(radar_frame, 1)
-
-        projects_frame = QFrame()
-        projects_frame.setObjectName("DashCard")
-        projects_layout = QVBoxLayout(projects_frame)
-        projects_title = QLabel("Top High-Value Projects (YTD)")
-        projects_title.setObjectName("CardTitle")
-        projects_layout.addWidget(projects_title)
-
-        self.projects_chart_view = QChartView()
-        self.projects_chart_view.setRenderHint(QPainter.Antialiasing)
-        self.projects_chart_view.setStyleSheet("background: transparent;")
-        projects_layout.addWidget(self.projects_chart_view, 1)
-
-        deep_dive_layout.addWidget(projects_frame, 1)
-
-        analytics_layout.addLayout(deep_dive_layout, 2)
+        analytics_layout.addLayout(dashboard_body_layout, 1)
         main_layout.addWidget(analytics_frame, 3)
 
         self.set_selected_color(self._current_selected_color)
@@ -292,110 +359,165 @@ class TeamManagementWidget(QWidget):
     # ===============================================
 
     def _populate_throughput(self, chart_view: QChartView, data_dict: Dict[str, Dict[str, float]], primary_color: str) -> None:
-        new_chart = QChart()
-        new_chart.setTheme(QChart.ChartThemeDark)
-        new_chart.setBackgroundBrush(Qt.NoBrush)
-        new_chart.layout().setContentsMargins(10, 10, 10, 10)
-        new_chart.legend().hide()
+        new_chart = self._get_empty_dark_chart()
+        new_chart.setAnimationOptions(QChart.SeriesAnimations) # Retain animation for bars
 
         if not data_dict:
-            chart_view.setChart(new_chart)
+            self._safe_set_chart(chart_view, new_chart)
             return
 
-        series = QBarSeries()
+        bar_series = QBarSeries()
         bar_set = QBarSet("Total Lines")
-        bar_set.setColor(QColor(primary_color))
+        fill_color = QColor(primary_color)
+        fill_color.setAlpha(200)
+        bar_set.setColor(fill_color)
+        bar_set.setBorderColor(QColor(primary_color))
+
+        speed_series = QLineSeries()
+        speed_series.setName("Avg Days")
+        speed_pen = QPen(QColor("#FFFFFF"), 3)
+        speed_series.setPen(speed_pen)
 
         categories = []
         max_lines = 0
+        max_days = 0.0
 
-        for l_type, stats in data_dict.items():
+        for i, (l_type, stats) in enumerate(data_dict.items()):
             lines = stats['lines']
-            label = f"{l_type}\n({stats['avg_days']:.1f}d)"
+            days = stats['avg_days']
+            categories.append(l_type)
 
             bar_set.append(lines)
-            categories.append(label)
-            if lines > max_lines: max_lines = lines
+            speed_series.append(i, days)
 
-        series.append(bar_set)
-        new_chart.addSeries(series)
+            if lines > max_lines: max_lines = lines
+            if days > max_days: max_days = days
+
+        bar_series.append(bar_set)
+
+        new_chart.addSeries(bar_series)
+        new_chart.addSeries(speed_series)
 
         axis_x = QBarCategoryAxis()
         axis_x.append(categories)
         axis_x.setLabelsBrush(QColor("#AAAAAA"))
+        axis_x.setGridLineVisible(False)
         new_chart.addAxis(axis_x, Qt.AlignBottom)
-        series.attachAxis(axis_x)
+        bar_series.attachAxis(axis_x)
+        speed_series.attachAxis(axis_x)
 
-        axis_y = QValueAxis()
-        axis_y.setLabelFormat("%d")
-        axis_y.setRange(0, max_lines + (max_lines * 0.2) + 1)
-        axis_y.setLabelsBrush(QColor("#AAAAAA"))
-        new_chart.addAxis(axis_y, Qt.AlignLeft)
-        series.attachAxis(axis_y)
+        axis_y_left = QValueAxis()
+        axis_y_left.setLabelFormat("%d")
+        axis_y_left.setTitleText("Total Lines")
+        axis_y_left.setTitleBrush(QColor("#AAAAAA"))
+        axis_y_left.setRange(0, max_lines + (max_lines * 0.2) + 1)
+        axis_y_left.setLabelsBrush(QColor(primary_color))
+        axis_y_left.setGridLineColor(QColor("#333333"))
+        new_chart.addAxis(axis_y_left, Qt.AlignLeft)
+        bar_series.attachAxis(axis_y_left)
 
-        series.setLabelsVisible(True)
+        axis_y_right = QValueAxis()
+        axis_y_right.setLabelFormat("%.1f")
+        axis_y_right.setTitleText("Avg Days")
+        axis_y_right.setTitleBrush(QColor("#AAAAAA"))
+        axis_y_right.setRange(0, max_days + (max_days * 0.2) + 1)
+        axis_y_right.setLabelsBrush(QColor("#FFFFFF"))
+        axis_y_right.setGridLineVisible(False)
+        new_chart.addAxis(axis_y_right, Qt.AlignRight)
+        speed_series.attachAxis(axis_y_right)
+
+        bar_series.setLabelsVisible(True)
         bar_set.setLabelColor(QColor("#FFFFFF"))
 
-        chart_view.setChart(new_chart)
+        new_chart.legend().show()
+        new_chart.legend().setAlignment(Qt.AlignBottom)
+        new_chart.legend().setLabelBrush(QColor("#FFFFFF"))
+
+        self._safe_set_chart(chart_view, new_chart)
 
     def _populate_top_projects(self, projects_list: List[Dict[str, Any]], primary_color: str) -> None:
-        new_chart = QChart()
-        new_chart.setTheme(QChart.ChartThemeDark)
-        new_chart.setBackgroundBrush(Qt.NoBrush)
-        new_chart.layout().setContentsMargins(10, 10, 10, 10)
-        new_chart.legend().hide()
+        self.progress_animations.clear() # Clear out old animations
+
+        while self.projects_vbox.count():
+            child = self.projects_vbox.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
 
         if not projects_list:
-            self.projects_chart_view.setChart(new_chart)
+            empty_label = QLabel("No high-value projects found.")
+            empty_label.setStyleSheet("color: #666666; font-style: italic;")
+            self.projects_vbox.addWidget(empty_label)
             return
 
-        series = QHorizontalBarSeries()
-        bar_set = QBarSet("Sell $")
-        bar_set.setColor(QColor(primary_color))
+        max_val = max([float(p.get('total_sell', 0.0)) for p in projects_list])
+        if max_val == 0: max_val = 1
 
-        projects_list = projects_list[::-1]
-
-        categories = []
-        max_val = 0
-
-        for proj in projects_list:
-            val = proj.get('total_sell', 0.0)
+        for index, proj in enumerate(projects_list):
+            val = float(proj.get('total_sell', 0.0))
             name = str(proj.get('FUZZY_PROJ', 'Unknown Project'))
-            if len(name) > 18: name = name[:15] + "..."
 
-            bar_set.append(val)
-            categories.append(name)
-            if val > max_val: max_val = val
+            row_container = QWidget()
+            row_layout = QVBoxLayout(row_container)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+            row_layout.setSpacing(4)
 
-        series.append(bar_set)
-        new_chart.addSeries(series)
+            text_layout = QHBoxLayout()
 
-        axis_y = QBarCategoryAxis()
-        axis_y.append(categories)
-        axis_y.setLabelsBrush(QColor("#AAAAAA"))
-        new_chart.addAxis(axis_y, Qt.AlignLeft)
-        series.attachAxis(axis_y)
+            lbl_name = QLabel(f"#{index + 1}  {name}")
+            lbl_name.setStyleSheet("color: #E0E0E0; font-size: 12px; font-weight: bold;")
 
-        axis_x = QValueAxis()
-        axis_x.setLabelFormat("$%d")
-        axis_x.setRange(0, max_val + (max_val * 0.1))
-        axis_x.setLabelsBrush(QColor("#AAAAAA"))
-        new_chart.addAxis(axis_x, Qt.AlignBottom)
-        series.attachAxis(axis_x)
+            lbl_val = QLabel(f"${val:,.0f}")
+            lbl_val.setStyleSheet("color: #AAAAAA; font-size: 12px;")
 
-        self.projects_chart_view.setChart(new_chart)
+            text_layout.addWidget(lbl_name)
+            text_layout.addStretch()
+            text_layout.addWidget(lbl_val)
+
+            row_layout.addLayout(text_layout)
+
+            bar = QProgressBar()
+            bar.setFixedHeight(6)
+            bar.setTextVisible(False)
+            bar.setRange(0, int(max_val))
+            bar.setValue(0) # Start at 0 for animation
+
+            bar.setStyleSheet(f"""
+                QProgressBar {{
+                    background-color: #2A2A2E;
+                    border: none;
+                    border-radius: 3px;
+                }}
+                QProgressBar::chunk {{
+                    background-color: {primary_color};
+                    border-radius: 3px;
+                }}
+            """)
+
+            row_layout.addWidget(bar)
+            self.projects_vbox.addWidget(row_container)
+
+            # Create a smooth animation for each bar sliding in!
+            anim = QPropertyAnimation(bar, b"value")
+            anim.setDuration(800) # milliseconds
+            anim.setStartValue(0)
+            anim.setEndValue(int(val))
+            anim.setEasingCurve(QEasingCurve.OutCubic)
+            self.progress_animations.append(anim)
+            anim.start()
 
     def _populate_radar(self, radar_data: Dict[str, Any], primary_color: str) -> None:
         new_chart = QPolarChart()
         new_chart.setTheme(QChart.ChartThemeDark)
         new_chart.setBackgroundBrush(Qt.NoBrush)
-        new_chart.layout().setContentsMargins(20, 20, 20, 20)
+        new_chart.layout().setContentsMargins(5, 5, 5, 5)
+
+        # Explicitly NO animations added here to respect request
 
         categories = radar_data.get('categories', [])
         prod_vals = radar_data.get('prod', [])
 
         if not categories:
-            self.radar_view.setChart(new_chart)
+            self._safe_set_chart(self.radar_view, new_chart)
             return
 
         series_prod = QLineSeries()
@@ -403,7 +525,6 @@ class TeamManagementWidget(QWidget):
         color_prod = QColor(primary_color)
         series_prod.setPen(QPen(color_prod, 3))
 
-        # Explicit lower bounds to prevent PySide6 Area bugs
         series_zero = QLineSeries()
 
         max_val = 0
@@ -414,12 +535,10 @@ class TeamManagementWidget(QWidget):
             series_zero.append(i, 0)
             max_val = max(max_val, p_val)
 
-        # Close the geometry loop back to point 0
         if categories:
             series_prod.append(len(categories), series_prod.at(0).y())
             series_zero.append(len(categories), 0)
 
-        # Build the perfectly anchored Area Polygon
         area_prod = QAreaSeries(series_prod, series_zero)
         area_prod.setName("Production Lines")
         area_prod._series_prod_ref = series_prod
@@ -439,7 +558,6 @@ class TeamManagementWidget(QWidget):
         for i, cat in enumerate(categories):
             angular_axis.append(cat, i)
 
-        # Close the axis loop with a zero-width unicode space to prevent axis overlaps
         angular_axis.append("\u200B", len(categories))
         angular_axis.setRange(0, len(categories))
 
@@ -458,10 +576,14 @@ class TeamManagementWidget(QWidget):
         new_chart.legend().setAlignment(Qt.AlignBottom)
         new_chart.legend().setLabelBrush(QColor("#FFFFFF"))
 
-        self.radar_view.setChart(new_chart)
+        self._safe_set_chart(self.radar_view, new_chart)
 
     def update_analytics(self, engineer_name: str, analytics_payload: Dict[str, Any], primary_color: str = "#007ACC") -> None:
         self.lbl_analytics_title.setText(f"Workload Analytics: {engineer_name}")
+
+        kpis = analytics_payload.get('kpis', {'total_prod': 0, 'total_sub': 0})
+        self.kpi_prod_lbl.setText(str(kpis['total_prod']))
+        self.kpi_sub_lbl.setText(str(kpis['total_sub']))
 
         self._populate_throughput(self.prod_chart_view, analytics_payload['throughput'].get('prod', {}), primary_color)
         self._populate_throughput(self.sub_chart_view, analytics_payload['throughput'].get('sub', {}), primary_color)
