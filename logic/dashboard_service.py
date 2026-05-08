@@ -151,7 +151,6 @@ class DashboardService:
             kpis['view_type'] = 'health'
             line_types = []
 
-            # REMOVED: 'PART' and 'PART-MC'. FIXED: 'STD-M'
             if team_upper == "CUSTOM TEAM":
                 line_types = ['MOD', 'CUS']
             elif team_upper == "STANDARD TEAM":
@@ -242,3 +241,103 @@ class DashboardService:
         reqs = df['REQUIREMENT'].replace('', 'Uncategorized').unique().tolist()
 
         return weeks, reqs, df
+
+    @staticmethod
+    def get_engineer_performance(full_df: pd.DataFrame, engineer_name: str) -> Dict[str, Any]:
+        """
+        Crunches YTD throughput, top 5 projects, and top 5 fixture families.
+        """
+        import re
+
+        valid_types = ['STD', 'STD-M', 'MOD', 'CUS', 'PART', 'PART-MC', 'WARRANTY', 'SAMPLE', 'RENOV']
+
+        eng_df = full_df[full_df['ASSIGNED TO'].str.strip().str.upper() == engineer_name.strip().upper()].copy()
+
+        if eng_df.empty:
+            return {'throughput': {'prod': {}, 'sub': {}}, 'projects': [], 'radar': {'categories': [], 'prod': []}}
+
+        eng_df['CLEAN_TYPE'] = eng_df.get('TYPE', pd.Series(dtype=str)).str.strip().str.upper()
+        eng_df = eng_df[eng_df['CLEAN_TYPE'].isin(valid_types)]
+
+        def parse_sell(val):
+            try:
+                return float(str(val).replace('$', '').replace(',', '').strip())
+            except:
+                return 0.0
+
+        eng_df['CLEAN_SELL'] = eng_df.get('SELL $', pd.Series(dtype=float)).apply(parse_sell)
+
+        is_prod = eng_df['REQUIREMENT'].str.contains('PROD', case=False, na=False)
+        is_sub = eng_df['REQUIREMENT'].str.contains('APP|SUB|QUOT|QUOTE|APPROVAL|SUBMITTAL', case=False, na=False)
+
+        # --- Throughput Calculation ---
+        def calc_throughput(subset):
+            stats = {}
+            for l_type in valid_types:
+                type_df = subset[subset['CLEAN_TYPE'] == l_type]
+                lines = int(type_df['LINE_COUNT'].sum()) if 'LINE_COUNT' in type_df.columns else len(type_df)
+                if lines > 0:
+                    if 'DAYS IN ENG' in type_df.columns:
+                        avg_days = pd.to_numeric(type_df['DAYS IN ENG'], errors='coerce').mean()
+                    else:
+                        avg_days = pd.to_numeric(type_df['EST DAYS'], errors='coerce').mean()
+
+                    stats[l_type] = {'lines': lines, 'avg_days': float(avg_days) if pd.notna(avg_days) else 0.0}
+            return stats
+
+        throughput = {
+            'prod': calc_throughput(eng_df[is_prod]),
+            'sub': calc_throughput(eng_df[is_sub])
+        }
+
+        # --- Top High-Value Projects (Locked to 5) ---
+        def clean_project(name):
+            name = str(name).replace('\n', ' ').strip()
+            pattern = r'(?i)\s*(?:-|–|—|\()?\s*(?:REL\b|PHASE\b|PART\b|REORDER\b|REQUOTE\b|REPLACEMENT\b|ARO FLOW).*$'
+            cleaned = re.sub(pattern, '', name).strip()
+            return re.sub(r'\s*[-–—]\s*$', '', cleaned) if cleaned else name
+
+        proj_col = 'PROJECT NAME' if 'PROJECT NAME' in eng_df.columns else (
+            'SHIP TO NUMBER\n(PROJECT)' if 'SHIP TO NUMBER\n(PROJECT)' in eng_df.columns else 'PROJECT_ID')
+        eng_df['FUZZY_PROJ'] = eng_df.get(proj_col, pd.Series(dtype=str)).apply(clean_project)
+
+        proj_group = eng_df.groupby('FUZZY_PROJ').agg(
+            lines=('LINE_COUNT', 'sum') if 'LINE_COUNT' in eng_df.columns else ('SMART_ID', 'count'),
+            total_sell=('CLEAN_SELL', 'sum')
+        ).reset_index()
+
+        top_projects = proj_group.sort_values('total_sell', ascending=False).head(5).to_dict('records')
+
+        # --- Radar Chart (Production Only & Geometry Bug Fix) ---
+        fam_col = 'FAMILY_PREFIX'
+        if fam_col not in eng_df.columns:
+            eng_df[fam_col] = 'UNKNOWN'
+
+        # FILTER TO PROD ONLY BEFORE WE CALCULATE TOP FAMILIES!
+        prod_df = eng_df[eng_df['REQUIREMENT'].str.contains('PROD', case=False, na=False)]
+
+        valid_fams = prod_df[prod_df[fam_col] != 'UNKNOWN']
+        top_fams = valid_fams[fam_col].value_counts().head(5).index.tolist()
+
+        radar_data = {'categories': [], 'prod': []}
+
+        for fam in top_fams:
+            fam_df = prod_df[prod_df[fam_col] == fam]
+            p_lines = int(fam_df['LINE_COUNT'].sum() if 'LINE_COUNT' in fam_df.columns else len(fam_df))
+
+            radar_data['categories'].append(fam)
+            radar_data['prod'].append(p_lines)
+
+        # FIXED: PySide6 QCategoryAxis crashes geometric shapes if we use the exact same empty string
+        # We MUST pad with unique spaces (" ", "  ", "   ") so the axis creates distinct spokes!
+        pad_spaces = 1
+        while len(radar_data['categories']) < 5:
+            radar_data['categories'].append(" " * pad_spaces)
+            radar_data['prod'].append(0)
+            pad_spaces += 1
+
+        return {
+            'throughput': throughput,
+            'projects': top_projects,
+            'radar': radar_data
+        }

@@ -15,6 +15,7 @@ from PySide6.QtCore import QTimer
 from PySide6.QtGui import QShortcut, QKeySequence
 from PySide6.QtWidgets import QFileDialog
 
+from logic.dashboard_service import DashboardService
 from logic.history import HistoryManager
 from logic.workers import SyncWorker, DataRefreshWorker
 from logic.data_builder import GanttDataBuilder
@@ -41,6 +42,7 @@ class AppController:
         self.row_height = 36
 
         self.current_plan_df = pd.DataFrame()
+        self.full_plan_df = pd.DataFrame()
         self.current_visual_rows = []
         self.expanded_projects = set()
 
@@ -319,6 +321,8 @@ class AppController:
         if full_dashboard_df.empty: return
         self.update_dynamic_dropdowns(full_dashboard_df)
 
+        self.full_plan_df = full_dashboard_df
+
         if plan_df.empty: return
         self.current_plan_df = plan_df
 
@@ -483,46 +487,26 @@ class AppController:
         self.refresh_team_view()
 
     def handle_engineer_selected(self, engineer_name: str) -> None:
-        if self.current_plan_df.empty: return
-
-        eng_mask = self.current_plan_df['ASSIGNED TO'].str.strip().str.upper() == engineer_name.strip().upper()
-        eng_df = self.current_plan_df[eng_mask]
-
-        if eng_df.empty:
-            self.view.team_screen.update_analytics(engineer_name, 0, 0.0, {})
+        if not hasattr(self, 'full_plan_df') or self.full_plan_df.empty:
             return
 
-        active_mask = eng_df['STATUS'].str.strip().str.upper() != 'COMPLETE'
-        active_df = eng_df[active_mask]
-        active_lines = int(active_mask.sum())
+        # Pass the unfiltered data to our new DashboardService method
+        analytics_payload = DashboardService.get_engineer_performance(self.full_plan_df, engineer_name)
 
-        avg_days = 0.0
-        if not active_df.empty and 'EST DAYS' in active_df.columns:
-            days_numeric = pd.to_numeric(active_df['EST DAYS'], errors='coerce')
-            avg_days = float(days_numeric.mean())
-            if pd.isna(avg_days): avg_days = 0.0
-
-        family_counts = {}
-        if not active_df.empty:
-            target_col = next((col for col in ['FAMILY', 'CATALOG CODE', 'CATALOG', 'REQUIREMENT'] if col in active_df.columns), None)
-            if target_col:
-                counts = active_df[target_col].value_counts()
-                for family, count in counts.head(7).items():
-                    family_str = str(family).strip()
-                    if not family_str or family_str.lower() == 'nan': family_str = "Uncategorized"
-                    family_counts[family_str] = family_counts.get(family_str, 0) + int(count)
-
+        # Grab their custom theme color from the DB
         eng_db_df = self.model.db.get_engineers_df()
         primary_color = "#007ACC"
         if not eng_db_df.empty:
             color_match = eng_db_df[eng_db_df['name'].str.upper() == engineer_name.upper()]
-            if not color_match.empty: primary_color = color_match.iloc[0].get('hex_color', '#007ACC')
+            if not color_match.empty:
+                primary_color = color_match.iloc[0].get('hex_color', '#007ACC')
 
-        self.view.team_screen.update_analytics(engineer_name=engineer_name, active_lines=active_lines, avg_days=avg_days, family_counts=family_counts, primary_color=primary_color)
-
-    # ---------------------------------------------------------
-    # REDESIGNED CANVAS LOGIC: ONE-WAY DATA FLOW
-    # ---------------------------------------------------------
+        # Send the payload to the View!
+        self.view.team_screen.update_analytics(
+            engineer_name=engineer_name,
+            analytics_payload=analytics_payload,
+            primary_color=primary_color
+        )
 
     def update_kpi_variances_locally(self, start_x: float, est_days_str: str) -> None:
         day_zero = self.view.gantt_screen.day_zero

@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from typing import Dict, Any
+import re
 
 from data.database import DatabaseManager
 from data.excel_parser import ExcelParser
@@ -128,13 +129,39 @@ class WorkloadManager:
         comp_or_est_end_dt = comp_date_dt.combine_first(ends_dt)
         df['PROCESS_DAYS'] = calc_var_vectorized(starts_dt, comp_or_est_end_dt)
 
+        # --- NEW LOGIC: Scrub Fixture Families on Data Sync ---
+        # Look for the clean header that ExcelParser already created!
+        lum_col = 'LUMINARIE SPECIFICATION'
+
+        def extract_family_robust(lum_str):
+            if pd.isna(lum_str) or not str(lum_str).strip():
+                return 'UNKNOWN'
+
+            s = str(lum_str).strip().upper()
+
+            # 1. Strip out ETO (with optional numbers), REVISE, and SK prefixes
+            s = re.sub(r'^(REVISE|ETO\d*)[\.\u2026\s\-]*', '', s)
+            s = re.sub(r'^SK[\.\u2026\s\-]*', '', s)
+
+            # 2. Extract the first segment before the first hyphen or space
+            family = s.split('-')[0].split(' ')[0].strip()
+
+            return family if family else 'UNKNOWN'
+
+        if lum_col in df.columns:
+            df['FAMILY_PREFIX'] = df[lum_col].apply(extract_family_robust)
+        else:
+            df['FAMILY_PREFIX'] = 'UNKNOWN'
+
+        # ADDED 'FAMILY_PREFIX' to the headers list so it doesn't get filtered out
         planning_headers = [
             "PROJECT_ID", "SMART_ID", "TYPE", "REQUIREMENT", "QUOTE NO", "ORDER NUMBER", "PROJECT NAME", "STATUS",
             "ASSIGNED TO", "DATE TO ENG", "ENG START DATE", "EST START DATE", "EST DAYS", "EST END DATE",
             "ESD", "ENG DUE DATE", "COMPLETE DATE",
             "EST ESD VARIANCE", "EST ENG VARIANCE", "COMPLETION VARIANCE",
             "QUEUE_DAYS", "PROCESS_DAYS", "SELL $", "LINE_COUNT",
-            "LUMINARIE SPECIFICATION", "PART NUMBER", "FAMILY", "CATALOG CODE", "CATALOG"
+            "LUMINARIE SPECIFICATION", "PART NUMBER", "FAMILY", "CATALOG CODE", "CATALOG",
+            "FAMILY_PREFIX"
         ]
 
         available_cols = [c for c in planning_headers if c in df.columns]

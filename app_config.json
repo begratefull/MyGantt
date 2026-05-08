@@ -3,7 +3,7 @@
     "filters": {
         "gantt_team": "Custom Team",
         "dash_team": "Custom Team",
-        "req": "All Reqs",
+        "req": "Production",
         "status": "Active",
         "sort": "Eng Due Date"
     }
