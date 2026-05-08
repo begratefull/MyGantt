@@ -4,7 +4,9 @@ import re
 import shutil
 import logging
 import pandas as pd
+from logic.constants import AppConstants
 
+logger = logging.getLogger(__name__)
 
 class ExcelParser:
     def __init__(self):
@@ -76,11 +78,14 @@ class ExcelParser:
         temp_path = "temp_sync_shadow.xlsx"
         try:
             if not os.path.exists(file_path):
+                logger.error(f"Excel Sync Failed: File not found at {file_path}")
                 return None, f"Could not find the synced file at:\n{file_path}"
 
+            logger.info("Copying Excel file to local shadow copy...")
             shutil.copy2(file_path, temp_path)
 
-            df = pd.read_excel(temp_path, sheet_name='ENG WORKLOAD MASTER 2026', header=None, engine='openpyxl')
+            logger.info("Reading Excel file into Pandas...")
+            df = pd.read_excel(temp_path, sheet_name=AppConstants.MASTER_SHEET_NAME, header=None, engine='openpyxl')
 
             def clean_cell(val):
                 if pd.isna(val): return ""
@@ -97,6 +102,7 @@ class ExcelParser:
                     break
 
             if header_idx == -1:
+                logger.error("Excel Sync Failed: Could not find 'ORDER NUMBER' header row.")
                 return None, "Could not find 'ORDER NUMBER' header row."
 
             df.columns = [str(c).strip() for c in df.iloc[header_idx]]
@@ -125,6 +131,7 @@ class ExcelParser:
             columns_to_keep = [c for c in df.columns if c in self.unique_expected_cols]
             df = df[columns_to_keep]
 
+            logger.info("Generating SMART_IDs...")
             df['SMART_ID'] = df.apply(self._generate_smart_id, axis=1)
             counts = df.groupby('SMART_ID').cumcount()
             df['SMART_ID'] = df['SMART_ID'] + counts.apply(lambda x: f"_{x}" if x > 0 else "")
@@ -140,12 +147,19 @@ class ExcelParser:
             final_cols = ["SMART_ID"] + self.unique_expected_cols
             df = df[final_cols]
 
+            logger.info("Excel parsing completed successfully.")
             return df, ""
 
+        except PermissionError:
+            logger.error("Excel Sync Failed: The shadow file is currently locked. Close any programs that might be using it.")
+            return None, "Permission Error: Could not access the file."
+        except FileNotFoundError:
+            logger.error("Excel Sync Failed: The shadow copy could not be created or found.")
+            return None, "File Not Found."
         except Exception as e:
-            import traceback
-            logging.error(f"Error parsing Excel: {str(e)}\n\nTraceback:\n{traceback.format_exc()}")
-            return None, "Sync failed! Check error log."
+            # Using logging.exception automatically captures and formats the full traceback
+            logger.exception("Unexpected error parsing Excel:")
+            return None, "Sync failed! Check the log console for the traceback."
         finally:
             if os.path.exists(temp_path):
                 try:

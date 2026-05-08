@@ -5,6 +5,7 @@ import re
 
 from data.database import DatabaseManager
 from data.excel_parser import ExcelParser
+from logic.constants import AppConstants # <--- IMPORTED CONSTANTS
 
 
 class WorkloadManager:
@@ -58,19 +59,17 @@ class WorkloadManager:
             lambda r: r['MAN_ASSIGNED'] if str(r.get('MAN_ASSIGNED', '')).strip() else r['RAW_ASSIGNED'], axis=1)
         df['ENG START DATE'] = df['RAW_START_DATE']
 
-        # --- UPDATED LOGIC: Automate Quote & Approval Defaults ---
         # Convert due dates to actual datetime objects so we can do math on them
         due_dates_dt = pd.to_datetime(df['ENG DUE DATE'], errors='coerce')
 
         # Subtract 1 business day so the 1-day task ENDS on the due date
         calc_starts = (due_dates_dt - pd.tseries.offsets.BusinessDay(1)).dt.strftime('%m/%d/%Y').fillna('')
 
-        # Identify lines where the requirement is a Quote or Approval
-        is_quote_app = df['REQUIREMENT'].str.contains('QUOT|APP', case=False, na=False)
+        # --- USE CONSTANTS INSTEAD OF MAGIC STRINGS ---
+        is_quote_app = df['REQUIREMENT'].str.contains(AppConstants.QUOTE_REQ_PATTERN, case=False, na=False)
 
-        # Determine the fallback dates and days
         fallback_start_dates = np.where(is_quote_app & due_dates_dt.notna(), calc_starts, df['RAW_START_DATE'])
-        fallback_days = np.where(is_quote_app, '1', '5')
+        fallback_days = np.where(is_quote_app, str(AppConstants.DEFAULT_QUOTE_DAYS), str(AppConstants.DEFAULT_EST_DAYS))
 
         # Apply manual overrides if present, otherwise use fallbacks
         df['EST START DATE'] = np.where(
@@ -92,10 +91,10 @@ class WorkloadManager:
         df['PROJECT_ID'] = df.apply(lambda x: x['PROJECT_ID'] if x['PROJECT_ID'] else x['SMART_ID'], axis=1)
         df['LINE_COUNT'] = 1
 
-
         # 4. Calculate Business Day Variances (Vectorized for speed)
         starts_dt = pd.to_datetime(df['EST START DATE'], errors='coerce')
-        est_days_num = pd.to_numeric(df['EST DAYS'], errors='coerce').fillna(5).astype(int)
+        # Use constant for fallback parsing days
+        est_days_num = pd.to_numeric(df['EST DAYS'], errors='coerce').fillna(AppConstants.DEFAULT_EST_DAYS).astype(int)
         esd_dt = pd.to_datetime(df['ESD'], errors='coerce')
         eng_due_dt = pd.to_datetime(df['ENG DUE DATE'], errors='coerce')
         comp_date_dt = pd.to_datetime(df['COMPLETE DATE'], errors='coerce')
@@ -129,8 +128,7 @@ class WorkloadManager:
         comp_or_est_end_dt = comp_date_dt.combine_first(ends_dt)
         df['PROCESS_DAYS'] = calc_var_vectorized(starts_dt, comp_or_est_end_dt)
 
-        # --- NEW LOGIC: Scrub Fixture Families on Data Sync ---
-        # Look for the clean header that ExcelParser already created!
+        # Scrub Fixture Families on Data Sync
         lum_col = 'LUMINARIE SPECIFICATION'
 
         def extract_family_robust(lum_str):
@@ -153,7 +151,6 @@ class WorkloadManager:
         else:
             df['FAMILY_PREFIX'] = 'UNKNOWN'
 
-        # ADDED 'FAMILY_PREFIX' to the headers list so it doesn't get filtered out
         planning_headers = [
             "PROJECT_ID", "SMART_ID", "TYPE", "REQUIREMENT", "QUOTE NO", "ORDER NUMBER", "PROJECT NAME", "STATUS",
             "ASSIGNED TO", "DATE TO ENG", "ENG START DATE", "EST START DATE", "EST DAYS", "EST END DATE",

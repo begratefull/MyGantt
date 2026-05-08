@@ -4,12 +4,15 @@ This offloads heavy I/O operations and Pandas calculations from the main UI thre
 ensuring the application remains highly responsive during data refreshes.
 """
 
-import traceback
+import logging
 from typing import Optional, List, Any, Dict
 
 import pandas as pd
 from PySide6.QtCore import QThread, Signal
 
+from logic.constants import AppConstants  # <--- IMPORTED CONSTANTS
+
+logger = logging.getLogger(__name__)
 
 class SyncWorker(QThread):
     """
@@ -24,8 +27,12 @@ class SyncWorker(QThread):
 
     def run(self) -> None:
         """Executes the workload manager's sync logic and emits success/error states."""
-        success, error_msg = self.model.sync_from_excel(self.excel_path)
-        self.finished.emit(success, error_msg)
+        try:
+            success, error_msg = self.model.sync_from_excel(self.excel_path)
+            self.finished.emit(success, error_msg)
+        except Exception as e:
+            logger.exception("Critical error encountered during SyncWorker execution:")
+            self.finished.emit(False, str(e))
 
 
 class DataRefreshWorker(QThread):
@@ -45,7 +52,6 @@ class DataRefreshWorker(QThread):
         self.req_filter = req_filter
         self.status_filter = status_filter
 
-        # --- ADDED: Capture requested sorting method ---
         self.sort_by = sort_by
         self.maintain_ids = maintain_ids
 
@@ -59,7 +65,6 @@ class DataRefreshWorker(QThread):
                 self.data_ready.emit(raw_df, plan_df, plan_df)
                 return
 
-            # Dashboard gets the full payload to do its own local filtering
             full_dashboard_df = plan_df.copy()
 
             # --- DYNAMIC TEAM & UNASSIGNED FILTERING FOR GANTT ---
@@ -72,16 +77,18 @@ class DataRefreshWorker(QThread):
 
                 def get_team(row: pd.Series) -> str:
                     name = str(row.get('ASSIGNED TO', '')).strip().upper()
-                    if name and name not in ['UNASSIGNED', 'NAN', '']:
-                        return team_map.get(name, "UNASSIGNED")
+                    if name and name not in [AppConstants.UNASSIGNED_LABEL, 'NAN', '']:
+                        return team_map.get(name, AppConstants.UNASSIGNED_LABEL)
 
                     line_type = str(row.get('TYPE', '')).strip().upper()
-                    if line_type in ['STD', 'STD-M', 'PART']:
-                        return "STANDARD TEAM"
-                    elif line_type in ['MOD', 'CUS', 'PART-MC']:
-                        return "CUSTOM TEAM"
 
-                    return "UNASSIGNED"
+                    # --- USE CONSTANTS INSTEAD OF MAGIC STRINGS ---
+                    if line_type in AppConstants.STANDARD_LINE_TYPES:
+                        return AppConstants.STANDARD_TEAM_LABEL
+                    elif line_type in AppConstants.CUSTOM_LINE_TYPES:
+                        return AppConstants.CUSTOM_TEAM_LABEL
+
+                    return AppConstants.UNASSIGNED_LABEL
 
                 plan_df['CALC_TEAM'] = plan_df.apply(get_team, axis=1)
                 plan_df = plan_df[plan_df['CALC_TEAM'] == self.team_filter.strip().upper()].copy()
@@ -104,19 +111,15 @@ class DataRefreshWorker(QThread):
                 new_ids = [uid for uid in plan_df.index if uid not in current_ids]
                 plan_df = plan_df.loc[valid_ids + new_ids].reset_index()
             else:
-
-                # --- NEW: Dynamic Sorting based on UI selection ---
                 if self.sort_by == "Eng Due Date":
                     plan_df['SORT_DATE'] = pd.to_datetime(plan_df['ENG DUE DATE'].replace('', pd.NaT))
                 elif self.sort_by == "ESD":
                     plan_df['SORT_DATE'] = pd.to_datetime(plan_df['ESD'].replace('', pd.NaT))
                 else:
-                    # Default: "Start Date"
                     plan_df['SORT_DATE'] = pd.to_datetime(plan_df['ENG START DATE'].replace('', pd.NaT)).combine_first(
                         pd.to_datetime(plan_df['EST START DATE'].replace('', pd.NaT))).combine_first(
                         pd.to_datetime(plan_df['ENG DUE DATE'].replace('', pd.NaT)))
 
-                    # Secondary sorts ensure that project groupings always stay physically glued together
                     plan_df = plan_df.sort_values(
                         by=['SORT_DATE', 'STATUS', 'PROJECT_ID', 'SMART_ID'],
                         ascending=[True, True, True, True]
@@ -126,4 +129,4 @@ class DataRefreshWorker(QThread):
             self.data_ready.emit(raw_df, plan_df.reset_index(drop=True), full_dashboard_df)
 
         except Exception as e:
-            print(f"Worker Error: {e}\n{traceback.format_exc()}")
+            logger.exception("DataRefreshWorker encountered a fatal error during data processing:")
