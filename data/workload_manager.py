@@ -5,7 +5,7 @@ import re
 
 from data.database import DatabaseManager
 from data.excel_parser import ExcelParser
-from logic.constants import AppConstants # <--- IMPORTED CONSTANTS
+from logic.constants import AppConstants
 
 
 class WorkloadManager:
@@ -32,46 +32,45 @@ class WorkloadManager:
     def get_raw_df(self) -> pd.DataFrame:
         return self.db.get_raw_df()
 
-    def get_application_data(self, staged_edits=None):
+    def get_application_data(self, staged_edits=None, ignore_overrides=False):
         """Builds the final DataFrame for the app, line by line."""
         raw_df = self.db.get_raw_df()
-        over_df = self.db.get_saved_overrides_df()
-
         if raw_df.empty:
             return raw_df
 
-        # 1. Merge raw data with saved overrides
-        df = pd.merge(raw_df, over_df, on="SMART_ID", how="left").fillna("")
+        # --- NEW: Generate pure actuals without Gantt ghosts if requested ---
+        if ignore_overrides:
+            df = raw_df.copy()
+            df['MAN_ASSIGNED'] = ""
+            df['MAN_START_DATE'] = ""
+            df['MAN_EST_DAYS'] = ""
+        else:
+            over_df = self.db.get_saved_overrides_df()
+            df = pd.merge(raw_df, over_df, on="SMART_ID", how="left").fillna("")
 
-        # 2. Apply any staged (unsaved) edits currently in memory
-        if staged_edits:
-            staged_df = pd.DataFrame.from_dict(staged_edits, orient='index')
-            staged_df.index.name = 'SMART_ID'
-            staged_df = staged_df.reset_index()
+            if staged_edits:
+                staged_df = pd.DataFrame.from_dict(staged_edits, orient='index')
+                staged_df.index.name = 'SMART_ID'
+                staged_df = staged_df.reset_index()
 
-            df = df.set_index('SMART_ID')
-            staged_df = staged_df.set_index('SMART_ID')
-            df.update(staged_df)
-            df = df.reset_index()
+                df = df.set_index('SMART_ID')
+                staged_df = staged_df.set_index('SMART_ID')
+                df.update(staged_df)
+                df = df.reset_index()
 
         # 3. Apply business logic for assignments and dates
         df['ASSIGNED TO'] = df.apply(
-            lambda r: r['MAN_ASSIGNED'] if str(r.get('MAN_ASSIGNED', '')).strip() else r['RAW_ASSIGNED'], axis=1)
-        df['ENG START DATE'] = df['RAW_START_DATE']
+            lambda r: r['MAN_ASSIGNED'] if str(r.get('MAN_ASSIGNED', '')).strip() else r.get('RAW_ASSIGNED', ''), axis=1)
+        df['ENG START DATE'] = df.get('RAW_START_DATE', '')
 
-        # Convert due dates to actual datetime objects so we can do math on them
-        due_dates_dt = pd.to_datetime(df['ENG DUE DATE'], errors='coerce')
-
-        # Subtract 1 business day so the 1-day task ENDS on the due date
+        due_dates_dt = pd.to_datetime(df.get('ENG DUE DATE', pd.Series(dtype=str)), errors='coerce')
         calc_starts = (due_dates_dt - pd.tseries.offsets.BusinessDay(1)).dt.strftime('%m/%d/%Y').fillna('')
 
-        # --- USE CONSTANTS INSTEAD OF MAGIC STRINGS ---
-        is_quote_app = df['REQUIREMENT'].str.contains(AppConstants.QUOTE_REQ_PATTERN, case=False, na=False)
+        is_quote_app = df.get('REQUIREMENT', pd.Series(dtype=str)).str.contains(AppConstants.QUOTE_REQ_PATTERN, case=False, na=False)
 
-        fallback_start_dates = np.where(is_quote_app & due_dates_dt.notna(), calc_starts, df['RAW_START_DATE'])
+        fallback_start_dates = np.where(is_quote_app & due_dates_dt.notna(), calc_starts, df.get('RAW_START_DATE', ''))
         fallback_days = np.where(is_quote_app, str(AppConstants.DEFAULT_QUOTE_DAYS), str(AppConstants.DEFAULT_EST_DAYS))
 
-        # Apply manual overrides if present, otherwise use fallbacks
         df['EST START DATE'] = np.where(
             df['MAN_START_DATE'].str.strip() != '',
             df['MAN_START_DATE'],
@@ -84,21 +83,18 @@ class WorkloadManager:
             fallback_days
         )
 
-        # Create a Parent ID so we know which lines belong to which order/quote
         df['PROJECT_ID'] = df.apply(
-            lambda x: str(x['ORDER NUMBER']).strip() if str(x['ORDER NUMBER']).strip() else str(x['QUOTE NO']).strip(),
+            lambda x: str(x.get('ORDER NUMBER', '')).strip() if str(x.get('ORDER NUMBER', '')).strip() else str(x.get('QUOTE NO', '')).strip(),
             axis=1)
-        df['PROJECT_ID'] = df.apply(lambda x: x['PROJECT_ID'] if x['PROJECT_ID'] else x['SMART_ID'], axis=1)
+        df['PROJECT_ID'] = df.apply(lambda x: x['PROJECT_ID'] if x['PROJECT_ID'] else x.get('SMART_ID', ''), axis=1)
         df['LINE_COUNT'] = 1
 
-        # 4. Calculate Business Day Variances (Vectorized for speed)
         starts_dt = pd.to_datetime(df['EST START DATE'], errors='coerce')
-        # Use constant for fallback parsing days
         est_days_num = pd.to_numeric(df['EST DAYS'], errors='coerce').fillna(AppConstants.DEFAULT_EST_DAYS).astype(int)
-        esd_dt = pd.to_datetime(df['ESD'], errors='coerce')
-        eng_due_dt = pd.to_datetime(df['ENG DUE DATE'], errors='coerce')
-        comp_date_dt = pd.to_datetime(df['COMPLETE DATE'], errors='coerce')
-        date_to_eng_dt = pd.to_datetime(df['DATE TO ENG'], errors='coerce')
+        esd_dt = pd.to_datetime(df.get('ESD', pd.Series(dtype=str)), errors='coerce')
+        eng_due_dt = pd.to_datetime(df.get('ENG DUE DATE', pd.Series(dtype=str)), errors='coerce')
+        comp_date_dt = pd.to_datetime(df.get('COMPLETE DATE', pd.Series(dtype=str)), errors='coerce')
+        date_to_eng_dt = pd.to_datetime(df.get('DATE TO ENG', pd.Series(dtype=str)), errors='coerce')
 
         df['EST END DATE'] = ""
         valid_starts = starts_dt.notna()
@@ -128,7 +124,6 @@ class WorkloadManager:
         comp_or_est_end_dt = comp_date_dt.combine_first(ends_dt)
         df['PROCESS_DAYS'] = calc_var_vectorized(starts_dt, comp_or_est_end_dt)
 
-        # Scrub Fixture Families on Data Sync
         lum_col = 'LUMINARIE SPECIFICATION'
 
         def extract_family_robust(lum_str):
@@ -136,14 +131,10 @@ class WorkloadManager:
                 return 'UNKNOWN'
 
             s = str(lum_str).strip().upper()
-
-            # 1. Strip out ETO (with optional numbers), REVISE, and SK prefixes
             s = re.sub(r'^(REVISE|ETO\d*)[\.\u2026\s\-]*', '', s)
             s = re.sub(r'^SK[\.\u2026\s\-]*', '', s)
 
-            # 2. Extract the first segment before the first hyphen or space
             family = s.split('-')[0].split(' ')[0].strip()
-
             return family if family else 'UNKNOWN'
 
         if lum_col in df.columns:

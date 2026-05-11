@@ -32,21 +32,12 @@ class DashboardService:
 
     @staticmethod
     def _get_current_backlog(active_df: pd.DataFrame) -> pd.DataFrame:
-        if active_df.empty: return active_df
-
-        is_unassigned = (
-            active_df['ASSIGNED TO'].isna() |
-            (active_df['ASSIGNED TO'].str.strip() == '') |
-            (active_df['ASSIGNED TO'].str.upper() == 'UNASSIGNED')
-        )
-
-        today = pd.Timestamp.today().normalize()
-        start_dates = pd.to_datetime(active_df.get('EST START DATE', pd.Series(pd.NaT, index=active_df.index)), errors='coerce')
-        is_started = start_dates <= today
-        no_start_date = start_dates.isna()
-
-        mask = is_unassigned | is_started | no_start_date
-        return active_df[mask]
+        """
+        Total Pipeline approach:
+        Returns all active lines (uncompleted), completely ignoring start dates.
+        If it is assigned to an engineer, it shows up on their backlog.
+        """
+        return active_df
 
     @staticmethod
     def _filter_completed_by_date(comp_df: pd.DataFrame, start_date: pd.Timestamp) -> pd.DataFrame:
@@ -93,7 +84,6 @@ class DashboardService:
 
     @staticmethod
     def calculate_advanced_kpis(active_df: pd.DataFrame, comp_df: pd.DataFrame, full_df: pd.DataFrame, current_team_filter: str) -> Dict[str, Any]:
-        """Dynamically calculates KPIs based on the selected team context."""
         today = pd.Timestamp.today().normalize()
         ytd_start = pd.Timestamp(year=today.year, month=1, day=1)
         cur_start = today - pd.Timedelta(days=7)
@@ -203,12 +193,91 @@ class DashboardService:
                     if count > 0:
                         req_counts[req_name] = count
 
+            # --- NEW: Capture exact lines for UI debugging ---
+            debug_lines = []
+            for _, row in eng_df.iterrows():
+                sid = row.get('SMART_ID', 'UNKNOWN')
+                proj = row.get('PROJECT_ID', row.get('PROJECT NAME', ''))
+                req = row.get('REQUIREMENT', '')
+                debug_lines.append(f"{sid} | Proj: {proj} | Req: {req}")
+
             distribution[eng_name] = {
                 'total': total_lines,
-                'reqs': req_counts
+                'reqs': req_counts,
+                'debug_lines': debug_lines
             }
 
         return dict(sorted(distribution.items(), key=lambda item: item[1]['total'], reverse=True))
+
+    @staticmethod
+    def get_dashboard_family_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
+        if df.empty: return []
+
+        is_prod = df['REQUIREMENT'].str.contains('PROD', case=False, na=False)
+        prod_df = df[is_prod].copy()
+
+        if prod_df.empty: return []
+
+        if 'TYPE' in prod_df.columns:
+            ignore_types = ['PART', 'PART-MC', 'WARRANTY', 'SAMPLE']
+            prod_df = prod_df[~prod_df['TYPE'].str.strip().str.upper().isin(ignore_types)]
+
+        if prod_df.empty: return []
+
+        if 'LINE_COUNT' not in prod_df.columns:
+            prod_df['LINE_COUNT'] = 1
+
+        def parse_sell(val):
+            if pd.isna(val) or val == "": return 0.0
+            try:
+                clean_str = re.sub(r'[^\d.]', '', str(val))
+                return float(clean_str) if clean_str else 0.0
+            except:
+                return 0.0
+        prod_df['CLEAN_SELL'] = prod_df.get('SELL $', pd.Series(dtype=float)).apply(parse_sell)
+
+        date_in = pd.to_datetime(prod_df.get('DATE TO ENG', pd.NaT), errors='coerce')
+        date_out = pd.to_datetime(prod_df.get('COMPLETE DATE', pd.NaT), errors='coerce')
+        date_start = pd.to_datetime(prod_df.get('EST START DATE', prod_df.get('ENG START DATE', pd.NaT)), errors='coerce')
+
+        valid_lead = date_in.notna() & date_out.notna()
+        prod_df['LEAD_TIME'] = np.nan
+        if valid_lead.any():
+            d_in_np = date_in[valid_lead].values.astype('datetime64[D]')
+            d_out_np = date_out[valid_lead].values.astype('datetime64[D]')
+            prod_df.loc[valid_lead, 'LEAD_TIME'] = np.busday_count(d_in_np, d_out_np)
+
+        valid_proc = date_start.notna() & date_out.notna()
+        prod_df['ACTIVE_TIME'] = np.nan
+        if valid_proc.any():
+            d_start_np = date_start[valid_proc].values.astype('datetime64[D]')
+            d_out_np = date_out[valid_proc].values.astype('datetime64[D]')
+            prod_df.loc[valid_proc, 'ACTIVE_TIME'] = np.busday_count(d_start_np, d_out_np)
+
+        fam_col = 'FAMILY_PREFIX'
+        if fam_col not in prod_df.columns: return []
+
+        valid_fams = prod_df[~prod_df[fam_col].isin(['UNKNOWN', 'SA'])]
+
+        grouped = valid_fams.groupby(fam_col).agg(
+            lines=('LINE_COUNT', 'sum'),
+            total_sell=('CLEAN_SELL', 'sum'),
+            avg_lead=('LEAD_TIME', 'mean'),
+            avg_proc=('ACTIVE_TIME', 'mean')
+        ).reset_index()
+
+        grouped = grouped.sort_values('lines', ascending=False).head(10)
+
+        results = []
+        for _, row in grouped.iterrows():
+            results.append({
+                'family': row[fam_col],
+                'lines': int(row['lines']),
+                'total_sell': float(row['total_sell']),
+                'avg_lead': float(row['avg_lead']) if pd.notna(row['avg_lead']) else np.nan,
+                'avg_proc': float(row['avg_proc']) if pd.notna(row['avg_proc']) else np.nan
+            })
+        return results
 
     @staticmethod
     def prepare_timeline_data(comp_df: pd.DataFrame, active_df: pd.DataFrame, start_date: pd.Timestamp) -> Tuple[List[str], List[str], pd.DataFrame]:
@@ -241,10 +310,6 @@ class DashboardService:
 
     @staticmethod
     def get_engineer_performance(full_df: pd.DataFrame, engineer_name: str) -> Dict[str, Any]:
-        """
-        Crunches YTD throughput, top projects, and top 5 fixture families,
-        along with overall KPI totals.
-        """
         valid_types = ['STD', 'STD-M', 'MOD', 'CUS', 'PART', 'PART-MC', 'WARRANTY', 'SAMPLE', 'RENOV']
         eng_df = full_df[full_df['ASSIGNED TO'].str.strip().str.upper() == engineer_name.strip().upper()].copy()
 
@@ -259,7 +324,6 @@ class DashboardService:
         eng_df['CLEAN_TYPE'] = eng_df.get('TYPE', pd.Series(dtype=str)).str.strip().str.upper()
         eng_df = eng_df[eng_df['CLEAN_TYPE'].isin(valid_types)]
 
-        # --- Bulletproof Currency Parser ---
         def parse_sell(val):
             if pd.isna(val) or val == "": return 0.0
             try:
@@ -276,18 +340,15 @@ class DashboardService:
         prod_df = eng_df[is_prod]
         sub_df = eng_df[is_sub]
 
-        # Calculate raw KPI totals
         total_prod = int(prod_df['LINE_COUNT'].sum() if 'LINE_COUNT' in prod_df.columns else len(prod_df))
         total_sub = int(sub_df['LINE_COUNT'].sum() if 'LINE_COUNT' in sub_df.columns else len(sub_df))
 
-        # --- Adjusted Throughput Calculation ---
         def calc_throughput(subset):
             stats = {}
             for l_type in valid_types:
                 type_df = subset[subset['CLEAN_TYPE'] == l_type]
                 lines = int(type_df['LINE_COUNT'].sum()) if 'LINE_COUNT' in type_df.columns else len(type_df)
                 if lines > 0:
-                    # UPDATED to use PROCESS_DAYS instead of Queue/EST DAYS
                     if 'PROCESS_DAYS' in type_df.columns:
                         avg_days = type_df['PROCESS_DAYS'].apply(DashboardService.parse_variance).mean()
                     elif 'DAYS IN ENG' in type_df.columns:
@@ -303,7 +364,6 @@ class DashboardService:
             'sub': calc_throughput(sub_df)
         }
 
-        # --- Top High-Value Projects ---
         def clean_project(name):
             name = str(name).replace('\n', ' ').strip()
             pattern = r'(?i)\s*(?:-|–|—|\()?\s*(?:REL\b|PHASE\b|PART\b|REORDER\b|REQUOTE\b|REPLACEMENT\b|ARO FLOW).*$'
@@ -321,7 +381,6 @@ class DashboardService:
 
         top_projects = proj_group.sort_values('total_sell', ascending=False).head(5).to_dict('records')
 
-        # --- Radar Chart ---
         fam_col = 'FAMILY_PREFIX'
         if fam_col not in eng_df.columns:
             eng_df[fam_col] = 'UNKNOWN'

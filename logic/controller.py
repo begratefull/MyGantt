@@ -43,6 +43,7 @@ class AppController:
 
         self.current_plan_df = pd.DataFrame()
         self.full_plan_df = pd.DataFrame()
+        self.actual_df = pd.DataFrame() # <-- NEW: Storing pure actuals
         self.current_visual_rows = []
         self.expanded_projects = set()
 
@@ -56,12 +57,9 @@ class AppController:
         self.view.team_screen.engineer_selected.connect(self.handle_engineer_selected)
         self.refresh_team_view()
 
-        # --- REDESIGNED: Decoupled Filter Routing ---
-        # Dashboard filter only saves config (DashboardWidget handles its own UI updates internally)
         if hasattr(self.view, 'dash_screen'):
             self.view.dash_screen.filter_team.currentTextChanged.connect(lambda text: self.on_dash_filter_changed())
 
-        # Gantt filters trigger a full background data refresh
         if hasattr(self.view, 'filter_team'):
             self.view.filter_team.currentTextChanged.connect(lambda text: self.on_gantt_filter_changed())
 
@@ -90,7 +88,6 @@ class AppController:
     # ---------------------------------------------------------
 
     def load_config(self) -> dict:
-        """Safely loads application state and config from disk."""
         if os.path.exists(self.config_file):
             try:
                 with open(self.config_file, 'r') as f:
@@ -100,7 +97,6 @@ class AppController:
         return {}
 
     def save_config(self) -> None:
-        """Commits the current config state to disk."""
         try:
             with open(self.config_file, 'w') as f:
                 json.dump(self.config_data, f, indent=4)
@@ -108,7 +104,6 @@ class AppController:
             print(f"Failed to save config: {e}")
 
     def save_preferences(self) -> None:
-        """Reads current UI states and packages them for the config file. Separates Dash and Gantt."""
         prefs = {
             'gantt_team': self.view.filter_team.currentText() if hasattr(self.view, 'filter_team') else "All Teams",
             'dash_team': self.view.dash_screen.filter_team.currentText() if hasattr(self.view, 'dash_screen') else "All Teams",
@@ -120,11 +115,9 @@ class AppController:
         self.save_config()
 
     def on_dash_filter_changed(self) -> None:
-        """Saves preference when Dashboard team changes, without triggering Gantt worker."""
         self.save_preferences()
 
     def on_gantt_filter_changed(self) -> None:
-        """Master hook for Gantt user filtering/sorting. Saves prefs and refreshes Gantt data."""
         self.save_preferences()
         self.refresh_tables(maintain_state=False)
 
@@ -139,7 +132,6 @@ class AppController:
         return ""
 
     def inject_startup_defaults(self) -> None:
-        """Injects saved settings on application launch before the first data pull."""
         prefs = self.config_data.get('filters', {})
         gantt_team_pref = prefs.get('gantt_team', 'Custom Team')
         dash_team_pref = prefs.get('dash_team', 'Custom Team')
@@ -314,14 +306,18 @@ class AppController:
         self.view.gantt_screen.render_gantt(self.current_visual_rows, dynamic_engineers, self.expanded_projects)
         self.restore_selection(target_id_to_restore)
 
-    def on_data_refreshed(self, raw_df: pd.DataFrame, plan_df: pd.DataFrame, full_dashboard_df: pd.DataFrame) -> None:
+    def on_data_refreshed(self, raw_df: pd.DataFrame, plan_df: pd.DataFrame, actual_df: pd.DataFrame, full_plan_df: pd.DataFrame) -> None:
+        # --- NEW: Receiving 4 parameters and routing actuals properly ---
         if hasattr(self.view, 'display_dataframe') and hasattr(self.view, 'raw_table'):
             self.view.display_dataframe(self.view.raw_table, raw_df)
 
-        if full_dashboard_df.empty: return
-        self.update_dynamic_dropdowns(full_dashboard_df)
+        if actual_df.empty: return
 
-        self.full_plan_df = full_dashboard_df
+        # We update dynamic dropdowns based on ACTUALS so ghosts don't appear in lists
+        self.update_dynamic_dropdowns(actual_df)
+
+        self.actual_df = actual_df
+        self.full_plan_df = full_plan_df
 
         if plan_df.empty: return
         self.current_plan_df = plan_df
@@ -329,9 +325,9 @@ class AppController:
         target = self.selected_id_to_restore if self.is_maintaining_state else ""
         self._rebuild_and_render_canvas(target)
 
-        # Dashboard receives the full payload and does its own filtering internally
         if hasattr(self.view, 'dash_screen'):
-            self.view.dash_screen.update_dashboard(full_dashboard_df)
+            # Pass both the actuals (for health) and full plan (for forecast)
+            self.view.dash_screen.update_dashboard(actual_df, full_plan_df)
 
         if not (self.is_maintaining_state and self.selected_id_to_restore):
             self.view.kpi_panel.hide()
@@ -487,13 +483,12 @@ class AppController:
         self.refresh_team_view()
 
     def handle_engineer_selected(self, engineer_name: str) -> None:
-        if not hasattr(self, 'full_plan_df') or self.full_plan_df.empty:
+        # Team View now strictly uses ACTUALS
+        if not hasattr(self, 'actual_df') or self.actual_df.empty:
             return
 
-        # Pass the unfiltered data to our new DashboardService method
-        analytics_payload = DashboardService.get_engineer_performance(self.full_plan_df, engineer_name)
+        analytics_payload = DashboardService.get_engineer_performance(self.actual_df, engineer_name)
 
-        # Grab their custom theme color from the DB
         eng_db_df = self.model.db.get_engineers_df()
         primary_color = "#007ACC"
         if not eng_db_df.empty:
@@ -501,7 +496,6 @@ class AppController:
             if not color_match.empty:
                 primary_color = color_match.iloc[0].get('hex_color', '#007ACC')
 
-        # Send the payload to the View!
         self.view.team_screen.update_analytics(
             engineer_name=engineer_name,
             analytics_payload=analytics_payload,

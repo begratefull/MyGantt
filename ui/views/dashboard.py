@@ -3,6 +3,7 @@ Contains the DashboardWidget which displays high-level KPIs,
 detailed performance grids, queue distributions, and timeline forecasting.
 """
 
+import logging
 from typing import Dict, Any, Optional, List
 
 import pandas as pd
@@ -18,11 +19,16 @@ from PySide6.QtGui import QPainter, QColor, QPen, QFont, QCursor
 
 from logic.dashboard_service import DashboardService
 
+# Grab the global logger we set up in main.py
+logger = logging.getLogger(__name__)
+
 
 class DashboardWidget(QWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.master_df: pd.DataFrame = pd.DataFrame()
+        self.actual_df: pd.DataFrame = pd.DataFrame()
+        self.forecast_df: pd.DataFrame = pd.DataFrame()
+
         self.team_map: Dict[str, str] = {}
         self.color_map: Dict[str, str] = {}
 
@@ -42,7 +48,6 @@ class DashboardWidget(QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(15)
 
-        # --- Header Section ---
         header_layout = QHBoxLayout()
         header = QLabel("Engineering Workload Dashboard")
         header.setObjectName("Header")
@@ -61,11 +66,10 @@ class DashboardWidget(QWidget):
 
         main_layout.addLayout(header_layout)
 
-        # --- Top Half Split ---
+        # --- Top Half Split (Left:Right = 1:2) ---
         top_half_layout = QHBoxLayout()
         top_half_layout.setSpacing(15)
 
-        # Left Column: KPI Grid (Cards)
         left_pane = QWidget()
         self.cards_grid = QGridLayout(left_pane)
         self.cards_grid.setContentsMargins(0, 0, 0, 0)
@@ -74,28 +78,34 @@ class DashboardWidget(QWidget):
         self.card_delivery = self._build_delivery_card()
         self.card_backlog = self._build_backlog_card()
 
-        # Row 0: Global Health
         self.cards_grid.addWidget(self.card_delivery['frame'], 0, 0)
         self.cards_grid.addWidget(self.card_backlog['frame'], 0, 1)
 
-        # Right Column: Interactive Master-Detail Pies
         self.dist_ui = self._build_interactive_chart_panel()
 
-        top_half_layout.addWidget(left_pane, 4)
-        top_half_layout.addWidget(self.dist_ui['card'], 6)
+        top_half_layout.addWidget(left_pane, 1)
+        top_half_layout.addWidget(self.dist_ui['card'], 2)
 
         main_layout.addLayout(top_half_layout, 1)
 
-        # --- Bottom Half: Timeline ---
+        # --- Bottom Half Split (Left:Right = 1:2) ---
+        bottom_half_layout = QHBoxLayout()
+        bottom_half_layout.setSpacing(15)
+
+        self.family_ui = self._build_family_card()
+
+        bottom_half_layout.addWidget(self.family_ui['card'], 1)
+
         self.timeline_ui = self._build_timeline_card("Completed Jobs & Active Forecast")
-        main_layout.addWidget(self.timeline_ui['card'], 1)
+        bottom_half_layout.addWidget(self.timeline_ui['card'], 2)
+
+        main_layout.addLayout(bottom_half_layout, 1)
 
         self.timeline_ui['date_filter'].currentTextChanged.connect(self.render_all)
 
-        # --- Set up the hidden floating tooltip ---
+        # --- Tooltip Setup ---
         self.chart_tooltip = QFrame(self)
         self.chart_tooltip.setObjectName("ChartTooltip")
-        # THIS IS THE MAGIC LINE that stops the flickering/disappearing!
         self.chart_tooltip.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.chart_tooltip.hide()
 
@@ -269,8 +279,7 @@ class DashboardWidget(QWidget):
         left_layout = QVBoxLayout()
         left_layout.setContentsMargins(0, 0, 0, 0)
 
-        # --- FIXED: Changed Title to "Lines by Assignee" ---
-        left_title = QLabel("Lines by Assignee")
+        left_title = QLabel("Lines by Assignee (Click slice to debug)")
         left_title.setObjectName("CardTitle")
         left_layout.addWidget(left_title, alignment=Qt.AlignTop | Qt.AlignHCenter)
 
@@ -305,6 +314,52 @@ class DashboardWidget(QWidget):
 
         return {'card': card}
 
+    def _build_family_card(self) -> Dict[str, Any]:
+        card = QFrame()
+        card.setObjectName("DashCard")
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(15, 15, 15, 15)
+
+        title = QLabel("Top 10 Prod Fixture Families")
+        title.setObjectName("CardTitle")
+        layout.addWidget(title)
+
+        container = QWidget()
+        grid = QGridLayout(container)
+        grid.setAlignment(Qt.AlignTop)
+        grid.setContentsMargins(0, 5, 0, 0)
+        grid.setSpacing(12)
+
+        grid.setColumnStretch(0, 3)
+        grid.setColumnStretch(1, 1)
+        grid.setColumnStretch(2, 1)
+        grid.setColumnStretch(3, 1)
+        grid.setColumnStretch(4, 2)
+
+        h_fam = QLabel("FAMILY")
+        h_lines = QLabel("LINES")
+        h_lead = QLabel("AVG DAYS\nIN ENG")
+        h_proc = QLabel("AVG DAYS\nIN PROCESS")
+        h_sell = QLabel("TOTAL $")
+
+        for h in [h_fam, h_lines, h_lead, h_proc, h_sell]:
+            h.setStyleSheet("color: #888888; font-weight: bold; font-size: 10px;")
+
+        grid.addWidget(h_fam, 0, 0, Qt.AlignLeft | Qt.AlignBottom)
+        grid.addWidget(h_lines, 0, 1, Qt.AlignCenter | Qt.AlignBottom)
+        grid.addWidget(h_lead, 0, 2, Qt.AlignCenter | Qt.AlignBottom)
+        grid.addWidget(h_proc, 0, 3, Qt.AlignCenter | Qt.AlignBottom)
+        grid.addWidget(h_sell, 0, 4, Qt.AlignCenter | Qt.AlignBottom)
+
+        sep = QFrame()
+        sep.setFrameShape(QFrame.HLine)
+        sep.setStyleSheet("background-color: #2E2E32;")
+        grid.addWidget(sep, 1, 0, 1, 5)
+
+        layout.addWidget(container, 1)
+
+        return {'card': card, 'grid': grid}
+
     def _build_timeline_card(self, title: str) -> Dict[str, Any]:
         card = QFrame()
         card.setObjectName("DashCard")
@@ -318,8 +373,8 @@ class DashboardWidget(QWidget):
         top_bar.addStretch()
 
         date_filter = QComboBox()
-        date_filter.addItems(["Last 30 Days", "Last 90 Days", "Year to Date", "All Time"])
-        date_filter.setCurrentText("Last 90 Days")
+        date_filter.addItems(["Last 4 Weeks", "Last 8 Weeks", "Year to Date", "All Time"])
+        date_filter.setCurrentText("Last 8 Weeks")
         date_filter.setMaximumHeight(24)
 
         top_bar.addWidget(date_filter)
@@ -399,28 +454,43 @@ class DashboardWidget(QWidget):
         if pd.isna(val): label.setStyleSheet("color: #FFFFFF;")
         else: label.setStyleSheet("color: #4CAF50;" if val >= 0 else "color: #FF5252;")
 
-    def update_dashboard(self, df: pd.DataFrame) -> None:
-        if df.empty: return
-        self.master_df = df.copy()
+    def update_dashboard(self, actual_df: pd.DataFrame, forecast_df: pd.DataFrame) -> None:
+        """Stores the distinct dataframes so they can be processed by render_all."""
+        if actual_df.empty: return
+        self.actual_df = actual_df.copy()
+        self.forecast_df = forecast_df.copy()
         self.render_all()
 
     def render_all(self) -> None:
-        if self.master_df.empty: return
-        df = self.master_df.copy()
+        if not hasattr(self, 'actual_df') or self.actual_df.empty: return
+
+        # Pull from the distinct dataframes
+        df = self.actual_df.copy()
+        f_df = self.forecast_df.copy()
+
         current_team = self.filter_team.currentText()
 
         df['CALC_TEAM'] = df.apply(self._get_team_for_row, axis=1)
+        f_df['CALC_TEAM'] = f_df.apply(self._get_team_for_row, axis=1)
 
         if current_team != "All Teams":
             filtered_df = df[df['CALC_TEAM'] == current_team.strip().upper()].copy()
+            filtered_f_df = f_df[f_df['CALC_TEAM'] == current_team.strip().upper()].copy()
         else:
             filtered_df = df.copy()
+            filtered_f_df = f_df.copy()
 
+        # Isolate the actives vs completes for both data sets
         active_df, comp_df = DashboardService.split_base_data(filtered_df)
+        f_active_df, _ = DashboardService.split_base_data(filtered_f_df)
 
+        # The majority of the dashboard renders STRICTLY on pure Actuals (active_df)
         self.render_top_row(active_df, comp_df, df, current_team)
         self.render_interactive_pies(active_df)
-        self.render_timeline_row(active_df, comp_df)
+        self.render_family_card(filtered_df)
+
+        # The timeline blends Completed Actuals (comp_df) with the Forecast overrides (f_active_df)
+        self.render_timeline_row(f_active_df, comp_df)
 
     def render_top_row(self, active_df: pd.DataFrame, comp_df: pd.DataFrame, full_df: pd.DataFrame, current_team: str) -> None:
         for widget in self._dynamic_card_widgets:
@@ -483,7 +553,52 @@ class DashboardWidget(QWidget):
                 col_idx = 0
                 row_idx += 1
 
-    # --- Interactive Master-Detail Pie Rendering ---
+    def render_family_card(self, filtered_df: pd.DataFrame) -> None:
+        grid = self.family_ui['grid']
+
+        for i in reversed(range(grid.count())):
+            item = grid.itemAt(i)
+            widget = item.widget()
+            if widget:
+                row, col, rowspan, colspan = grid.getItemPosition(i)
+                if row > 1:
+                    grid.removeWidget(widget)
+                    widget.deleteLater()
+
+        stats = DashboardService.get_dashboard_family_stats(filtered_df)
+
+        if not stats:
+            empty_lbl = QLabel("No production lines found for this team.")
+            empty_lbl.setStyleSheet("color: #666666; font-style: italic;")
+            grid.addWidget(empty_lbl, 2, 0, 1, 5)
+            return
+
+        row_idx = 2
+        for i, stat in enumerate(stats):
+            lbl_fam = QLabel(f"#{i+1}  {stat['family']}")
+            lbl_fam.setStyleSheet("color: #E0E0E0; font-size: 13px; font-weight: bold;")
+
+            lbl_lines = QLabel(str(stat['lines']))
+            lbl_lines.setStyleSheet("color: #FFFFFF; font-size: 13px;")
+
+            lead_val = stat['avg_lead']
+            lbl_lead = QLabel(f"{lead_val:.1f}d" if pd.notna(lead_val) else "--")
+            lbl_lead.setStyleSheet("color: #AAAAAA; font-size: 13px;")
+
+            proc_val = stat['avg_proc']
+            lbl_proc = QLabel(f"{proc_val:.1f}d" if pd.notna(proc_val) else "--")
+            lbl_proc.setStyleSheet("color: #AAAAAA; font-size: 13px;")
+
+            lbl_sell = QLabel(f"${stat['total_sell']:,.0f}")
+            lbl_sell.setStyleSheet("color: #4CAF50; font-size: 13px;")
+
+            grid.addWidget(lbl_fam, row_idx, 0, Qt.AlignLeft | Qt.AlignVCenter)
+            grid.addWidget(lbl_lines, row_idx, 1, Qt.AlignCenter | Qt.AlignVCenter)
+            grid.addWidget(lbl_lead, row_idx, 2, Qt.AlignCenter | Qt.AlignVCenter)
+            grid.addWidget(lbl_proc, row_idx, 3, Qt.AlignCenter | Qt.AlignVCenter)
+            grid.addWidget(lbl_sell, row_idx, 4, Qt.AlignCenter | Qt.AlignVCenter)
+
+            row_idx += 1
 
     def render_interactive_pies(self, active_df: pd.DataFrame) -> None:
         self.chart_assignee.removeAllSeries()
@@ -511,7 +626,11 @@ class DashboardWidget(QWidget):
             slc.setLabelFont(font)
             slc.setBrush(QColor(self.get_dynamic_color(eng_name)))
             slc.setPen(QPen(QColor("#1E1E20"), 2))
+
             slc.hovered.connect(self._on_slice_hovered)
+
+        # Attach the click event to the full pie series to ensure it is always caught
+        pie.clicked.connect(self._on_slice_clicked)
 
         self.chart_assignee.addSeries(pie)
         self._render_detail_pie("Team Requirement Breakdown", self._global_req_dist)
@@ -531,6 +650,18 @@ class DashboardWidget(QWidget):
         else:
             slice_obj.setExploded(False)
             self._render_detail_pie("Team Requirement Breakdown", self._global_req_dist)
+
+    def _on_slice_clicked(self, slice_obj: QPieSlice) -> None:
+        """Pushes the debug data to the global logger."""
+        if not isinstance(slice_obj, QPieSlice): return
+
+        eng_name = slice_obj.label().split(' (')[0].strip()
+        data = self._current_eng_dist.get(eng_name)
+
+        if data and 'debug_lines' in data:
+            logger.info(f"=== DEBUG: {len(data['debug_lines'])} Active Lines assigned to {eng_name} ===")
+            for line in data['debug_lines']:
+                logger.info(f"  > {line}")
 
     def _render_detail_pie(self, title: str, req_data: Dict[str, int]) -> None:
         self.lbl_req_title.setText(title)
@@ -553,7 +684,6 @@ class DashboardWidget(QWidget):
 
         self.chart_req.addSeries(pie)
 
-    # --- Timeline ---
     def render_timeline_row(self, active_df: pd.DataFrame, comp_df: pd.DataFrame) -> None:
         chart = self.timeline_ui['chart']
         chart.removeAllSeries()
@@ -562,10 +692,11 @@ class DashboardWidget(QWidget):
 
         range_sel = self.timeline_ui['date_filter'].currentText()
         today = pd.Timestamp.today().normalize()
-        if range_sel == "Last 30 Days":
-            start_date = today - pd.Timedelta(days=30)
-        elif range_sel == "Last 90 Days":
-            start_date = today - pd.Timedelta(days=90)
+
+        if range_sel == "Last 4 Weeks":
+            start_date = today - pd.Timedelta(days=28)
+        elif range_sel == "Last 8 Weeks":
+            start_date = today - pd.Timedelta(days=56)
         elif range_sel == "Year to Date":
             start_date = pd.Timestamp(year=today.year, month=1, day=1)
         else:
@@ -574,7 +705,6 @@ class DashboardWidget(QWidget):
         weeks, reqs, df = DashboardService.prepare_timeline_data(comp_df, active_df, start_date)
         if df.empty or not weeks: return
 
-        # Store the dataframe so the hover function can read from it!
         self._timeline_df = df
         self._timeline_weeks = weeks
 
@@ -607,7 +737,6 @@ class DashboardWidget(QWidget):
                 forecast_set.append(for_val)
                 min_y, max_y = min(min_y, act_val, for_val), max(max_y, act_val, for_val)
 
-            # ---> NEW: Connect the hover signals! <---
             actual_set.hovered.connect(
                 lambda status, index, req=r, is_fc=False: self._on_bar_hovered(status, index, req, is_fc))
             forecast_set.hovered.connect(
@@ -618,7 +747,6 @@ class DashboardWidget(QWidget):
 
         chart.addSeries(bar_series)
 
-        # --- EXISTING BOTTOM AXIS (Relative Weeks) ---
         axisX = QBarCategoryAxis()
         categories = [self.get_relative_week_label(wk) for wk in weeks]
         axisX.append(categories)
@@ -628,13 +756,10 @@ class DashboardWidget(QWidget):
         chart.addAxis(axisX, Qt.AlignBottom)
         bar_series.attachAxis(axisX)
 
-        # ---> NEW: TOP AXIS (Actual Dates) <---
         axisX_top = QBarCategoryAxis()
         top_categories = []
         for wk in weeks:
             try:
-                # %G = ISO year, %V = ISO week, %u = ISO weekday (1=Monday)
-                # This grabs the actual Monday date for that specific week
                 dt = pd.to_datetime(wk + '-1', format='%G-%V-%u')
                 top_categories.append(dt.strftime('%b %d'))
             except Exception:
@@ -643,13 +768,11 @@ class DashboardWidget(QWidget):
         axisX_top.append(top_categories)
         font_top = QFont("Segoe UI", 7)
         axisX_top.setLabelsFont(font_top)
-        axisX_top.setLabelsBrush(QColor("#777777"))  # Make it slightly dimmer than the bottom axis
+        axisX_top.setLabelsBrush(QColor("#777777"))
         chart.addAxis(axisX_top, Qt.AlignTop)
         bar_series.attachAxis(axisX_top)
 
         axisY = QValueAxis()
-
-        # --- FIXED: Apply integer format for Y-axis precision ---
         axisY.setLabelFormat("%d")
 
         padding = max(abs(max_y), abs(min_y)) * 0.2 + 2
@@ -698,7 +821,6 @@ class DashboardWidget(QWidget):
                 marker.setVisible(False)
 
     def _on_bar_hovered(self, status: bool, index: int, req_name: str, is_forecast: bool) -> None:
-        """Handles the display, data population, and coordinate mapping of the custom timeline tooltip."""
         if not status:
             self.chart_tooltip.hide()
             return
@@ -728,14 +850,9 @@ class DashboardWidget(QWidget):
                 "<br><b>Projects:</b>"
             ]
 
-            # --- NEW: Group by Project Name and get average variance per project ---
-            # Fallback to PROJECT_ID if 'PROJECT NAME' column doesn't exist
             proj_col = 'PROJECT NAME' if 'PROJECT NAME' in subset.columns else 'PROJECT_ID'
-
-            # Group by the project, average their variance, and sort so the latest (most negative) are at the top
             proj_vars = subset.groupby(proj_col)['VAR_DAYS'].mean().sort_values(ascending=True)
 
-            # Build the list with color-coded HTML text
             projects = list(proj_vars.items())
             for p_name, p_var in projects[:5]:
                 color = "#FF5252" if p_var < 0 else "#4CAF50"
