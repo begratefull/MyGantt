@@ -147,8 +147,32 @@ class ExcelParser:
             final_cols = ["SMART_ID"] + self.unique_expected_cols
             df = df[final_cols]
 
-            logger.info("Excel parsing completed successfully.")
-            return df, ""
+            # Holiday Dates
+            holiday_dates = []
+            try:
+                logger.info(f"Looking for holiday sheet: {AppConstants.HOLIDAY_SHEET_NAME}...")
+                hol_df = pd.read_excel(temp_path, sheet_name=AppConstants.HOLIDAY_SHEET_NAME, header=None,
+                                       engine='openpyxl')
+
+                # Scan through each column in the sheet
+                for col in hol_df.columns:
+                    # Try to convert the column to dates
+                    raw_dates = pd.to_datetime(hol_df[col], errors='coerce', format='mixed').dropna()
+
+                    # If we found actual dates, save them and stop looking!
+                    if len(raw_dates) > 0:
+                        holiday_dates = raw_dates.dt.strftime('%Y-%m-%d').tolist()
+                        logger.info(f"Found {len(holiday_dates)} company holidays in column {col}.")
+                        break
+
+                if not holiday_dates:
+                    logger.warning("Found the holiday sheet, but couldn't find any valid dates in it.")
+
+            except Exception as e:
+                logger.warning(f"Could not parse holiday sheet (it may not exist): {e}")
+
+
+            return df, holiday_dates, ""
 
         except PermissionError:
             logger.error("Excel Sync Failed: The shadow file is currently locked. Close any programs that might be using it.")

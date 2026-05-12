@@ -18,6 +18,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter, QColor, QPen, QFont, QCursor
 
 from logic.dashboard_service import DashboardService
+from logic.constants import AppConstants
 
 # Grab the global logger we set up in main.py
 logger = logging.getLogger(__name__)
@@ -282,7 +283,7 @@ class DashboardWidget(QWidget):
         left_layout = QVBoxLayout()
         left_layout.setContentsMargins(0, 0, 0, 0)
 
-        left_title = QLabel("Lines by Assignee (Click slice to debug)")
+        left_title = QLabel("Lines by Assignee")
         left_title.setObjectName("CardTitle")
         left_layout.addWidget(left_title, alignment=Qt.AlignTop | Qt.AlignHCenter)
 
@@ -439,11 +440,19 @@ class DashboardWidget(QWidget):
 
     def _get_team_for_row(self, row: pd.Series) -> str:
         name = str(row.get('ASSIGNED TO', '')).strip().upper()
-        if name and name not in ['UNASSIGNED', 'NAN', '']: return self.team_map.get(name, "UNASSIGNED")
+        if name and name not in [AppConstants.UNASSIGNED_LABEL, 'NAN', '']:
+            return self.team_map.get(name, AppConstants.UNASSIGNED_LABEL)
+
         line_type = str(row.get('TYPE', '')).strip().upper()
-        if line_type in ['STD', 'STD-M', 'PART']: return "STANDARD TEAM"
-        elif line_type in ['MOD', 'CUS', 'PART-MC']: return "CUSTOM TEAM"
-        return "UNASSIGNED"
+
+        # Link directly to your constants file!
+        if line_type in AppConstants.STANDARD_LINE_TYPES:
+            return AppConstants.STANDARD_TEAM_LABEL
+
+        elif line_type in AppConstants.CUSTOM_LINE_TYPES:
+            return AppConstants.CUSTOM_TEAM_LABEL
+
+        return AppConstants.UNASSIGNED_LABEL
 
     def _format_var(self, val: float) -> str:
         if pd.isna(val) or val == 0.0 and type(val) is not float: return "--"

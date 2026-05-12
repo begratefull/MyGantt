@@ -15,6 +15,7 @@ from PySide6.QtCore import QTimer
 from PySide6.QtGui import QShortcut, QKeySequence
 from PySide6.QtWidgets import QFileDialog
 
+from logic.constants import AppConstants
 from logic.dashboard_service import DashboardService
 from logic.history import HistoryManager
 from logic.workers import SyncWorker, DataRefreshWorker
@@ -79,6 +80,10 @@ class AppController:
         self.view.gantt_screen.assignee_changed_signal.connect(self.handle_right_click_assign)
 
         self.inject_startup_defaults()
+
+        db_holidays = self.model.db.get_holidays()
+        if db_holidays:
+            AppConstants.COMPANY_HOLIDAYS = db_holidays
 
         if hasattr(self.view, 'nav_sync_btn'):
             self.view.nav_sync_btn.clicked.connect(self.handle_sync)
@@ -450,9 +455,15 @@ class AppController:
 
         if not success:
             if hasattr(self.view, 'show_status'): self.view.show_status("Sync failed.", 5000)
-            if hasattr(self.view, 'show_warning'): self.view.show_warning("Sync Error", f"Could not sync data:\n\n{error_msg}")
+            if hasattr(self.view, 'show_warning'): self.view.show_warning("Sync Error",
+                                                                          f"Could not sync data:\n\n{error_msg}")
         else:
             if hasattr(self.view, 'show_status'): self.view.show_status("Sync complete!", 4000)
+
+            db_holidays = self.model.db.get_holidays()
+            if db_holidays:
+                AppConstants.COMPANY_HOLIDAYS = db_holidays
+
             self.refresh_tables(maintain_state=False)
 
     def refresh_team_view(self) -> None:

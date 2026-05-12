@@ -37,6 +37,11 @@ class DatabaseManager:
                         FOREIGN KEY("team_name") REFERENCES teams("team_name")
                     )
                 ''')
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS company_holidays (
+                        "holiday_date" TEST PRIMARY KEY
+                    )
+                ''')
                 conn.commit()
         except sqlite3.Error as e:
             logger.error(f"Database Initialization Error: Could not verify static tables. ({e})")
@@ -178,3 +183,26 @@ class DatabaseManager:
                 logger.info(f"Database sync complete: {len(records)} raw workload rows inserted.")
         except sqlite3.Error as e:
             logger.error(f"Critical Database Error during sync: {e}")
+
+    def replace_holidays(self, dates: list):
+        """Wipes the old holidays and saves the newly synced ones."""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('DELETE FROM company_holidays')
+                if dates:
+                    records = [(d,) for d in dates]
+                    cursor.executemany('INSERT INTO company_holidays ("holiday_date") VALUES (?)', records)
+                conn.commit()
+        except sqlite3.Error as e:
+            logger.error(f"Failed to save holidays: {e}")
+
+    def get_holidays(self) -> list:
+        """Returns a list of holiday date strings."""
+        try:
+            with self.get_connection() as conn:
+                df = pd.read_sql_query('SELECT holiday_date FROM company_holidays', conn)
+                return df['holiday_date'].tolist()
+        except sqlite3.Error as e:
+            logger.warning(f"Failed to load holidays: {e}")
+            return []

@@ -9,7 +9,6 @@ from typing import Optional, List, Any, Dict
 
 import pandas as pd
 from PySide6.QtCore import QThread, Signal
-
 from logic.constants import AppConstants
 
 logger = logging.getLogger(__name__)

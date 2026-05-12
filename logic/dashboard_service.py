@@ -9,17 +9,14 @@ import re
 import numpy as np
 import pandas as pd
 
+from logic.constants import AppConstants
 
 class DashboardService:
     """
     Handles data aggregation, KPI math, and dataset preparation for the Dashboard UI.
     """
 
-    # Standard US Manufacturing Holidays to align Python math with Excel
-    COMPANY_HOLIDAYS = [
-        '2025-01-01', '2025-05-26', '2025-07-04', '2025-09-01', '2025-11-27', '2025-11-28', '2025-12-25',
-        '2026-01-01', '2026-05-25', '2026-07-03', '2026-09-07', '2026-11-26', '2026-11-27', '2026-12-25'
-    ]
+    COMPANY_HOLIDAYS = []
 
     @staticmethod
     def parse_variance(val: Any) -> float:
@@ -29,10 +26,8 @@ class DashboardService:
 
     @staticmethod
     def _calc_business_days(df: pd.DataFrame, col1: str, col2: str) -> pd.Series:
-        """
-        Safely calculates business days between two columns in a DataFrame.
-        Includes company holidays to perfectly match Excel's NETWORKDAYS formula.
-        """
+        from logic.constants import AppConstants  # Ensure constants are imported
+
         if col1 not in df.columns or col2 not in df.columns:
             return pd.Series(np.nan, index=df.index)
 
@@ -45,10 +40,14 @@ class DashboardService:
             d1 = s1[mask].values.astype('datetime64[D]')
             d2 = s2[mask].values.astype('datetime64[D]')
 
+            # Safely roll weekend dates to Monday so the math doesn't crash
             d1_safe = np.busday_offset(d1, 0, roll='forward')
             d2_safe = np.busday_offset(d2, 0, roll='forward')
 
-            res.loc[mask] = np.busday_count(d1_safe, d2_safe, holidays=DashboardService.COMPANY_HOLIDAYS)
+            # Calculate the exact business days using your dynamic Excel holidays!
+            # No +1 or -1 adjustments. Just the pure difference.
+            diff = np.busday_count(d1_safe, d2_safe, holidays=AppConstants.COMPANY_HOLIDAYS)
+            res.loc[mask] = diff
 
         return res
 
@@ -157,7 +156,7 @@ class DashboardService:
 
         if team_upper == "ALL TEAMS":
             kpis['view_type'] = 'flow'
-            for t_name in ["CUSTOM TEAM", "STANDARD TEAM"]:
+            for t_name in [AppConstants.CUSTOM_TEAM_LABEL, AppConstants.STANDARD_TEAM_LABEL]:
                 t_full = full_df[full_df['CALC_TEAM'] == t_name] if 'CALC_TEAM' in full_df.columns else pd.DataFrame()
                 t_act = curr_active_df[curr_active_df['CALC_TEAM'] == t_name] if 'CALC_TEAM' in curr_active_df.columns else pd.DataFrame()
                 t_comp = comp_cur[comp_cur['CALC_TEAM'] == t_name] if 'CALC_TEAM' in comp_cur.columns else pd.DataFrame()
@@ -179,10 +178,10 @@ class DashboardService:
             kpis['view_type'] = 'health'
             line_types = []
 
-            if team_upper == "CUSTOM TEAM":
-                line_types = ['MOD', 'CUS']
-            elif team_upper == "STANDARD TEAM":
-                line_types = ['STD', 'STD-M']
+            if team_upper == AppConstants.CUSTOM_TEAM_LABEL:
+                line_types = AppConstants.KPI_CUSTOM_LINE_TYPES
+            elif team_upper == AppConstants.STANDARD_TEAM_LABEL:
+                line_types = AppConstants.STANDARD_LINE_TYPES
 
             for l_type in line_types:
                 t_act = DashboardService._apply_exact_mask(curr_active_df, type_col, l_type)
@@ -350,7 +349,7 @@ class DashboardService:
 
     @staticmethod
     def get_engineer_performance(full_df: pd.DataFrame, engineer_name: str) -> Dict[str, Any]:
-        valid_types = ['STD', 'STD-M', 'MOD', 'CUS', 'PART', 'PART-MC', 'WARRANTY', 'SAMPLE', 'RENOV']
+        valid_types = AppConstants.STANDARD_LINE_TYPES + AppConstants.CUSTOM_LINE_TYPES + ['WARRANTY', 'SAMPLE']
         eng_df = full_df[full_df['ASSIGNED TO'].str.strip().str.upper() == engineer_name.strip().upper()].copy()
 
         if eng_df.empty:

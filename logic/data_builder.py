@@ -5,6 +5,7 @@ into hierarchical, visually-ready data structures for the UI.
 
 import re
 from typing import Dict, Any, List, Set
+from logic.constants import AppConstants
 
 import numpy as np
 import pandas as pd
@@ -34,13 +35,12 @@ class GanttDataBuilder:
             est_ends = pd.Series(dtype='datetime64[ns]')
             if not est_starts.empty:
                 valid_idx = est_starts.index
-                est_days = pd.to_numeric(group.loc[valid_idx, 'EST DAYS'], errors='coerce').fillna(5).astype(int)
+                est_days = (pd.to_numeric(group.loc[valid_idx, 'EST DAYS'], errors='coerce').
+                            fillna(AppConstants.DEFAULT_EST_DAYS).astype(int))
 
                 starts_np = est_starts.values.astype('datetime64[D]')
                 days_np = est_days.values
-                ends_np = np.busday_offset(starts_np, days_np)
-
-                # THE CRASH FIX: Explicitly cast the NumPy array back into a Pandas Series!
+                ends_np = np.busday_offset(starts_np, days_np, holidays=AppConstants.COMPANY_HOLIDAYS, roll='forward')
                 est_ends = pd.Series(pd.to_datetime(ends_np), index=valid_idx)
 
             all_starts = pd.concat([real_starts, est_starts])
@@ -49,10 +49,11 @@ class GanttDataBuilder:
             min_start = all_starts.min() if not all_starts.empty else pd.NaT
             max_end = all_ends.max() if not all_ends.empty else pd.NaT
 
-            parent_days = 5
+            parent_days = AppConstants.DEFAULT_EST_DAYS
             if pd.notna(min_start) and pd.notna(max_end):
-                days = np.busday_count(min_start.date(), max_end.date())
-                parent_days = max(1, int(days))
+                raw_days = np.busday_count(min_start.date(), max_end.date(), holidays=AppConstants.COMPANY_HOLIDAYS)
+                adjusted_days = raw_days + 1 if raw_days >= 0 else raw_days - 1
+                parent_days = max(1, int(adjusted_days))
 
             parent_eng_start = real_starts.min() if not real_starts.empty else pd.NaT
             parent_comp_date = real_ends.max() if not real_ends.empty else pd.NaT
@@ -62,12 +63,12 @@ class GanttDataBuilder:
             parent_status = 'COMPLETE' if all_complete else 'ACTIVE'
 
             assignees = [str(x).strip().upper() for x in group['ASSIGNED TO'].unique() if
-                         str(x).strip().upper() not in ('', 'UNASSIGNED', 'NAN')]
-            parent_assignee = assignees[0] if len(assignees) == 1 else "MULTIPLE" if len(assignees) > 1 else "UNASSIGNED"
+                         str(x).strip().upper() not in ('', AppConstants.UNASSIGNED_LABEL, 'NAN')]
+            parent_assignee = assignees[0] if len(assignees) == 1 else "MULTIPLE" if len(assignees) > 1 else AppConstants.UNASSIGNED_LABEL
 
             parent_color = color_map.get(parent_assignee, "#555555")
             if parent_assignee == "MULTIPLE": parent_color = "#888888"
-            if parent_assignee in ["UNASSIGNED", "TBD", "NAN", ""]: parent_color = "#555555"
+            if parent_assignee in [AppConstants.UNASSIGNED_LABEL, "TBD", "NAN", ""]: parent_color = "#555555"
 
             reqs = group['REQUIREMENT'].unique()
             raw_req = reqs[0] if len(reqs) == 1 else "Multiple"
@@ -80,11 +81,15 @@ class GanttDataBuilder:
 
             parent_eng_var = ""
             if pd.notna(max_end) and pd.notna(max_due):
-                parent_eng_var = f"{int(np.busday_count(max_end.date(), max_due.date()))} days"
+                raw_var = np.busday_count(max_end.date(), max_due.date(), holidays=AppConstants.COMPANY_HOLIDAYS)
+                adjusted_var = raw_var + 1 if raw_var >= 0 else raw_var - 1
+                parent_eng_var = f"{int(adjusted_var)} days"
 
             parent_esd_var = ""
             if pd.notna(max_end) and pd.notna(min_esd):
-                parent_esd_var = f"{int(np.busday_count(max_end.date(), min_esd.date()))} days"
+                raw_var = np.busday_count(max_end.date(), min_esd.date(), holidays=AppConstants.COMPANY_HOLIDAYS)
+                adjusted_var = raw_var + 1 if raw_var >= 0 else raw_var - 1
+                parent_esd_var = f"{int(adjusted_var)} days"
 
             parent_row = {
                 'IS_PARENT': True,
@@ -118,7 +123,7 @@ class GanttDataBuilder:
 
                     child_assignee = str(child_row.get('ASSIGNED TO', '')).strip().upper()
 
-                    if child_assignee in ["", "UNASSIGNED", "NAN", "TBD"]:
+                    if child_assignee in ["", AppConstants.UNASSIGNED_LABEL, "NAN", "TBD"]:
                         child_color = "#555555"
                     else:
                         child_color = color_map.get(child_assignee, "#555555")
