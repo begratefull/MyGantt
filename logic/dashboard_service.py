@@ -15,6 +15,12 @@ class DashboardService:
     Handles data aggregation, KPI math, and dataset preparation for the Dashboard UI.
     """
 
+    # Standard US Manufacturing Holidays to align Python math with Excel
+    COMPANY_HOLIDAYS = [
+        '2025-01-01', '2025-05-26', '2025-07-04', '2025-09-01', '2025-11-27', '2025-11-28', '2025-12-25',
+        '2026-01-01', '2026-05-25', '2026-07-03', '2026-09-07', '2026-11-26', '2026-11-27', '2026-12-25'
+    ]
+
     @staticmethod
     def parse_variance(val: Any) -> float:
         if pd.isna(val) or val == "": return np.nan
@@ -22,51 +28,82 @@ class DashboardService:
         except Exception: return np.nan
 
     @staticmethod
+    def _calc_business_days(df: pd.DataFrame, col1: str, col2: str) -> pd.Series:
+        """
+        Safely calculates business days between two columns in a DataFrame.
+        Includes company holidays to perfectly match Excel's NETWORKDAYS formula.
+        """
+        if col1 not in df.columns or col2 not in df.columns:
+            return pd.Series(np.nan, index=df.index)
+
+        s1 = pd.to_datetime(df[col1], errors='coerce')
+        s2 = pd.to_datetime(df[col2], errors='coerce')
+        mask = s1.notna() & s2.notna()
+        res = pd.Series(np.nan, index=df.index)
+
+        if mask.any():
+            d1 = s1[mask].values.astype('datetime64[D]')
+            d2 = s2[mask].values.astype('datetime64[D]')
+
+            d1_safe = np.busday_offset(d1, 0, roll='forward')
+            d2_safe = np.busday_offset(d2, 0, roll='forward')
+
+            res.loc[mask] = np.busday_count(d1_safe, d2_safe, holidays=DashboardService.COMPANY_HOLIDAYS)
+
+        return res
+
+    @staticmethod
+    def enrich_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+        """Calculates missing Excel formula columns dynamically in Python."""
+        if df.empty: return df
+        res = df.copy()
+
+        # Col S Equivalent: Days in Engineering
+        res['PROCESS_DAYS'] = DashboardService._calc_business_days(res, 'DATE TO ENG', 'COMPLETE DATE')
+
+        # Col V Equivalent: Days Variance vs Due
+        res['COMPLETION VARIANCE'] = DashboardService._calc_business_days(res, 'COMPLETE DATE', 'ENG DUE DATE')
+
+        return res
+
+    @staticmethod
     def split_base_data(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         if df.empty: return df, df
-        if 'LINE_COUNT' not in df.columns: df['LINE_COUNT'] = 1
 
-        active_df = df[df['STATUS'].str.strip().str.upper() != 'COMPLETE'].copy()
-        comp_df = df[df['STATUS'].str.strip().str.upper() == 'COMPLETE'].copy()
+        enriched_df = DashboardService.enrich_dataframe(df)
+        if 'LINE_COUNT' not in enriched_df.columns: enriched_df['LINE_COUNT'] = 1
+
+        active_df = enriched_df[enriched_df['STATUS'].str.strip().str.upper() != 'COMPLETE'].copy()
+        comp_df = enriched_df[enriched_df['STATUS'].str.strip().str.upper() == 'COMPLETE'].copy()
         return active_df, comp_df
 
     @staticmethod
     def _get_current_backlog(active_df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Total Pipeline approach:
-        Returns all active lines (uncompleted), completely ignoring start dates.
-        If it is assigned to an engineer, it shows up on their backlog.
-        """
         return active_df
 
     @staticmethod
-    def _filter_completed_by_date(comp_df: pd.DataFrame, start_date: pd.Timestamp) -> pd.DataFrame:
+    def _filter_completed_by_date(comp_df: pd.DataFrame, start_date: pd.Timestamp, end_date: pd.Timestamp = None) -> pd.DataFrame:
         if comp_df.empty: return comp_df
         df = comp_df.copy()
         dates = pd.to_datetime(df['COMPLETE DATE'].replace('', pd.NaT), errors='coerce')
-        return df[dates >= start_date]
+        mask = dates >= start_date
+        if end_date:
+            mask = mask & (dates <= end_date)
+        return df[mask]
 
     @staticmethod
-    def _calc_subset_metrics(active_df: pd.DataFrame, comp_df: pd.DataFrame) -> Dict[str, float]:
-        metrics = {'variance': np.nan, 'queue': np.nan, 'productivity': np.nan, 'on_time': 100.0}
+    def _calc_subset_metrics(comp_df: pd.DataFrame) -> Dict[str, float]:
+        """Calculates productivity and variance strictly on COMPLETED data."""
+        metrics = {'variance': np.nan, 'productivity': np.nan, 'on_time': 100.0}
 
-        act_var = active_df['EST ENG VARIANCE'].apply(DashboardService.parse_variance).dropna() if 'EST ENG VARIANCE' in active_df.columns else pd.Series(dtype=float)
-        comp_var = comp_df['COMPLETION VARIANCE'].apply(DashboardService.parse_variance).dropna() if 'COMPLETION VARIANCE' in comp_df.columns else pd.Series(dtype=float)
-        all_var = pd.concat([act_var, comp_var])
+        comp_var = pd.to_numeric(comp_df.get('COMPLETION VARIANCE'), errors='coerce').dropna()
+        if not comp_var.empty:
+            metrics['variance'] = float(comp_var.mean())
+            metrics['on_time'] = (float((comp_var >= 0).sum()) / len(comp_var)) * 100.0
 
-        if not all_var.empty:
-            metrics['variance'] = float(all_var.mean())
-            metrics['on_time'] = (float((all_var >= 0).sum()) / len(all_var)) * 100.0
-
-        act_q = active_df['QUEUE_DAYS'].apply(DashboardService.parse_variance).dropna() if 'QUEUE_DAYS' in active_df.columns else pd.Series(dtype=float)
-        comp_q = comp_df['QUEUE_DAYS'].apply(DashboardService.parse_variance).dropna() if 'QUEUE_DAYS' in comp_df.columns else pd.Series(dtype=float)
-        all_q = pd.concat([act_q, comp_q])
-        if not all_q.empty: metrics['queue'] = float(all_q.mean())
-
-        act_prod = pd.to_numeric(active_df['EST DAYS'], errors='coerce').dropna() if 'EST DAYS' in active_df.columns else pd.Series(dtype=float)
-        comp_prod = comp_df['PROCESS_DAYS'].apply(DashboardService.parse_variance).dropna() if 'PROCESS_DAYS' in comp_df.columns else pd.Series(dtype=float)
-        all_prod = pd.concat([act_prod, comp_prod])
-        if not all_prod.empty: metrics['productivity'] = float(all_prod.mean())
+        comp_prod = pd.to_numeric(comp_df.get('PROCESS_DAYS'), errors='coerce').dropna()
+        if not comp_prod.empty:
+            metrics['productivity'] = float(comp_prod.mean())
 
         return metrics
 
@@ -86,18 +123,22 @@ class DashboardService:
     def calculate_advanced_kpis(active_df: pd.DataFrame, comp_df: pd.DataFrame, full_df: pd.DataFrame, current_team_filter: str) -> Dict[str, Any]:
         today = pd.Timestamp.today().normalize()
         ytd_start = pd.Timestamp(year=today.year, month=1, day=1)
-        cur_start = today - pd.Timedelta(days=7)
+        ytd_end = pd.Timestamp(year=today.year, month=12, day=31)
+
+        # Snapped to strict Monday-Sunday calendar week to match Excel reports
+        cur_start = today - pd.Timedelta(days=today.weekday())
+        cur_end = cur_start + pd.Timedelta(days=6)
 
         curr_active_df = DashboardService._get_current_backlog(active_df)
-        comp_ytd = DashboardService._filter_completed_by_date(comp_df, ytd_start)
-        comp_cur = DashboardService._filter_completed_by_date(comp_df, cur_start)
+        comp_ytd = DashboardService._filter_completed_by_date(comp_df, ytd_start, ytd_end)
+        comp_cur = DashboardService._filter_completed_by_date(comp_df, cur_start, cur_end)
 
         sub_regex = 'APP|SUB|QUOT|QUOTE|APPROVAL|SUBMITTAL'
         is_prod_act = curr_active_df['REQUIREMENT'].str.contains('PROD', case=False, na=False) if 'REQUIREMENT' in curr_active_df.columns else pd.Series(False, index=curr_active_df.index)
         is_sub_act = curr_active_df['REQUIREMENT'].str.contains(sub_regex, case=False, na=False) if 'REQUIREMENT' in curr_active_df.columns else pd.Series(False, index=curr_active_df.index)
 
-        global_ytd = DashboardService._calc_subset_metrics(curr_active_df, comp_ytd)
-        global_cur = DashboardService._calc_subset_metrics(curr_active_df, comp_cur)
+        global_ytd = DashboardService._calc_subset_metrics(comp_ytd)
+        global_cur = DashboardService._calc_subset_metrics(comp_cur)
 
         kpis = {
             'global': {
@@ -127,7 +168,7 @@ class DashboardService:
                 backlog = int(t_act['LINE_COUNT'].sum()) if 'LINE_COUNT' in t_act.columns else 0
 
                 kpis['cards'].append({
-                    'title': f"{t_name.title()} Flow (Last 7 Days)",
+                    'title': f"{t_name.title()} Flow (Current Week)",
                     'incoming': incoming,
                     'outgoing': outgoing,
                     'net': incoming - outgoing,
@@ -160,12 +201,12 @@ class DashboardService:
                 kpis['cards'].append({
                     'title': f"{l_type} Health",
                     'prod': {
-                        'ytd': DashboardService._calc_subset_metrics(prod_act, prod_ytd),
-                        'cur': DashboardService._calc_subset_metrics(prod_act, prod_cur)
+                        'ytd': DashboardService._calc_subset_metrics(prod_ytd),
+                        'cur': DashboardService._calc_subset_metrics(prod_cur)
                     },
                     'sub': {
-                        'ytd': DashboardService._calc_subset_metrics(sub_act, sub_ytd),
-                        'cur': DashboardService._calc_subset_metrics(sub_act, sub_cur)
+                        'ytd': DashboardService._calc_subset_metrics(sub_ytd),
+                        'cur': DashboardService._calc_subset_metrics(sub_cur)
                     }
                 })
 
@@ -193,7 +234,6 @@ class DashboardService:
                     if count > 0:
                         req_counts[req_name] = count
 
-            # --- NEW: Capture exact lines for UI debugging ---
             debug_lines = []
             for _, row in eng_df.iterrows():
                 sid = row.get('SMART_ID', 'UNKNOWN')
@@ -245,14 +285,14 @@ class DashboardService:
         if valid_lead.any():
             d_in_np = date_in[valid_lead].values.astype('datetime64[D]')
             d_out_np = date_out[valid_lead].values.astype('datetime64[D]')
-            prod_df.loc[valid_lead, 'LEAD_TIME'] = np.busday_count(d_in_np, d_out_np)
+            prod_df.loc[valid_lead, 'LEAD_TIME'] = np.busday_count(d_in_np, d_out_np, holidays=DashboardService.COMPANY_HOLIDAYS)
 
         valid_proc = date_start.notna() & date_out.notna()
         prod_df['ACTIVE_TIME'] = np.nan
         if valid_proc.any():
             d_start_np = date_start[valid_proc].values.astype('datetime64[D]')
             d_out_np = date_out[valid_proc].values.astype('datetime64[D]')
-            prod_df.loc[valid_proc, 'ACTIVE_TIME'] = np.busday_count(d_start_np, d_out_np)
+            prod_df.loc[valid_proc, 'ACTIVE_TIME'] = np.busday_count(d_start_np, d_out_np, holidays=DashboardService.COMPANY_HOLIDAYS)
 
         fam_col = 'FAMILY_PREFIX'
         if fam_col not in prod_df.columns: return []

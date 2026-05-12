@@ -3,11 +3,10 @@ Provides the Interactive Gantt Chart interface.
 """
 
 from typing import Optional, List, Dict, Any
-
 import pandas as pd
 
 from PySide6.QtCore import Qt, Signal, QRectF, QTimer
-from PySide6.QtGui import QPainter, QColor, QPen, QMouseEvent, QFont
+from PySide6.QtGui import QPainter, QColor, QPen, QMouseEvent, QFont, QWheelEvent, QBrush
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QComboBox, QSplitter, QTableWidget, QAbstractItemView,
@@ -33,6 +32,19 @@ class GanttView(QGraphicsView):
         if event.button() == Qt.LeftButton:
             if not self.itemAt(event.pos()) and self.empty_clicked:
                 self.empty_clicked.emit()
+
+    def wheelEvent(self, event: QWheelEvent) -> None:
+        """
+        Intercepts mouse wheel scrolling. If Shift is held down,
+        translates the vertical wheel movement into horizontal scrolling.
+        """
+        if event.modifiers() == Qt.ShiftModifier:
+            h_scrollbar = self.horizontalScrollBar()
+            scroll_amount = event.angleDelta().y()
+            h_scrollbar.setValue(h_scrollbar.value() - scroll_amount)
+            event.accept()
+        else:
+            super().wheelEvent(event)
 
 
 class GanttGridScene(QGraphicsScene):
@@ -104,7 +116,6 @@ class GanttScreenWidget(QWidget):
         gantt_header_layout.addWidget(self.filter_req)
         gantt_header_layout.addWidget(self.filter_status)
 
-        # --- ADDED: Sorting Dropdown ---
         gantt_header_layout.addSpacing(10)
         sort_lbl = QLabel("Sort By:")
         sort_lbl.setObjectName("FilterLabel")
@@ -176,7 +187,6 @@ class GanttScreenWidget(QWidget):
         self.gantt_splitter.setStretchFactor(0, 0)
         self.gantt_splitter.setStretchFactor(1, 1)
 
-        # --- EXPANDED: Wider default left pane ---
         self.gantt_splitter.setSizes([650, 800])
         unified_layout.addWidget(self.gantt_splitter)
 
@@ -301,7 +311,6 @@ class GanttScreenWidget(QWidget):
         header.setSectionResizeMode(3, QHeaderView.Interactive)
         header.setSectionResizeMode(4, QHeaderView.Interactive)
 
-        # --- EXPANDED: Wider default columns ---
         table.setColumnWidth(0, 110)
         table.setColumnWidth(1, 110)
         table.setColumnWidth(2, 260)
@@ -381,7 +390,26 @@ class GanttScreenWidget(QWidget):
         day_zero = day_zero - pd.Timedelta(days=day_zero.weekday())
         self.day_zero = day_zero
 
-        total_business_days = 120
+        # --- DYNAMIC WIDTH CALCULATION [CITE: 19] ---
+        max_offset_days = 120
+        for row in visual_rows:
+            start_str = str(row.get('ENG START DATE') or row.get('EST START DATE')).strip()
+            est_days_str = str(row.get('EST DAYS', '')).strip()
+            days = float(est_days_str) if est_days_str else 5
+            start_dt = pd.to_datetime(start_str) if start_str else pd.NaT
+
+            if pd.notna(start_dt):
+                offset = self.get_business_day_offset(day_zero, start_dt)
+                if offset + days > max_offset_days:
+                    max_offset_days = int(offset + days)
+
+            due_dt = pd.to_datetime(row.get('ENG DUE DATE', '')) if str(row.get('ENG DUE DATE', '')) else pd.NaT
+            if pd.notna(due_dt):
+                due_offset = self.get_business_day_offset(day_zero, due_dt)
+                if due_offset > max_offset_days:
+                    max_offset_days = due_offset
+
+        total_business_days = max_offset_days + 30
         total_width = total_business_days * self.day_width
         total_height = max(len(visual_rows) * self.row_height, 800)
 
@@ -390,11 +418,21 @@ class GanttScreenWidget(QWidget):
 
         font_month = QFont("Segoe UI", 9, QFont.Bold)
         font_day = QFont("Segoe UI", 8)
-        current_x, current_month, today_x = 0, -1, -1
+        current_x, today_x = 0, -1
         today = pd.Timestamp.today().normalize()
+
+        month_bounds = []
+        temp_start_x = 0
+        temp_month_date = day_zero
 
         for i in range(total_business_days):
             current_date = day_zero + pd.tseries.offsets.BusinessDay(i)
+
+            if i > 0 and current_date.month != temp_month_date.month:
+                month_bounds.append((temp_start_x, current_x, temp_month_date))
+                temp_start_x = current_x
+                temp_month_date = current_date
+
             if current_date == today:
                 self.gantt_scene.addRect(
                     current_x, 0, self.day_width, total_height + 2000,
@@ -402,32 +440,43 @@ class GanttScreenWidget(QWidget):
                 )
                 today_x = current_x
 
-            if current_date.month != current_month:
-                current_month = current_date.month
-                m_text = self.header_scene.addText(current_date.strftime("%B %Y"))
-                m_text.setDefaultTextColor(QColor("#CCCCCC"))
-                m_text.setFont(font_month)
-                m_text.setPos(current_x + 2, 0)
-
             if current_date.weekday() == 0:
                 self.header_scene.addLine(current_x, 25, current_x, 45, QPen(QColor("#666666"), 2))
 
             d_text = self.header_scene.addText(str(current_date.day))
             d_text.setDefaultTextColor(QColor("#888888"))
             d_text.setFont(font_day)
-            d_text.setPos(current_x + 2, 20)
+            d_w = d_text.boundingRect().width()
+            d_text.setPos(current_x + (self.day_width - d_w) / 2, 20)
+
             current_x += self.day_width
+
+        month_bounds.append((temp_start_x, current_x, temp_month_date))
+
+        # --- REFINED HEADER RENDERING [CITE: 19] ---
+        for start_x, end_x, m_date in month_bounds:
+            month_width = end_x - start_x
+            self.header_scene.addRect(start_x, 0, month_width, 22, QPen(QColor("#333333")), QBrush(QColor("#252526")))
+
+            m_str = m_date.strftime("%B %Y")
+            m_text = self.header_scene.addText(m_str)
+            m_text.setDefaultTextColor(QColor("#CCCCCC"))
+            m_text.setFont(font_month)
+            text_w = m_text.boundingRect().width()
+
+            if text_w < month_width:
+                m_text.setPos(start_x + (month_width - text_w) / 2, -2)
+            else:
+                m_text.setPlainText(m_date.strftime("%b"))
+                m_text.setPos(start_x + 2, -2)
 
         for index, row in enumerate(visual_rows):
             y = index * self.row_height
             is_parent = row.get('IS_PARENT', False)
-
             start_str = str(row.get('ENG START DATE') or row.get('EST START DATE')).strip()
             est_days_str = str(row.get('EST DAYS', '')).strip()
-
             days = float(est_days_str) if est_days_str else 5
             start_dt = pd.to_datetime(start_str) if start_str else pd.NaT
-
             width = days * self.day_width
             x = self.get_business_day_offset(day_zero, start_dt) * self.day_width if pd.notna(start_dt) else 0
 

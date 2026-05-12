@@ -191,26 +191,27 @@ class DashboardWidget(QWidget):
             grid.addWidget(QLabel("Current"), 0, 1, alignment=Qt.AlignCenter)
             grid.addWidget(QLabel("YTD"), 0, 2, alignment=Qt.AlignCenter)
 
+            p_c, p_y = QLabel("--"), QLabel("--")
             v_c, v_y = QLabel("--"), QLabel("--")
-            q_c, q_y = QLabel("--"), QLabel("--")
-            for l in [v_c, v_y, q_c, q_y]: l.setObjectName("KpiBlockValue")
 
-            lbl_v = QLabel("Var:")
+            for l in [p_c, p_y, v_c, v_y]: l.setObjectName("KpiBlockValue")
+
+            lbl_p = QLabel("Days in Eng:")
+            lbl_p.setObjectName("FilterLabel")
+            grid.addWidget(lbl_p, 1, 0)
+            grid.addWidget(p_c, 1, 1, alignment=Qt.AlignCenter)
+            grid.addWidget(p_y, 1, 2, alignment=Qt.AlignCenter)
+
+            lbl_v = QLabel("Var to Due:")
             lbl_v.setObjectName("FilterLabel")
-            grid.addWidget(lbl_v, 1, 0)
-            grid.addWidget(v_c, 1, 1, alignment=Qt.AlignCenter)
-            grid.addWidget(v_y, 1, 2, alignment=Qt.AlignCenter)
+            grid.addWidget(lbl_v, 2, 0)
+            grid.addWidget(v_c, 2, 1, alignment=Qt.AlignCenter)
+            grid.addWidget(v_y, 2, 2, alignment=Qt.AlignCenter)
 
-            lbl_q = QLabel("Queue:")
-            lbl_q.setObjectName("FilterLabel")
-            grid.addWidget(lbl_q, 2, 0)
-            grid.addWidget(q_c, 2, 1, alignment=Qt.AlignCenter)
-            grid.addWidget(q_y, 2, 2, alignment=Qt.AlignCenter)
+            return lbl, grid, p_c, p_y, v_c, v_y
 
-            return lbl, grid, v_c, v_y, q_c, q_y
-
-        p_lbl, p_grid, p_v_c, p_v_y, p_q_c, p_q_y = build_sub_section("Production")
-        s_lbl, s_grid, s_v_c, s_v_y, s_q_c, s_q_y = build_sub_section("Submittals")
+        p_lbl, p_grid, p_p_c, p_p_y, p_v_c, p_v_y = build_sub_section("Production")
+        s_lbl, s_grid, s_p_c, s_p_y, s_v_c, s_v_y = build_sub_section("Submittals")
 
         layout.addSpacing(10)
         layout.addWidget(p_lbl)
@@ -223,8 +224,10 @@ class DashboardWidget(QWidget):
 
         return {
             'frame': frame,
-            'p_var_cur': p_v_c, 'p_var_ytd': p_v_y, 'p_q_cur': p_q_c, 'p_q_ytd': p_q_y,
-            's_var_cur': s_v_c, 's_var_ytd': s_v_y, 's_q_cur': s_q_c, 's_q_ytd': s_q_y
+            'p_prod_cur': p_p_c, 'p_prod_ytd': p_p_y,
+            'p_var_cur': p_v_c, 'p_var_ytd': p_v_y,
+            's_prod_cur': s_p_c, 's_prod_ytd': s_p_y,
+            's_var_cur': s_v_c, 's_var_ytd': s_v_y,
         }
 
     def _build_flow_card(self, title_text: str) -> Dict[str, Any]:
@@ -443,19 +446,30 @@ class DashboardWidget(QWidget):
         return "UNASSIGNED"
 
     def _format_var(self, val: float) -> str:
-        if pd.isna(val): return "--"
+        if pd.isna(val) or val == 0.0 and type(val) is not float: return "--"
         return f"{val:+.1f}d"
 
     def _format_day(self, val: float) -> str:
-        if pd.isna(val): return "--"
+        if pd.isna(val) or val == 0.0 and type(val) is not float: return "--"
         return f"{val:.1f}d"
 
     def _set_var_color(self, label: QLabel, val: float) -> None:
         if pd.isna(val): label.setStyleSheet("color: #FFFFFF;")
         else: label.setStyleSheet("color: #4CAF50;" if val >= 0 else "color: #FF5252;")
 
+    def _apply_goal_color(self, label: QLabel, val: float, goal: float, lower_is_better: bool = True) -> None:
+        """Applies conditional green/red formatting based on defined metric goals."""
+        if pd.isna(val):
+            label.setStyleSheet("color: #FFFFFF;")
+        else:
+            if lower_is_better:
+                # Productivity (Less days is better)
+                label.setStyleSheet("color: #4CAF50;" if val <= goal else "color: #FF5252;")
+            else:
+                # Variance (Positive value means early completion, so higher is better)
+                label.setStyleSheet("color: #4CAF50;" if val >= goal else "color: #FF5252;")
+
     def update_dashboard(self, actual_df: pd.DataFrame, forecast_df: pd.DataFrame) -> None:
-        """Stores the distinct dataframes so they can be processed by render_all."""
         if actual_df.empty: return
         self.actual_df = actual_df.copy()
         self.forecast_df = forecast_df.copy()
@@ -464,7 +478,6 @@ class DashboardWidget(QWidget):
     def render_all(self) -> None:
         if not hasattr(self, 'actual_df') or self.actual_df.empty: return
 
-        # Pull from the distinct dataframes
         df = self.actual_df.copy()
         f_df = self.forecast_df.copy()
 
@@ -480,16 +493,12 @@ class DashboardWidget(QWidget):
             filtered_df = df.copy()
             filtered_f_df = f_df.copy()
 
-        # Isolate the actives vs completes for both data sets
         active_df, comp_df = DashboardService.split_base_data(filtered_df)
         f_active_df, _ = DashboardService.split_base_data(filtered_f_df)
 
-        # The majority of the dashboard renders STRICTLY on pure Actuals (active_df)
         self.render_top_row(active_df, comp_df, df, current_team)
         self.render_interactive_pies(active_df)
         self.render_family_card(filtered_df)
-
-        # The timeline blends Completed Actuals (comp_df) with the Forecast overrides (f_active_df)
         self.render_timeline_row(f_active_df, comp_df)
 
     def render_top_row(self, active_df: pd.DataFrame, comp_df: pd.DataFrame, full_df: pd.DataFrame, current_team: str) -> None:
@@ -516,17 +525,46 @@ class DashboardWidget(QWidget):
             if kpis['view_type'] == 'health':
                 ui_card = self._build_vertical_health_card(card_data['title'])
 
+                # Parse Line Type to set specific productivity targets for Production only
+                title_text = card_data['title'].upper()
+                if "MOD" in title_text:
+                    prod_goal = 15.0
+                elif "CUS" in title_text:
+                    prod_goal = 20.0
+                else:
+                    prod_goal = 15.0 # Default Target
+
+                var_goal = 0.0
+
+                # --- Production: Has goals applied ---
+                p_prod_cur, p_prod_ytd = card_data['prod']['cur']['productivity'], card_data['prod']['ytd']['productivity']
+                ui_card['p_prod_cur'].setText(self._format_day(p_prod_cur))
+                self._apply_goal_color(ui_card['p_prod_cur'], p_prod_cur, prod_goal, lower_is_better=True)
+
+                ui_card['p_prod_ytd'].setText(self._format_day(p_prod_ytd))
+                self._apply_goal_color(ui_card['p_prod_ytd'], p_prod_ytd, prod_goal, lower_is_better=True)
+
                 p_cur, p_ytd = card_data['prod']['cur']['variance'], card_data['prod']['ytd']['variance']
-                ui_card['p_var_cur'].setText(self._format_var(p_cur)); self._set_var_color(ui_card['p_var_cur'], p_cur)
-                ui_card['p_var_ytd'].setText(self._format_var(p_ytd)); self._set_var_color(ui_card['p_var_ytd'], p_ytd)
-                ui_card['p_q_cur'].setText(self._format_day(card_data['prod']['cur']['queue']))
-                ui_card['p_q_ytd'].setText(self._format_day(card_data['prod']['ytd']['queue']))
+                ui_card['p_var_cur'].setText(self._format_var(p_cur))
+                self._apply_goal_color(ui_card['p_var_cur'], p_cur, var_goal, lower_is_better=False)
+
+                ui_card['p_var_ytd'].setText(self._format_var(p_ytd))
+                self._apply_goal_color(ui_card['p_var_ytd'], p_ytd, var_goal, lower_is_better=False)
+
+                # --- Submittals: Purely informative, default white text ---
+                s_prod_cur, s_prod_ytd = card_data['sub']['cur']['productivity'], card_data['sub']['ytd']['productivity']
+                ui_card['s_prod_cur'].setText(self._format_day(s_prod_cur))
+                ui_card['s_prod_cur'].setStyleSheet("color: #FFFFFF;")
+
+                ui_card['s_prod_ytd'].setText(self._format_day(s_prod_ytd))
+                ui_card['s_prod_ytd'].setStyleSheet("color: #FFFFFF;")
 
                 s_cur, s_ytd = card_data['sub']['cur']['variance'], card_data['sub']['ytd']['variance']
-                ui_card['s_var_cur'].setText(self._format_var(s_cur)); self._set_var_color(ui_card['s_var_cur'], s_cur)
-                ui_card['s_var_ytd'].setText(self._format_var(s_ytd)); self._set_var_color(ui_card['s_var_ytd'], s_ytd)
-                ui_card['s_q_cur'].setText(self._format_day(card_data['sub']['cur']['queue']))
-                ui_card['s_q_ytd'].setText(self._format_day(card_data['sub']['ytd']['queue']))
+                ui_card['s_var_cur'].setText(self._format_var(s_cur))
+                ui_card['s_var_cur'].setStyleSheet("color: #FFFFFF;")
+
+                ui_card['s_var_ytd'].setText(self._format_var(s_ytd))
+                ui_card['s_var_ytd'].setStyleSheet("color: #FFFFFF;")
 
                 frame = ui_card['frame']
 
@@ -629,7 +667,6 @@ class DashboardWidget(QWidget):
 
             slc.hovered.connect(self._on_slice_hovered)
 
-        # Attach the click event to the full pie series to ensure it is always caught
         pie.clicked.connect(self._on_slice_clicked)
 
         self.chart_assignee.addSeries(pie)
@@ -652,7 +689,6 @@ class DashboardWidget(QWidget):
             self._render_detail_pie("Team Requirement Breakdown", self._global_req_dist)
 
     def _on_slice_clicked(self, slice_obj: QPieSlice) -> None:
-        """Pushes the debug data to the global logger."""
         if not isinstance(slice_obj, QPieSlice): return
 
         eng_name = slice_obj.label().split(' (')[0].strip()

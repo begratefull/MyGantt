@@ -7,8 +7,10 @@ Update these values when company processes, line types, or tracking rules change
 class AppConstants:
     # --- Team Line Type Classifications ---
     # These determine automatic team routing based on the 'TYPE' column in Excel
+    # TODO: Figure out why after adding RENOV to the CUSTOM_LINE_TYPES list I'm still not seeing them reflected
+    #  in the dashboard or in the Gantt chart
     STANDARD_LINE_TYPES = ['STD', 'STD-M', 'PART']
-    CUSTOM_LINE_TYPES = ['MOD', 'CUS', 'PART-MC']
+    CUSTOM_LINE_TYPES = ['MOD', 'CUS', 'RENOV' 'PART-MC']
 
     # --- Parsing & Data Sync ---
     # The exact name of the sheet inside the Excel file to read from
