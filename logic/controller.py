@@ -537,47 +537,98 @@ class AppController:
                 self.view.kpi_esd_var.setText(f"{int(var_esd)} days")
             except Exception: pass
 
-    def handle_block_dropped(self, target_id: str, new_x: float, new_width: float, is_parent: bool, delta_x: float = 0.0, delta_w: float = 0.0) -> None:
+    def handle_block_dropped(self, target_id: str, new_x: float, new_width: float, is_parent: bool,
+                             delta_x: float = 0.0, delta_w: float = 0.0) -> None:
+        import numpy as np
+        import pandas as pd
+        from logic.constants import AppConstants
+
         day_zero = self.view.gantt_screen.day_zero
         if not day_zero: return
-
-        delta_x_days = round(delta_x / self.day_width)
+        day_width = self.view.gantt_screen.day_width
 
         if not is_parent:
-            new_date = day_zero + pd.tseries.offsets.BusinessDay(round(new_x / self.day_width))
-            new_days_str = str(max(1, round(new_width / self.day_width)))
+            # 1. Map visual drop location to a physical date
+            new_date = day_zero + pd.tseries.offsets.BusinessDay(round(new_x / day_width))
+            new_start_safe = np.busday_offset(new_date.date(), 0, holidays=AppConstants.COMPANY_HOLIDAYS,
+                                              roll='forward')
+            new_start_pd = pd.to_datetime(new_start_safe)
+            start_date_str = f"{new_start_pd.month}/{new_start_pd.day}/{new_start_pd.year}"
 
-            self.history.stage_edit(target_id, {
-                'MAN_START_DATE': f"{new_date.month}/{new_date.day}/{new_date.year}",
-                'MAN_EST_DAYS': new_days_str
-            })
-
+            # 2. INSTANT CACHE UPDATE (Fixes the freeze/snap-back!)
             mask = self.current_plan_df['SMART_ID'] == target_id
-            self.current_plan_df.loc[mask, 'EST START DATE'] = f"{new_date.month}/{new_date.day}/{new_date.year}"
-            self.current_plan_df.loc[mask, 'EST DAYS'] = new_days_str
+            self.current_plan_df.loc[mask, 'EST START DATE'] = start_date_str
+            self.history.stage_edit(target_id, {'MAN_START_DATE': start_date_str})
 
-            self.update_kpi_variances_locally(new_x, new_days_str)
+            # 3. Handle Resizing (Fixes the shrinking bug)
+            if abs(delta_w) > 0.1:
+                visual_days = max(1, round(new_width / day_width))
+                end_date = new_date + pd.tseries.offsets.BusinessDay(visual_days - 1)
+                end_date_safe = np.busday_offset(end_date.date(), 0, holidays=AppConstants.COMPANY_HOLIDAYS,
+                                                 roll='backward')
+
+                raw_work_days = np.busday_count(new_start_safe, end_date_safe, holidays=AppConstants.COMPANY_HOLIDAYS)
+                new_days_str = str(int(max(1, raw_work_days + 1)))
+
+                self.current_plan_df.loc[mask, 'EST DAYS'] = new_days_str
+                self.history.stage_edit(target_id, {'MAN_EST_DAYS': new_days_str})
+
+                if hasattr(self, 'update_kpi_variances_locally'):
+                    self.update_kpi_variances_locally(new_x, new_days_str)
+
         else:
-            if delta_x_days == 0:
+            # 4. GHOST PARENT DRAGGING
+            if abs(delta_x) < 0.1:
                 self._rebuild_and_render_canvas(target_id)
                 return
 
             mask = self.current_plan_df['PROJECT_ID'] == target_id
             children = self.current_plan_df[mask]
 
+            # How many physical screen columns did you drag the parent?
+            delta_days_visual = round(delta_x / day_width)
+
+            parent_starts = pd.to_datetime(children['EST START DATE'], errors='coerce').dropna()
+            if parent_starts.empty:
+                self._rebuild_and_render_canvas(target_id)
+                return
+
+            old_parent_start = parent_starts.min()
+
+            # Map the visual shift to true calendar days
+            new_parent_start_safe = np.busday_offset(old_parent_start.date(), delta_days_visual,
+                                                     holidays=AppConstants.COMPANY_HOLIDAYS, roll='forward')
+            shift_working_days = np.busday_count(old_parent_start.date(), new_parent_start_safe,
+                                                 holidays=AppConstants.COMPANY_HOLIDAYS)
+
+            if shift_working_days == 0:
+                self._rebuild_and_render_canvas(target_id)
+                return
+
+            # Shift every un-started child instantly
             for _, child in children.iterrows():
                 child_smart_id = child['SMART_ID']
-                child_started = str(child.get('ENG START DATE', '')).strip()
 
-                if not child_started:
-                    old_start = pd.to_datetime(child.get('EST START DATE', pd.NaT))
-                    if pd.isna(old_start): old_start = day_zero
-                    new_start_date = old_start + pd.tseries.offsets.BusinessDay(delta_x_days)
+                if str(child.get('ENG START DATE', '')).strip():
+                    continue
 
-                    self.history.stage_edit(child_smart_id, {'MAN_START_DATE': f"{new_start_date.month}/{new_start_date.day}/{new_start_date.year}"})
+                old_child_start = pd.to_datetime(child.get('EST START DATE', pd.NaT))
+                if pd.isna(old_child_start): continue
+
+                try:
+                    new_child_start = np.busday_offset(old_child_start.date(), shift_working_days,
+                                                       holidays=AppConstants.COMPANY_HOLIDAYS, roll='forward')
+                    new_child_pd = pd.to_datetime(new_child_start)
+                    start_date_str = f"{new_child_pd.month}/{new_child_pd.day}/{new_child_pd.year}"
+
+                    # Update local cache instantly!
+                    self.history.stage_edit(child_smart_id, {'MAN_START_DATE': start_date_str})
                     c_mask = self.current_plan_df['SMART_ID'] == child_smart_id
-                    self.current_plan_df.loc[c_mask, 'EST START DATE'] = f"{new_start_date.month}/{new_start_date.day}/{new_start_date.year}"
+                    self.current_plan_df.loc[c_mask, 'EST START DATE'] = start_date_str
+                except ValueError:
+                    pass
 
+        # 5. INSTANT UI REDRAW (Using local cache, no background threads!)
         self._rebuild_and_render_canvas(target_id)
 
         if hasattr(self.view, 'show_status'):

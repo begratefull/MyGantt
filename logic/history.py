@@ -27,6 +27,19 @@ class HistoryManager:
 
         self.current_staged_edits[smart_id].update(edit_dict)
 
+    def stage_bulk_edits(self, bulk_edits: dict):
+        """
+        Records multiple changes as a single undo-able action.
+        Format: { 'SMART_ID_1': {'MAN_START_DATE': '...'}, 'SMART_ID_2': {'MAN_START_DATE': '...'} }
+        """
+        self.undo_stack.append(copy.deepcopy(self.current_staged_edits))
+        self.redo_stack.clear()
+
+        for smart_id, edit_dict in bulk_edits.items():
+            if smart_id not in self.current_staged_edits:
+                self.current_staged_edits[smart_id] = {}
+            self.current_staged_edits[smart_id].update(edit_dict)
+
     def undo(self) -> bool:
         """
         Reverts to the previous state. Returns True if successful.

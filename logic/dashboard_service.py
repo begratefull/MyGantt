@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from logic.constants import AppConstants
+from logic.calendar_engine import CalendarEngine
 
 class DashboardService:
     """
@@ -26,30 +27,11 @@ class DashboardService:
 
     @staticmethod
     def _calc_business_days(df: pd.DataFrame, col1: str, col2: str) -> pd.Series:
-        from logic.constants import AppConstants  # Ensure constants are imported
-
         if col1 not in df.columns or col2 not in df.columns:
             return pd.Series(np.nan, index=df.index)
 
-        s1 = pd.to_datetime(df[col1], errors='coerce')
-        s2 = pd.to_datetime(df[col2], errors='coerce')
-        mask = s1.notna() & s2.notna()
-        res = pd.Series(np.nan, index=df.index)
-
-        if mask.any():
-            d1 = s1[mask].values.astype('datetime64[D]')
-            d2 = s2[mask].values.astype('datetime64[D]')
-
-            # Safely roll weekend dates to Monday so the math doesn't crash
-            d1_safe = np.busday_offset(d1, 0, roll='forward')
-            d2_safe = np.busday_offset(d2, 0, roll='forward')
-
-            # Calculate the exact business days using your dynamic Excel holidays!
-            # No +1 or -1 adjustments. Just the pure difference.
-            diff = np.busday_count(d1_safe, d2_safe, holidays=AppConstants.COMPANY_HOLIDAYS)
-            res.loc[mask] = diff
-
-        return res
+        # Use our new bulletproof central engine!
+        return CalendarEngine.calculate_variance_vectorized(df[col1], df[col2])
 
     @staticmethod
     def enrich_dataframe(df: pd.DataFrame) -> pd.DataFrame:

@@ -4,6 +4,8 @@ Provides the Interactive Gantt Chart interface.
 
 from typing import Optional, List, Dict, Any
 import pandas as pd
+import numpy as np  # <-- Added NumPy for pure business day mapping
+from logic.constants import AppConstants  # <-- Added AppConstants to read the Holidays
 
 from PySide6.QtCore import Qt, Signal, QRectF, QTimer
 from PySide6.QtGui import QPainter, QColor, QPen, QMouseEvent, QFont, QWheelEvent, QBrush
@@ -368,8 +370,8 @@ class GanttScreenWidget(QWidget):
     def get_business_day_offset(start_date: pd.Timestamp, target_date: pd.Timestamp) -> int:
         if pd.isna(target_date) or pd.isna(start_date):
             return 0
-        days = pd.bdate_range(start=start_date, end=target_date)
-        return len(days) - 1 if len(days) > 0 else 0
+        # --- NEW: Use pure M-F columns for visual alignment ---
+        return int(np.busday_count(start_date.date(), target_date.date()))
 
     def draw_gantt_canvas(self, visual_rows: List[Dict[str, Any]], dynamic_engineers: List[str]) -> None:
         self.header_scene.clear()
@@ -390,7 +392,6 @@ class GanttScreenWidget(QWidget):
         day_zero = day_zero - pd.Timedelta(days=day_zero.weekday())
         self.day_zero = day_zero
 
-        # --- DYNAMIC WIDTH CALCULATION [CITE: 19] ---
         max_offset_days = 120
         for row in visual_rows:
             start_str = str(row.get('ENG START DATE') or row.get('EST START DATE')).strip()
@@ -433,6 +434,19 @@ class GanttScreenWidget(QWidget):
                 temp_start_x = current_x
                 temp_month_date = current_date
 
+            # --- NEW: Highlight Holidays in red on the grid! ---
+            current_date_str = current_date.strftime('%Y-%m-%d')
+            if current_date_str in AppConstants.COMPANY_HOLIDAYS:
+                self.gantt_scene.addRect(
+                    current_x, 0, self.day_width, total_height + 2000,
+                    QPen(Qt.NoPen), QColor(255, 82, 82, 30)
+                )
+                h_text = self.header_scene.addText("H")
+                h_text.setDefaultTextColor(QColor("#FF5252"))
+                h_text.setFont(font_day)
+                h_w = h_text.boundingRect().width()
+                h_text.setPos(current_x + (self.day_width - h_w) / 2, 5)
+
             if current_date == today:
                 self.gantt_scene.addRect(
                     current_x, 0, self.day_width, total_height + 2000,
@@ -453,7 +467,6 @@ class GanttScreenWidget(QWidget):
 
         month_bounds.append((temp_start_x, current_x, temp_month_date))
 
-        # --- REFINED HEADER RENDERING [CITE: 19] ---
         for start_x, end_x, m_date in month_bounds:
             month_width = end_x - start_x
             self.header_scene.addRect(start_x, 0, month_width, 22, QPen(QColor("#333333")), QBrush(QColor("#252526")))
@@ -473,12 +486,26 @@ class GanttScreenWidget(QWidget):
         for index, row in enumerate(visual_rows):
             y = index * self.row_height
             is_parent = row.get('IS_PARENT', False)
+
+            # --- NEW: Calculate width based on visual spanning, stretching over holidays ---
             start_str = str(row.get('ENG START DATE') or row.get('EST START DATE')).strip()
-            est_days_str = str(row.get('EST DAYS', '')).strip()
-            days = float(est_days_str) if est_days_str else 5
+            end_str = str(row.get('COMPLETE DATE') or row.get('EST END DATE')).strip()
+
             start_dt = pd.to_datetime(start_str) if start_str else pd.NaT
-            width = days * self.day_width
-            x = self.get_business_day_offset(day_zero, start_dt) * self.day_width if pd.notna(start_dt) else 0
+            end_dt = pd.to_datetime(end_str) if end_str else pd.NaT
+
+            if pd.notna(start_dt):
+                x = self.get_business_day_offset(day_zero, start_dt) * self.day_width
+                if pd.notna(end_dt):
+                    # How many M-F columns to bridge visually
+                    visual_days = int(np.busday_count(start_dt.date(), end_dt.date())) + 1
+                    width = max(1, visual_days) * self.day_width
+                else:
+                    est_days = float(str(row.get('EST DAYS', 5)).strip() or 5)
+                    width = est_days * self.day_width
+            else:
+                x = 0
+                width = 5 * self.day_width
 
             block = GanttBlock(
                 project_data=row,
