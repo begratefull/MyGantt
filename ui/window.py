@@ -5,9 +5,10 @@ and linking the Controller to the UI components.
 """
 
 import os
+from typing import Any
 from PySide6.QtWidgets import (QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout,
                                QWidget, QMessageBox, QTableWidgetItem, QHeaderView,
-                               QStackedWidget, QFrame, QPlainTextEdit)
+                               QStackedWidget, QFrame, QPlainTextEdit, QTableWidget)
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon
 
@@ -15,10 +16,11 @@ from ui.views.dashboard import DashboardWidget
 from ui.views.data_view import DataViewWidget
 from ui.views.gantt_view import GanttScreenWidget
 from ui.views.team_view import TeamManagementWidget
+import pandas as pd
 
 
 class MyGanttWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("MyGantt")
         self.resize(1500, 1000)
@@ -39,7 +41,7 @@ class MyGanttWindow(QMainWindow):
         self.sidebar_frame.setObjectName("sidebarFrame")
         self.sidebar_frame.setFixedWidth(70)
         self.sidebar_layout = QVBoxLayout(self.sidebar_frame)
-        self.sidebar_layout.setAlignment(Qt.AlignTop)
+        self.sidebar_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.sidebar_layout.setContentsMargins(10, 20, 10, 10)
         self.sidebar_layout.setSpacing(15)
 
@@ -107,13 +109,10 @@ class MyGanttWindow(QMainWindow):
 
         self.right_layout.addWidget(self.main_card_frame, 1)
 
-        # --- THE CENTERED OVERLAY FIX ---
         self.log_console = QPlainTextEdit(self.right_container)
         self.log_console.setReadOnly(True)
         self.log_console.hide()
 
-        # Adding an intense drop shadow natively via border styling, with a slightly darker bg
-        # Border-radius now applies to all 4 corners
         self.log_console.setStyleSheet("""
             QPlainTextEdit {
                 background-color: rgba(18, 18, 18, 0.95); 
@@ -162,53 +161,48 @@ class MyGanttWindow(QMainWindow):
 
         self.switch_view(0)
 
-    # --- Catch Window Resizes to keep the overlay locked to the center ---
-    def resizeEvent(self, event):
+    def resizeEvent(self, event: Any) -> None:
         super().resizeEvent(event)
         self.reposition_logger()
 
-    def reposition_logger(self):
-        """Mathematically positions the logger in the exact center of the right container."""
+    def reposition_logger(self) -> None:
         if hasattr(self, 'log_console') and not self.log_console.isHidden():
-            # Define how big you want the floating console to be
             logger_width = 800
             logger_height = 500
 
-            # Get the size of the main stage container
             container_w = self.right_container.width()
             container_h = self.right_container.height()
 
-            # Calculate the exact center coordinates
             x = (container_w - logger_width) // 2
             y = (container_h - logger_height) // 2
 
             self.log_console.setGeometry(x, y, logger_width, logger_height)
             self.log_console.raise_()
 
-    def switch_view(self, index: int):
+    def switch_view(self, index: int) -> None:
         self.stacked_widget.setCurrentIndex(index)
         self.nav_dash_btn.setChecked(index == 0)
         self.nav_gantt_btn.setChecked(index == 1)
         self.nav_team_btn.setChecked(index == 2)
         self.nav_data_btn.setChecked(index == 3)
 
-    def toggle_log_console(self):
-        """Shows or hides the centered log console."""
+    def toggle_log_console(self) -> None:
         if self.nav_log_btn.isChecked():
             self.log_console.show()
             self.reposition_logger()
         else:
             self.log_console.hide()
 
-    def append_log_message(self, message: str):
+    def append_log_message(self, message: str) -> None:
         self.log_console.appendPlainText(message)
         scrollbar = self.log_console.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
 
-    def show_status(self, message: str, timeout: int = 4000):
+    def show_status(self, message: str, timeout: int = 4000) -> None:
         self.statusBar().showMessage(message, timeout)
 
-    def display_dataframe(self, table_widget, df):
+    @staticmethod
+    def display_dataframe(table_widget: QTableWidget, df: pd.DataFrame) -> None:
         table_widget.clear()
         if df.empty:
             table_widget.setRowCount(0)
@@ -218,13 +212,13 @@ class MyGanttWindow(QMainWindow):
         table_widget.setRowCount(df.shape[0])
         table_widget.setHorizontalHeaderLabels(list(df.columns))
         table_widget.horizontalHeader().setMinimumHeight(35)
-        table_widget.horizontalHeader().setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        table_widget.horizontalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         for row in range(df.shape[0]):
             for col in range(df.shape[1]):
                 cell_value = str(df.iat[row, col])
                 item = QTableWidgetItem(cell_value)
                 table_widget.setItem(row, col, item)
-        table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
 
-    def show_warning(self, title: str, message: str):
+    def show_warning(self, title: str, message: str) -> None:
         QMessageBox.warning(self, title, message)

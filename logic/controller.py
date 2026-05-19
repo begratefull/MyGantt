@@ -6,12 +6,11 @@ routing background signals, and managing application state.
 
 import json
 import os
-from typing import Any, Optional, List
+import logging
+from typing import Any, Optional, List, Set
 
 import pandas as pd
-import numpy as np
 
-from PySide6.QtCore import QTimer
 from PySide6.QtGui import QShortcut, QKeySequence
 from PySide6.QtWidgets import QFileDialog
 
@@ -20,8 +19,10 @@ from logic.dashboard_service import DashboardService
 from logic.history import HistoryManager
 from logic.workers import SyncWorker, DataRefreshWorker
 from logic.data_builder import GanttDataBuilder
+from logic.calendar_engine import CalendarEngine
 from ui.components.gantt_components import GanttBlock
 
+logger = logging.getLogger(__name__)
 
 class AppController:
     """
@@ -30,7 +31,16 @@ class AppController:
     def __init__(self, view: Any, model: Any) -> None:
         self.view = view
         self.model = model
+        print(f"DEBUG: Attributes on MyGanttWindow: {dir(self.view)}")
         self.history = HistoryManager()
+
+        # Declare all instance attributes upfront for strict typing
+        self.shortcut_undo: Optional[QShortcut] = None
+        self.shortcut_redo: Optional[QShortcut] = None
+        self.shortcut_save: Optional[QShortcut] = None
+        self.selected_id_to_restore: Optional[str] = None
+        self.is_maintaining_state: bool = False
+        self.sync_worker: Optional[SyncWorker] = None
 
         self.config_file = "app_config.json"
         self.config_data = self.load_config()
@@ -44,7 +54,7 @@ class AppController:
 
         self.current_plan_df = pd.DataFrame()
         self.full_plan_df = pd.DataFrame()
-        self.actual_df = pd.DataFrame() # <-- NEW: Storing pure actuals
+        self.actual_df = pd.DataFrame()
         self.current_visual_rows = []
         self.expanded_projects = set()
 
@@ -97,7 +107,7 @@ class AppController:
             try:
                 with open(self.config_file, 'r') as f:
                     return json.load(f)
-            except Exception:
+            except (OSError, json.JSONDecodeError):
                 pass
         return {}
 
@@ -105,8 +115,8 @@ class AppController:
         try:
             with open(self.config_file, 'w') as f:
                 json.dump(self.config_data, f, indent=4)
-        except Exception as e:
-            print(f"Failed to save config: {e}")
+        except OSError as e:
+            logger.error("Failed to save config: %s", e)
 
     def save_preferences(self) -> None:
         prefs = {
@@ -250,7 +260,10 @@ class AppController:
         color_map = {}
 
         if not eng_df.empty:
-            unique_teams += sorted([str(x) for x in eng_df['team_name'].unique() if str(x).strip()])
+            # Explicitly type the list for the linter before sorting
+            team_names: List[str] = [str(x) for x in eng_df['team_name'].unique() if str(x).strip()]
+            unique_teams += sorted(team_names)
+
             team_map = {str(k).strip().upper(): str(v).strip().upper() for k, v in zip(eng_df['name'], eng_df['team_name'])}
             color_map = {str(k).strip().upper(): str(v).strip().upper() for k, v in zip(eng_df['name'], eng_df['hex_color'])}
 
@@ -275,7 +288,8 @@ class AppController:
             self.view.filter_team.blockSignals(False)
 
         current_req = self.view.filter_req.currentText()
-        unique_reqs = ["All Reqs"] + sorted([str(x) for x in df['REQUIREMENT'].replace('', 'Uncategorized').unique() if str(x).strip() and str(x).strip() != 'Uncategorized'])
+        req_names: List[str] = [str(x) for x in df['REQUIREMENT'].replace('', 'Uncategorized').unique() if str(x).strip() and str(x).strip() != 'Uncategorized']
+        unique_reqs = ["All Reqs"] + sorted(req_names)
 
         self.view.filter_req.blockSignals(True)
         self.view.filter_req.clear()
@@ -284,7 +298,8 @@ class AppController:
         self.view.filter_req.blockSignals(False)
 
         current_assignee = self.view.inp_assignee.currentText()
-        unique_assignees = ["Unassigned"] + sorted([str(x) for x in df['ASSIGNED TO'].unique() if str(x).strip()])
+        assignee_names: List[str] = [str(x) for x in df['ASSIGNED TO'].unique() if str(x).strip()]
+        unique_assignees = ["Unassigned"] + sorted(assignee_names)
 
         self.view.inp_assignee.blockSignals(True)
         self.view.inp_assignee.clear()
@@ -298,7 +313,7 @@ class AppController:
                 return True
         return False
 
-    def _rebuild_and_render_canvas(self, target_id_to_restore: str) -> None:
+    def _rebuild_and_render_canvas(self, target_id_to_restore: Optional[str]) -> None:
         """Forces a pure recalculation of the visual hierarchy to prevent UI feedback loops."""
         eng_df = self.model.db.get_engineers_df()
         color_map = {str(k).strip().upper(): str(v).strip().upper() for k, v in zip(eng_df['name'], eng_df['hex_color'])} if not eng_df.empty else {}
@@ -312,13 +327,11 @@ class AppController:
         self.restore_selection(target_id_to_restore)
 
     def on_data_refreshed(self, raw_df: pd.DataFrame, plan_df: pd.DataFrame, actual_df: pd.DataFrame, full_plan_df: pd.DataFrame) -> None:
-        # --- NEW: Receiving 4 parameters and routing actuals properly ---
         if hasattr(self.view, 'display_dataframe') and hasattr(self.view, 'raw_table'):
             self.view.display_dataframe(self.view.raw_table, raw_df)
 
         if actual_df.empty: return
 
-        # We update dynamic dropdowns based on ACTUALS so ghosts don't appear in lists
         self.update_dynamic_dropdowns(actual_df)
 
         self.actual_df = actual_df
@@ -327,17 +340,16 @@ class AppController:
         if plan_df.empty: return
         self.current_plan_df = plan_df
 
-        target = self.selected_id_to_restore if self.is_maintaining_state else ""
+        target = self.selected_id_to_restore if self.is_maintaining_state else None
         self._rebuild_and_render_canvas(target)
 
         if hasattr(self.view, 'dash_screen'):
-            # Pass both the actuals (for health) and full plan (for forecast)
             self.view.dash_screen.update_dashboard(actual_df, full_plan_df)
 
         if not (self.is_maintaining_state and self.selected_id_to_restore):
             self.view.kpi_panel.hide()
 
-    def handle_table_double_click(self, row: int, col: int) -> None:
+    def handle_table_double_click(self, row: int, _col: int) -> None:
         if row < len(self.current_visual_rows):
             row_data = self.current_visual_rows[row]
             if row_data.get('IS_PARENT', False):
@@ -349,9 +361,9 @@ class AppController:
                     self.expanded_projects.add(project_id)
 
                 if not self.current_plan_df.empty:
-                    self._rebuild_and_render_canvas("")
+                    self._rebuild_and_render_canvas(None)
 
-    def restore_selection(self, target_id: str) -> None:
+    def restore_selection(self, target_id: Optional[str]) -> None:
         if not target_id: return
 
         try:
@@ -391,7 +403,7 @@ class AppController:
 
             self.view.kpi_panel.hide()
         except RuntimeError:
-            pass
+             pass
 
     def handle_block_selection(self) -> None:
         try:
@@ -456,7 +468,7 @@ class AppController:
         if not success:
             if hasattr(self.view, 'show_status'): self.view.show_status("Sync failed.", 5000)
             if hasattr(self.view, 'show_warning'): self.view.show_warning("Sync Error",
-                                                                          f"Could not sync data:\n\n{error_msg}")
+                                                                           f"Could not sync data:\n\n{error_msg}")
         else:
             if hasattr(self.view, 'show_status'): self.view.show_status("Sync complete!", 4000)
 
@@ -473,19 +485,24 @@ class AppController:
 
             raw_df = self.model.get_raw_df()
             if not raw_df.empty and 'RAW_ASSIGNED' in raw_df.columns:
-                raw_names = set([str(x).strip().upper() for x in raw_df['RAW_ASSIGNED'].unique() if
-                                 str(x).strip().upper() not in ('', 'UNASSIGNED', 'NAN')])
-                configured_names = set([str(x).strip().upper() for x in eng_df['name'].unique()]) if not eng_df.empty else set()
+                # Explicitly tell the linter these are Sets of strings
+                raw_names: Set[str] = {str(x).strip().upper() for x in raw_df['RAW_ASSIGNED'].unique() if
+                                       str(x).strip().upper() not in ('', 'UNASSIGNED', 'NAN')}
 
-                unconfigured = sorted(list(raw_names - configured_names))
+                configured_names: Set[str] = {str(x).strip().upper() for x in
+                                              eng_df['name'].unique()} if not eng_df.empty else set()
+
+                # Explicitly tell the linter these are Lists of strings before sorting
+                unconfigured: List[str] = sorted(list(raw_names - configured_names))
+                configured_list: List[str] = sorted(list(configured_names))
 
                 combo = self.view.team_screen.inp_name
                 combo.blockSignals(True)
                 combo.clear()
-                combo.addItems(unconfigured + sorted(list(configured_names)))
+                combo.addItems(unconfigured + configured_list)
                 combo.blockSignals(False)
         except Exception as e:
-            print(f"CRITICAL ERROR in refresh_team_view: {e}")
+            logger.exception("CRITICAL ERROR in refresh_team_view: %s", e)
 
     def handle_save_engineer(self, name: str, team: str, color: str) -> None:
         self.model.db.upsert_team(team, 0.0)
@@ -494,7 +511,6 @@ class AppController:
         self.refresh_team_view()
 
     def handle_engineer_selected(self, engineer_name: str) -> None:
-        # Team View now strictly uses ACTUALS
         if not hasattr(self, 'actual_df') or self.actual_df.empty:
             return
 
@@ -517,58 +533,53 @@ class AppController:
         day_zero = self.view.gantt_screen.day_zero
         if not day_zero: return
 
-        start_date = day_zero + pd.tseries.offsets.BusinessDay(round(start_x / self.day_width))
+        # Visual math maps screen space back to a raw date, then strictly routes through Engine
+        start_date_raw = day_zero + pd.tseries.offsets.BusinessDay(round(start_x / self.day_width))
         days = int(est_days_str) if est_days_str.isdigit() else 5
-        end_date = start_date + pd.tseries.offsets.BusinessDay(days)
+
+        # Calculate exactly where it ends using the Engine
+        adjusted_days = days - 1 if days > 0 else days
+        end_date = CalendarEngine.shift_date(start_date_raw, adjusted_days)
 
         due_date_str = self.view.kpi_eng_due.text()
         if due_date_str and due_date_str != '--':
             try:
-                due_dt = pd.to_datetime(due_date_str)
-                var = np.busday_count(end_date.date(), due_dt.date())
-                self.view.kpi_eng_var.setText(f"{int(var)} days")
-            except Exception: pass
+                var = CalendarEngine.get_working_days_variance(end_date, pd.to_datetime(due_date_str))
+                self.view.kpi_eng_var.setText(f"{var} days")
+            except ValueError: pass
 
         esd_str = self.view.kpi_esd.text()
         if esd_str and esd_str != '--':
             try:
-                esd_dt = pd.to_datetime(esd_str)
-                var_esd = np.busday_count(end_date.date(), esd_dt.date())
-                self.view.kpi_esd_var.setText(f"{int(var_esd)} days")
-            except Exception: pass
+                var_esd = CalendarEngine.get_working_days_variance(end_date, pd.to_datetime(esd_str))
+                self.view.kpi_esd_var.setText(f"{var_esd} days")
+            except ValueError: pass
 
     def handle_block_dropped(self, target_id: str, new_x: float, new_width: float, is_parent: bool,
                              delta_x: float = 0.0, delta_w: float = 0.0) -> None:
-        import numpy as np
-        import pandas as pd
-        from logic.constants import AppConstants
-
         day_zero = self.view.gantt_screen.day_zero
         if not day_zero: return
         day_width = self.view.gantt_screen.day_width
 
         if not is_parent:
-            # 1. Map visual drop location to a physical date
-            new_date = day_zero + pd.tseries.offsets.BusinessDay(round(new_x / day_width))
-            new_start_safe = np.busday_offset(new_date.date(), 0, holidays=AppConstants.COMPANY_HOLIDAYS,
-                                              roll='forward')
-            new_start_pd = pd.to_datetime(new_start_safe)
+            # 1. Map visual drop location to a physical date via the Engine
+            new_date_raw = day_zero + pd.tseries.offsets.BusinessDay(round(new_x / day_width))
+            new_start_pd = CalendarEngine.shift_date(new_date_raw, 0)
             start_date_str = f"{new_start_pd.month}/{new_start_pd.day}/{new_start_pd.year}"
 
-            # 2. INSTANT CACHE UPDATE (Fixes the freeze/snap-back!)
+            # 2. INSTANT CACHE UPDATE
             mask = self.current_plan_df['SMART_ID'] == target_id
             self.current_plan_df.loc[mask, 'EST START DATE'] = start_date_str
             self.history.stage_edit(target_id, {'MAN_START_DATE': start_date_str})
 
-            # 3. Handle Resizing (Fixes the shrinking bug)
+            # 3. Handle Resizing
             if abs(delta_w) > 0.1:
                 visual_days = max(1, round(new_width / day_width))
-                end_date = new_date + pd.tseries.offsets.BusinessDay(visual_days - 1)
-                end_date_safe = np.busday_offset(end_date.date(), 0, holidays=AppConstants.COMPANY_HOLIDAYS,
-                                                 roll='backward')
+                end_date_raw = new_date_raw + pd.tseries.offsets.BusinessDay(visual_days - 1)
 
-                raw_work_days = np.busday_count(new_start_safe, end_date_safe, holidays=AppConstants.COMPANY_HOLIDAYS)
-                new_days_str = str(int(max(1, raw_work_days + 1)))
+                # Use Engine's exact inclusive duration math!
+                raw_work_days = CalendarEngine.get_working_days_duration(new_start_pd, end_date_raw)
+                new_days_str = str(max(1, raw_work_days))
 
                 self.current_plan_df.loc[mask, 'EST DAYS'] = new_days_str
                 self.history.stage_edit(target_id, {'MAN_EST_DAYS': new_days_str})
@@ -585,7 +596,6 @@ class AppController:
             mask = self.current_plan_df['PROJECT_ID'] == target_id
             children = self.current_plan_df[mask]
 
-            # How many physical screen columns did you drag the parent?
             delta_days_visual = round(delta_x / day_width)
 
             parent_starts = pd.to_datetime(children['EST START DATE'], errors='coerce').dropna()
@@ -595,17 +605,16 @@ class AppController:
 
             old_parent_start = parent_starts.min()
 
-            # Map the visual shift to true calendar days
-            new_parent_start_safe = np.busday_offset(old_parent_start.date(), delta_days_visual,
-                                                     holidays=AppConstants.COMPANY_HOLIDAYS, roll='forward')
-            shift_working_days = np.busday_count(old_parent_start.date(), new_parent_start_safe,
-                                                 holidays=AppConstants.COMPANY_HOLIDAYS)
+            # Find exact shift working days using the Engine
+            new_parent_start_safe = CalendarEngine.shift_date(old_parent_start, delta_days_visual)
+            shift_working_days = CalendarEngine.get_working_days_variance(old_parent_start, new_parent_start_safe)
 
             if shift_working_days == 0:
                 self._rebuild_and_render_canvas(target_id)
                 return
 
             # Shift every un-started child instantly
+            bulk_edits = {}
             for _, child in children.iterrows():
                 child_smart_id = child['SMART_ID']
 
@@ -615,20 +624,20 @@ class AppController:
                 old_child_start = pd.to_datetime(child.get('EST START DATE', pd.NaT))
                 if pd.isna(old_child_start): continue
 
-                try:
-                    new_child_start = np.busday_offset(old_child_start.date(), shift_working_days,
-                                                       holidays=AppConstants.COMPANY_HOLIDAYS, roll='forward')
-                    new_child_pd = pd.to_datetime(new_child_start)
-                    start_date_str = f"{new_child_pd.month}/{new_child_pd.day}/{new_child_pd.year}"
+                new_child_pd = CalendarEngine.shift_date(old_child_start, shift_working_days)
+                if pd.isna(new_child_pd): continue
 
-                    # Update local cache instantly!
-                    self.history.stage_edit(child_smart_id, {'MAN_START_DATE': start_date_str})
-                    c_mask = self.current_plan_df['SMART_ID'] == child_smart_id
-                    self.current_plan_df.loc[c_mask, 'EST START DATE'] = start_date_str
-                except ValueError:
-                    pass
+                start_date_str = f"{new_child_pd.month}/{new_child_pd.day}/{new_child_pd.year}"
 
-        # 5. INSTANT UI REDRAW (Using local cache, no background threads!)
+                bulk_edits[child_smart_id] = {'MAN_START_DATE': start_date_str}
+                c_mask = self.current_plan_df['SMART_ID'] == child_smart_id
+                self.current_plan_df.loc[c_mask, 'EST START DATE'] = start_date_str
+
+            # ---> Apply the perfect bulk-edit fix here! <---
+            if bulk_edits:
+                self.history.stage_bulk_edits(bulk_edits)
+
+        # 5. INSTANT UI REDRAW
         self._rebuild_and_render_canvas(target_id)
 
         if hasattr(self.view, 'show_status'):
@@ -637,11 +646,13 @@ class AppController:
     def handle_right_click_assign(self, target_id: str, new_assignee: str) -> None:
         if self.is_target_parent(target_id):
             mask = self.current_plan_df['PROJECT_ID'] == target_id
+            bulk_edits = {}
             for child_id in self.current_plan_df[mask]['SMART_ID'].tolist():
-                self.history.stage_edit(child_id, {'MAN_ASSIGNED': new_assignee})
-
+                bulk_edits[child_id] = {'MAN_ASSIGNED': new_assignee}
                 c_mask = self.current_plan_df['SMART_ID'] == child_id
                 self.current_plan_df.loc[c_mask, 'ASSIGNED TO'] = new_assignee
+
+            self.history.stage_bulk_edits(bulk_edits)
         else:
             self.history.stage_edit(target_id, {'MAN_ASSIGNED': new_assignee})
             mask = self.current_plan_df['SMART_ID'] == target_id
@@ -661,10 +672,13 @@ class AppController:
 
         if self.is_target_parent(smart_id):
             mask = self.current_plan_df['PROJECT_ID'] == smart_id
+            bulk_edits = {}
             for child_id in self.current_plan_df[mask]['SMART_ID'].tolist():
-                self.history.stage_edit(child_id, {'MAN_ASSIGNED': assignee})
+                bulk_edits[child_id] = {'MAN_ASSIGNED': assignee}
                 c_mask = self.current_plan_df['SMART_ID'] == child_id
                 self.current_plan_df.loc[c_mask, 'ASSIGNED TO'] = assignee
+
+            self.history.stage_bulk_edits(bulk_edits)
         else:
             self.history.stage_edit(smart_id, {'MAN_ASSIGNED': assignee, 'MAN_EST_DAYS': est_days_str})
             mask = self.current_plan_df['SMART_ID'] == smart_id

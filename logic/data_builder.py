@@ -6,10 +6,8 @@ into hierarchical, visually-ready data structures for the UI.
 import re
 from typing import Dict, Any, List, Set
 from logic.constants import AppConstants
-
-import numpy as np
 import pandas as pd
-
+from logic.calendar_engine import CalendarEngine
 
 class GanttDataBuilder:
 
@@ -27,21 +25,18 @@ class GanttDataBuilder:
 
         for project_id, group in grouped:
 
-            real_starts = pd.to_datetime(group['ENG START DATE'].replace('', pd.NaT)).dropna()
-            real_ends = pd.to_datetime(group['COMPLETE DATE'].replace('', pd.NaT)).dropna()
-
-            est_starts = pd.to_datetime(group['EST START DATE'].replace('', pd.NaT)).dropna()
+            real_starts = pd.to_datetime(group['ENG START DATE'].replace('', None)).dropna()
+            real_ends = pd.to_datetime(group['COMPLETE DATE'].replace('', None)).dropna()
+            est_starts = pd.to_datetime(group['EST START DATE'].replace('', None)).dropna()
 
             est_ends = pd.Series(dtype='datetime64[ns]')
             if not est_starts.empty:
                 valid_idx = est_starts.index
-                est_days = (pd.to_numeric(group.loc[valid_idx, 'EST DAYS'], errors='coerce').
-                            fillna(AppConstants.DEFAULT_EST_DAYS).astype(int))
+                est_days = pd.to_numeric(group.loc[valid_idx, 'EST DAYS'], errors='coerce').fillna(AppConstants.DEFAULT_EST_DAYS).astype(int)
 
-                starts_np = est_starts.values.astype('datetime64[D]')
-                days_np = est_days.values
-                ends_np = np.busday_offset(starts_np, days_np, holidays=AppConstants.COMPANY_HOLIDAYS, roll='forward')
-                est_ends = pd.Series(pd.to_datetime(ends_np), index=valid_idx)
+                # --- Routed through Central Engine ---
+                end_strings = CalendarEngine.calculate_end_dates_vectorized(est_starts, est_days)
+                est_ends = pd.to_datetime(end_strings, errors='coerce')
 
             all_starts = pd.concat([real_starts, est_starts])
             all_ends = pd.concat([real_ends, est_ends])
@@ -51,9 +46,7 @@ class GanttDataBuilder:
 
             parent_days = AppConstants.DEFAULT_EST_DAYS
             if pd.notna(min_start) and pd.notna(max_end):
-                raw_days = np.busday_count(min_start.date(), max_end.date(), holidays=AppConstants.COMPANY_HOLIDAYS)
-                adjusted_days = raw_days + 1 if raw_days >= 0 else raw_days - 1
-                parent_days = max(1, int(adjusted_days))
+                parent_days = max(1, CalendarEngine.get_working_days_duration(min_start, max_end))
 
             parent_eng_start = real_starts.min() if not real_starts.empty else pd.NaT
             parent_comp_date = real_ends.max() if not real_ends.empty else pd.NaT
@@ -73,23 +66,21 @@ class GanttDataBuilder:
             reqs = group['REQUIREMENT'].unique()
             raw_req = reqs[0] if len(reqs) == 1 else "Multiple"
 
-            due_dates = pd.to_datetime(group['ENG DUE DATE'].replace('', pd.NaT)).dropna()
+            due_dates = pd.to_datetime(group['ENG DUE DATE'].replace('', None)).dropna()
             max_due = due_dates.max() if not due_dates.empty else pd.NaT
 
-            esd_dates = pd.to_datetime(group['ESD'].replace('', pd.NaT)).dropna()
+            esd_dates = pd.to_datetime(group['ESD'].replace('', None)).dropna()
             min_esd = esd_dates.min() if not esd_dates.empty else pd.NaT
 
             parent_eng_var = ""
             if pd.notna(max_end) and pd.notna(max_due):
-                raw_var = np.busday_count(max_end.date(), max_due.date(), holidays=AppConstants.COMPANY_HOLIDAYS)
-                adjusted_var = raw_var + 1 if raw_var >= 0 else raw_var - 1
-                parent_eng_var = f"{int(adjusted_var)} days"
+                var = CalendarEngine.get_working_days_variance(max_end, max_due)
+                parent_eng_var = f"{var} days"
 
             parent_esd_var = ""
             if pd.notna(max_end) and pd.notna(min_esd):
-                raw_var = np.busday_count(max_end.date(), min_esd.date(), holidays=AppConstants.COMPANY_HOLIDAYS)
-                adjusted_var = raw_var + 1 if raw_var >= 0 else raw_var - 1
-                parent_esd_var = f"{int(adjusted_var)} days"
+                var = CalendarEngine.get_working_days_variance(max_end, min_esd)
+                parent_esd_var = f"{var} days"
 
             parent_row = {
                 'IS_PARENT': True,
@@ -128,6 +119,7 @@ class GanttDataBuilder:
                     else:
                         child_color = color_map.get(child_assignee, "#555555")
 
+                    # Unindented to apply to all children properly!
                     child_row['HEX_COLOR'] = child_color
 
                     visual_rows.append(child_row)

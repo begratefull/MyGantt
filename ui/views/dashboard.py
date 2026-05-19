@@ -4,7 +4,7 @@ detailed performance grids, queue distributions, and timeline forecasting.
 """
 
 import logging
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List
 
 import pandas as pd
 from PySide6.QtWidgets import (
@@ -20,7 +20,6 @@ from PySide6.QtGui import QPainter, QColor, QPen, QFont, QCursor
 from logic.dashboard_service import DashboardService
 from logic.constants import AppConstants
 
-# Grab the global logger we set up in main.py
 logger = logging.getLogger(__name__)
 
 
@@ -37,8 +36,11 @@ class DashboardWidget(QWidget):
         self._global_req_dist: Dict[str, int] = {}
         self._dynamic_card_widgets: List[QWidget] = []
 
+        self._timeline_df: pd.DataFrame = pd.DataFrame()
+        self._timeline_weeks: List[str] = []
+
         self.dynamic_color_map: Dict[str, str] = {}
-        self.palette: List[str] = [
+        self.chart_palette: List[str] = [
             "#2196F3", "#F44336", "#4CAF50", "#FF9800",
             "#9C27B0", "#00BCD4", "#795548", "#E91E63"
         ]
@@ -107,7 +109,7 @@ class DashboardWidget(QWidget):
         # --- Tooltip Setup ---
         self.chart_tooltip = QFrame(self)
         self.chart_tooltip.setObjectName("ChartTooltip")
-        self.chart_tooltip.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.chart_tooltip.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.chart_tooltip.hide()
 
         self.tooltip_layout = QVBoxLayout(self.chart_tooltip)
@@ -126,71 +128,74 @@ class DashboardWidget(QWidget):
     # UI Component Builders
     # ---------------------------------------------------------
 
-    def _build_delivery_card(self) -> Dict[str, Any]:
+    @staticmethod
+    def _build_delivery_card() -> Dict[str, Any]:
         frame = QFrame()
         frame.setObjectName("DashCard")
-        frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(15, 15, 15, 15)
 
         title = QLabel("Global Delivery %")
         title.setObjectName("CardTitle")
-        layout.addWidget(title, alignment=Qt.AlignTop | Qt.AlignHCenter)
+        layout.addWidget(title, alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
 
         layout.addSpacing(10)
 
         val_cur = QLabel("--")
         val_cur.setObjectName("DashMetric")
-        layout.addWidget(val_cur, alignment=Qt.AlignCenter)
+        layout.addWidget(val_cur, alignment=Qt.AlignmentFlag.AlignCenter)
 
         val_ytd = QLabel("YTD: --")
         val_ytd.setObjectName("FilterLabel")
-        layout.addWidget(val_ytd, alignment=Qt.AlignCenter)
+        layout.addWidget(val_ytd, alignment=Qt.AlignmentFlag.AlignCenter)
 
         return {'frame': frame, 'cur': val_cur, 'ytd': val_ytd}
 
-    def _build_backlog_card(self) -> Dict[str, Any]:
+    @staticmethod
+    def _build_backlog_card() -> Dict[str, Any]:
         frame = QFrame()
         frame.setObjectName("DashCard")
-        frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(15, 15, 15, 15)
 
         title = QLabel("Active Backlog")
         title.setObjectName("CardTitle")
-        layout.addWidget(title, alignment=Qt.AlignTop | Qt.AlignHCenter)
+        layout.addWidget(title, alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
 
         layout.addSpacing(10)
 
         val = QLabel("--")
         val.setObjectName("DashMetric")
-        layout.addWidget(val, alignment=Qt.AlignCenter)
+        layout.addWidget(val, alignment=Qt.AlignmentFlag.AlignCenter)
 
         sub = QLabel("Prod: -- | Sub: --")
         sub.setObjectName("FilterLabel")
-        layout.addWidget(sub, alignment=Qt.AlignCenter)
+        layout.addWidget(sub, alignment=Qt.AlignmentFlag.AlignCenter)
 
         return {'frame': frame, 'val': val, 'sub': sub}
 
-    def _build_vertical_health_card(self, title_text: str) -> Dict[str, Any]:
+    @staticmethod
+    def _build_vertical_health_card(title_text: str) -> Dict[str, Any]:
         frame = QFrame()
         frame.setObjectName("DashCard")
-        frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(15, 15, 15, 15)
 
         title = QLabel(title_text)
         title.setObjectName("CardTitle")
-        layout.addWidget(title, alignment=Qt.AlignTop | Qt.AlignHCenter)
+        layout.addWidget(title, alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
 
         def build_sub_section(header_text: str):
             lbl = QLabel(header_text)
             lbl.setObjectName("SubHeader")
-            lbl.setAlignment(Qt.AlignCenter)
+            lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
             grid = QGridLayout()
-            grid.addWidget(QLabel("Current"), 0, 1, alignment=Qt.AlignCenter)
-            grid.addWidget(QLabel("YTD"), 0, 2, alignment=Qt.AlignCenter)
+            grid.addWidget(QLabel("Current"), 0, 1, alignment=Qt.AlignmentFlag.AlignCenter)
+            grid.addWidget(QLabel("YTD"), 0, 2, alignment=Qt.AlignmentFlag.AlignCenter)
 
             p_c, p_y = QLabel("--"), QLabel("--")
             v_c, v_y = QLabel("--"), QLabel("--")
@@ -200,14 +205,14 @@ class DashboardWidget(QWidget):
             lbl_p = QLabel("Days in Eng:")
             lbl_p.setObjectName("FilterLabel")
             grid.addWidget(lbl_p, 1, 0)
-            grid.addWidget(p_c, 1, 1, alignment=Qt.AlignCenter)
-            grid.addWidget(p_y, 1, 2, alignment=Qt.AlignCenter)
+            grid.addWidget(p_c, 1, 1, alignment=Qt.AlignmentFlag.AlignCenter)
+            grid.addWidget(p_y, 1, 2, alignment=Qt.AlignmentFlag.AlignCenter)
 
             lbl_v = QLabel("Var to Due:")
             lbl_v.setObjectName("FilterLabel")
             grid.addWidget(lbl_v, 2, 0)
-            grid.addWidget(v_c, 2, 1, alignment=Qt.AlignCenter)
-            grid.addWidget(v_y, 2, 2, alignment=Qt.AlignCenter)
+            grid.addWidget(v_c, 2, 1, alignment=Qt.AlignmentFlag.AlignCenter)
+            grid.addWidget(v_y, 2, 2, alignment=Qt.AlignmentFlag.AlignCenter)
 
             return lbl, grid, p_c, p_y, v_c, v_y
 
@@ -231,16 +236,17 @@ class DashboardWidget(QWidget):
             's_var_cur': s_v_c, 's_var_ytd': s_v_y,
         }
 
-    def _build_flow_card(self, title_text: str) -> Dict[str, Any]:
+    @staticmethod
+    def _build_flow_card(title_text: str) -> Dict[str, Any]:
         frame = QFrame()
         frame.setObjectName("DashCard")
-        frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(15, 15, 15, 15)
 
         title = QLabel(title_text)
         title.setObjectName("CardTitle")
-        layout.addWidget(title, alignment=Qt.AlignTop | Qt.AlignHCenter)
+        layout.addWidget(title, alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
 
         layout.addSpacing(10)
 
@@ -249,15 +255,15 @@ class DashboardWidget(QWidget):
 
         lbl_in = QLabel("Incoming:"); lbl_in.setObjectName("FilterLabel")
         val_in = QLabel("--"); val_in.setObjectName("KpiBlockValue")
-        grid.addWidget(lbl_in, 0, 0); grid.addWidget(val_in, 0, 1, alignment=Qt.AlignCenter)
+        grid.addWidget(lbl_in, 0, 0); grid.addWidget(val_in, 0, 1, alignment=Qt.AlignmentFlag.AlignCenter)
 
         lbl_out = QLabel("Outgoing:"); lbl_out.setObjectName("FilterLabel")
         val_out = QLabel("--"); val_out.setObjectName("KpiBlockValue")
-        grid.addWidget(lbl_out, 1, 0); grid.addWidget(val_out, 1, 1, alignment=Qt.AlignCenter)
+        grid.addWidget(lbl_out, 1, 0); grid.addWidget(val_out, 1, 1, alignment=Qt.AlignmentFlag.AlignCenter)
 
         lbl_net = QLabel("Net Change:"); lbl_net.setObjectName("FilterLabel")
         val_net = QLabel("--"); val_net.setObjectName("KpiBlockValue")
-        grid.addWidget(lbl_net, 2, 0); grid.addWidget(val_net, 2, 1, alignment=Qt.AlignCenter)
+        grid.addWidget(lbl_net, 2, 0); grid.addWidget(val_net, 2, 1, alignment=Qt.AlignmentFlag.AlignCenter)
 
         layout.addLayout(grid)
 
@@ -285,32 +291,32 @@ class DashboardWidget(QWidget):
 
         left_title = QLabel("Lines by Assignee")
         left_title.setObjectName("CardTitle")
-        left_layout.addWidget(left_title, alignment=Qt.AlignTop | Qt.AlignHCenter)
+        left_layout.addWidget(left_title, alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
 
         self.chart_assignee = QChart()
-        self.chart_assignee.setTheme(QChart.ChartThemeDark)
-        self.chart_assignee.setBackgroundBrush(Qt.NoBrush)
+        self.chart_assignee.setTheme(QChart.ChartTheme.ChartThemeDark)
+        self.chart_assignee.setBackgroundBrush(Qt.BrushStyle.NoBrush)
         self.chart_assignee.layout().setContentsMargins(0, 0, 0, 0)
         self.chart_assignee.legend().hide()
 
         view_assignee = QChartView(self.chart_assignee)
-        view_assignee.setRenderHint(QPainter.Antialiasing)
+        view_assignee.setRenderHint(QPainter.RenderHint.Antialiasing)
         left_layout.addWidget(view_assignee, 1)
 
         right_layout = QVBoxLayout()
         right_layout.setContentsMargins(0, 0, 0, 0)
         self.lbl_req_title = QLabel("Team Requirement Breakdown")
         self.lbl_req_title.setObjectName("CardTitle")
-        right_layout.addWidget(self.lbl_req_title, alignment=Qt.AlignTop | Qt.AlignHCenter)
+        right_layout.addWidget(self.lbl_req_title, alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
 
         self.chart_req = QChart()
-        self.chart_req.setTheme(QChart.ChartThemeDark)
-        self.chart_req.setBackgroundBrush(Qt.NoBrush)
+        self.chart_req.setTheme(QChart.ChartTheme.ChartThemeDark)
+        self.chart_req.setBackgroundBrush(Qt.BrushStyle.NoBrush)
         self.chart_req.layout().setContentsMargins(0, 0, 0, 0)
         self.chart_req.legend().hide()
 
         view_req = QChartView(self.chart_req)
-        view_req.setRenderHint(QPainter.Antialiasing)
+        view_req.setRenderHint(QPainter.RenderHint.Antialiasing)
         right_layout.addWidget(view_req, 1)
 
         layout.addLayout(left_layout, 1)
@@ -318,7 +324,8 @@ class DashboardWidget(QWidget):
 
         return {'card': card}
 
-    def _build_family_card(self) -> Dict[str, Any]:
+    @staticmethod
+    def _build_family_card() -> Dict[str, Any]:
         card = QFrame()
         card.setObjectName("DashCard")
         layout = QVBoxLayout(card)
@@ -330,7 +337,7 @@ class DashboardWidget(QWidget):
 
         container = QWidget()
         grid = QGridLayout(container)
-        grid.setAlignment(Qt.AlignTop)
+        grid.setAlignment(Qt.AlignmentFlag.AlignTop)
         grid.setContentsMargins(0, 5, 0, 0)
         grid.setSpacing(12)
 
@@ -349,14 +356,14 @@ class DashboardWidget(QWidget):
         for h in [h_fam, h_lines, h_lead, h_proc, h_sell]:
             h.setStyleSheet("color: #888888; font-weight: bold; font-size: 10px;")
 
-        grid.addWidget(h_fam, 0, 0, Qt.AlignLeft | Qt.AlignBottom)
-        grid.addWidget(h_lines, 0, 1, Qt.AlignCenter | Qt.AlignBottom)
-        grid.addWidget(h_lead, 0, 2, Qt.AlignCenter | Qt.AlignBottom)
-        grid.addWidget(h_proc, 0, 3, Qt.AlignCenter | Qt.AlignBottom)
-        grid.addWidget(h_sell, 0, 4, Qt.AlignCenter | Qt.AlignBottom)
+        grid.addWidget(h_fam, 0, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom)
+        grid.addWidget(h_lines, 0, 1, Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignBottom)
+        grid.addWidget(h_lead, 0, 2, Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignBottom)
+        grid.addWidget(h_proc, 0, 3, Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignBottom)
+        grid.addWidget(h_sell, 0, 4, Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignBottom)
 
         sep = QFrame()
-        sep.setFrameShape(QFrame.HLine)
+        sep.setFrameShape(QFrame.Shape.HLine)
         sep.setStyleSheet("background-color: #2E2E32;")
         grid.addWidget(sep, 1, 0, 1, 5)
 
@@ -364,7 +371,8 @@ class DashboardWidget(QWidget):
 
         return {'card': card, 'grid': grid}
 
-    def _build_timeline_card(self, title: str) -> Dict[str, Any]:
+    @staticmethod
+    def _build_timeline_card(title: str) -> Dict[str, Any]:
         card = QFrame()
         card.setObjectName("DashCard")
         layout = QVBoxLayout(card)
@@ -373,7 +381,7 @@ class DashboardWidget(QWidget):
         top_bar = QHBoxLayout()
         title_lbl = QLabel(title)
         title_lbl.setObjectName("CardTitle")
-        top_bar.addWidget(title_lbl, alignment=Qt.AlignVCenter | Qt.AlignLeft)
+        top_bar.addWidget(title_lbl, alignment=Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
         top_bar.addStretch()
 
         date_filter = QComboBox()
@@ -385,12 +393,12 @@ class DashboardWidget(QWidget):
         layout.addLayout(top_bar)
 
         chart = QChart()
-        chart.setTheme(QChart.ChartThemeDark)
-        chart.setBackgroundBrush(Qt.NoBrush)
+        chart.setTheme(QChart.ChartTheme.ChartThemeDark)
+        chart.setBackgroundBrush(Qt.BrushStyle.NoBrush)
         chart.layout().setContentsMargins(0, 0, 0, 0)
 
         chart_view = QChartView(chart)
-        chart_view.setRenderHint(QPainter.Antialiasing)
+        chart_view.setRenderHint(QPainter.RenderHint.Antialiasing)
         layout.addWidget(chart_view, 1)
 
         return {'card': card, 'date_filter': date_filter, 'chart': chart, 'chart_view': chart_view}
@@ -400,24 +408,25 @@ class DashboardWidget(QWidget):
     # ---------------------------------------------------------
 
     def get_dynamic_color(self, name: str) -> str:
-        name = str(name).strip().upper()
+        name = name.strip().upper()
         if not name or name == "UNASSIGNED": return "#888888"
         if hasattr(self, 'color_map') and name in self.color_map: return self.color_map[name]
         if name not in self.dynamic_color_map:
-            color_idx = len(self.dynamic_color_map) % len(self.palette)
-            self.dynamic_color_map[name] = self.palette[color_idx]
+            color_idx = len(self.dynamic_color_map) % len(self.chart_palette)
+            self.dynamic_color_map[name] = self.chart_palette[color_idx]
         return self.dynamic_color_map[name]
 
     def get_req_color(self, req_name: str) -> str:
-        req_upper = str(req_name).upper()
+        req_upper = req_name.upper()
         if 'PROD' in req_upper: return "#4CAF50"
         if 'SUPPORT' in req_upper or 'DOC' in req_upper: return "#F44336"
         if 'QUOT' in req_upper: return "#2196F3"
         if 'APP' in req_upper or 'SUB' in req_upper: return "#FF9800"
         return self.get_dynamic_color(req_upper)
 
-    def _abbr_req(self, req: str) -> str:
-        r = str(req).upper().strip()
+    @staticmethod
+    def _abbr_req(req: str) -> str:
+        r = req.upper().strip()
         if 'PROD' in r: return 'PROD'
         if 'APP' in r: return 'APP'
         if 'SUB' in r: return 'SUB'
@@ -426,7 +435,8 @@ class DashboardWidget(QWidget):
         if 'DOC' in r: return 'DOC'
         return r[:4]
 
-    def get_relative_week_label(self, year_week_str: str) -> str:
+    @staticmethod
+    def get_relative_week_label(year_week_str: str) -> str:
         try:
             target_year, target_week = map(int, year_week_str.split('-'))
             today = pd.Timestamp.today()
@@ -435,7 +445,7 @@ class DashboardWidget(QWidget):
             if diff == 0: return "Current Wk"
             elif diff > 0: return f"+{diff} Wk"
             else: return f"{diff} Wk"
-        except Exception:
+        except (ValueError, TypeError, AttributeError):
             return year_week_str
 
     def _get_team_for_row(self, row: pd.Series) -> str:
@@ -445,7 +455,6 @@ class DashboardWidget(QWidget):
 
         line_type = str(row.get('TYPE', '')).strip().upper()
 
-        # Link directly to your constants file!
         if line_type in AppConstants.STANDARD_LINE_TYPES:
             return AppConstants.STANDARD_TEAM_LABEL
 
@@ -454,28 +463,29 @@ class DashboardWidget(QWidget):
 
         return AppConstants.UNASSIGNED_LABEL
 
-    def _format_var(self, val: float) -> str:
+    @staticmethod
+    def _format_var(val: float) -> str:
         if pd.isna(val) or val == 0.0 and type(val) is not float: return "--"
         return f"{val:+.1f}d"
 
-    def _format_day(self, val: float) -> str:
+    @staticmethod
+    def _format_day(val: float) -> str:
         if pd.isna(val) or val == 0.0 and type(val) is not float: return "--"
         return f"{val:.1f}d"
 
-    def _set_var_color(self, label: QLabel, val: float) -> None:
+    @staticmethod
+    def _set_var_color(label: QLabel, val: float) -> None:
         if pd.isna(val): label.setStyleSheet("color: #FFFFFF;")
         else: label.setStyleSheet("color: #4CAF50;" if val >= 0 else "color: #FF5252;")
 
-    def _apply_goal_color(self, label: QLabel, val: float, goal: float, lower_is_better: bool = True) -> None:
-        """Applies conditional green/red formatting based on defined metric goals."""
+    @staticmethod
+    def _apply_goal_color(label: QLabel, val: float, goal: float, lower_is_better: bool = True) -> None:
         if pd.isna(val):
             label.setStyleSheet("color: #FFFFFF;")
         else:
             if lower_is_better:
-                # Productivity (Less days is better)
                 label.setStyleSheet("color: #4CAF50;" if val <= goal else "color: #FF5252;")
             else:
-                # Variance (Positive value means early completion, so higher is better)
                 label.setStyleSheet("color: #4CAF50;" if val >= goal else "color: #FF5252;")
 
     def update_dashboard(self, actual_df: pd.DataFrame, forecast_df: pd.DataFrame) -> None:
@@ -534,18 +544,16 @@ class DashboardWidget(QWidget):
             if kpis['view_type'] == 'health':
                 ui_card = self._build_vertical_health_card(card_data['title'])
 
-                # Parse Line Type to set specific productivity targets for Production only
                 title_text = card_data['title'].upper()
                 if "MOD" in title_text:
                     prod_goal = 15.0
                 elif "CUS" in title_text:
                     prod_goal = 20.0
                 else:
-                    prod_goal = 15.0 # Default Target
+                    prod_goal = 15.0
 
                 var_goal = 0.0
 
-                # --- Production: Has goals applied ---
                 p_prod_cur, p_prod_ytd = card_data['prod']['cur']['productivity'], card_data['prod']['ytd']['productivity']
                 ui_card['p_prod_cur'].setText(self._format_day(p_prod_cur))
                 self._apply_goal_color(ui_card['p_prod_cur'], p_prod_cur, prod_goal, lower_is_better=True)
@@ -560,7 +568,6 @@ class DashboardWidget(QWidget):
                 ui_card['p_var_ytd'].setText(self._format_var(p_ytd))
                 self._apply_goal_color(ui_card['p_var_ytd'], p_ytd, var_goal, lower_is_better=False)
 
-                # --- Submittals: Purely informative, default white text ---
                 s_prod_cur, s_prod_ytd = card_data['sub']['cur']['productivity'], card_data['sub']['ytd']['productivity']
                 ui_card['s_prod_cur'].setText(self._format_day(s_prod_cur))
                 ui_card['s_prod_cur'].setStyleSheet("color: #FFFFFF;")
@@ -626,240 +633,219 @@ class DashboardWidget(QWidget):
             lbl_fam.setStyleSheet("color: #E0E0E0; font-size: 13px; font-weight: bold;")
 
             lbl_lines = QLabel(str(stat['lines']))
-            lbl_lines.setStyleSheet("color: #FFFFFF; font-size: 13px;")
+            lbl_lines.setStyleSheet("color: #E0E0E0; font-size: 13px;")
 
-            lead_val = stat['avg_lead']
-            lbl_lead = QLabel(f"{lead_val:.1f}d" if pd.notna(lead_val) else "--")
-            lbl_lead.setStyleSheet("color: #AAAAAA; font-size: 13px;")
+            lbl_lead = QLabel(f"{stat['avg_lead']:.1f}" if pd.notna(stat['avg_lead']) else "--")
+            lbl_lead.setStyleSheet("color: #E0E0E0; font-size: 13px;")
 
-            proc_val = stat['avg_proc']
-            lbl_proc = QLabel(f"{proc_val:.1f}d" if pd.notna(proc_val) else "--")
-            lbl_proc.setStyleSheet("color: #AAAAAA; font-size: 13px;")
+            lbl_proc = QLabel(f"{stat['avg_proc']:.1f}" if pd.notna(stat['avg_proc']) else "--")
+            lbl_proc.setStyleSheet("color: #E0E0E0; font-size: 13px;")
 
-            lbl_sell = QLabel(f"${stat['total_sell']:,.0f}")
+            sell_val = stat['total_sell']
+            if sell_val > 1000:
+                sell_str = f"${sell_val/1000:.1f}k"
+            else:
+                sell_str = f"${sell_val:.0f}"
+
+            lbl_sell = QLabel(sell_str)
             lbl_sell.setStyleSheet("color: #4CAF50; font-size: 13px;")
 
-            grid.addWidget(lbl_fam, row_idx, 0, Qt.AlignLeft | Qt.AlignVCenter)
-            grid.addWidget(lbl_lines, row_idx, 1, Qt.AlignCenter | Qt.AlignVCenter)
-            grid.addWidget(lbl_lead, row_idx, 2, Qt.AlignCenter | Qt.AlignVCenter)
-            grid.addWidget(lbl_proc, row_idx, 3, Qt.AlignCenter | Qt.AlignVCenter)
-            grid.addWidget(lbl_sell, row_idx, 4, Qt.AlignCenter | Qt.AlignVCenter)
+            grid.addWidget(lbl_fam, row_idx, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            grid.addWidget(lbl_lines, row_idx, 1, Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
+            grid.addWidget(lbl_lead, row_idx, 2, Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
+            grid.addWidget(lbl_proc, row_idx, 3, Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
+            grid.addWidget(lbl_sell, row_idx, 4, Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
 
             row_idx += 1
 
     def render_interactive_pies(self, active_df: pd.DataFrame) -> None:
         self.chart_assignee.removeAllSeries()
+        self.chart_req.removeAllSeries()
 
-        self._current_eng_dist = DashboardService.get_detailed_donut_data(active_df)
-        if not self._current_eng_dist:
-            self.chart_req.removeAllSeries()
+        dist = DashboardService.get_detailed_donut_data(active_df)
+
+        if not dist:
+            self.lbl_req_title.setText("No active lines found.")
             return
 
-        global_reqs = {}
-        for eng_data in self._current_eng_dist.values():
-            for req, count in eng_data['reqs'].items():
-                global_reqs[req] = global_reqs.get(req, 0) + count
-        self._global_req_dist = dict(sorted(global_reqs.items(), key=lambda item: item[1], reverse=True))
+        self._current_eng_dist = dist
 
-        pie = QPieSeries()
-        pie.setHoleSize(0.3)
-        font = QFont("Segoe UI", 8, QFont.Bold)
+        series_eng = QPieSeries()
+        series_eng.setHoleSize(0.5)
 
-        for eng_name, data in self._current_eng_dist.items():
-            slc = pie.append(f"{eng_name} ({data['total']})", data['total'])
-            slc.setLabelVisible(True)
-            slc.setLabelPosition(QPieSlice.LabelOutside)
-            slc.setLabelColor(QColor("#FFFFFF"))
-            slc.setLabelFont(font)
-            slc.setBrush(QColor(self.get_dynamic_color(eng_name)))
-            slc.setPen(QPen(QColor("#1E1E20"), 2))
+        for eng_name, data in dist.items():
+            val = data['total']
+            slice_obj = QPieSlice(eng_name, val)
+            slice_obj.setBrush(QColor(self.get_dynamic_color(eng_name)))
+            slice_obj.setLabelVisible(True)
+            slice_obj.setLabel(f"{eng_name} ({val})")
+            slice_obj.hovered.connect(lambda state, slc=slice_obj, e=eng_name: self._on_eng_slice_hovered(state, e, slc)) # type: ignore
+            series_eng.append(slice_obj)
 
-            slc.hovered.connect(self._on_slice_hovered)
+        self.chart_assignee.addSeries(series_eng)
 
-        pie.clicked.connect(self._on_slice_clicked)
+        self._global_req_dist = {}
+        for eng_data in dist.values():
+            for r_name, r_val in eng_data['reqs'].items():
+                self._global_req_dist[r_name] = self._global_req_dist.get(r_name, 0) + r_val
 
-        self.chart_assignee.addSeries(pie)
-        self._render_detail_pie("Team Requirement Breakdown", self._global_req_dist)
+        self._render_req_pie(self._global_req_dist, "Team Requirement Breakdown")
 
-    def _on_slice_hovered(self, state: bool) -> None:
-        slice_obj = self.sender()
-        if not isinstance(slice_obj, QPieSlice): return
-
+    def _on_eng_slice_hovered(self, state: bool, eng_name: str, slice_obj: QPieSlice) -> None:
         if state:
-            eng_name = slice_obj.label().split(' (')[0].strip()
-            data = self._current_eng_dist.get(eng_name)
-
-            if data and data['reqs']:
-                slice_obj.setExploded(True)
-                slice_obj.setExplodeDistanceFactor(0.05)
-                self._render_detail_pie(f"{eng_name}'s Backlog", data['reqs'])
+            slice_obj.setExploded(True)
+            slice_obj.setLabelFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
+            eng_data = self._current_eng_dist.get(eng_name, {})
+            self._render_req_pie(eng_data.get('reqs', {}), f"{eng_name}'s Open Lines")
         else:
             slice_obj.setExploded(False)
-            self._render_detail_pie("Team Requirement Breakdown", self._global_req_dist)
+            slice_obj.setLabelFont(QFont("Segoe UI", 9))
+            self._render_req_pie(self._global_req_dist, "Team Requirement Breakdown")
 
-    def _on_slice_clicked(self, slice_obj: QPieSlice) -> None:
-        if not isinstance(slice_obj, QPieSlice): return
-
-        eng_name = slice_obj.label().split(' (')[0].strip()
-        data = self._current_eng_dist.get(eng_name)
-
-        if data and 'debug_lines' in data:
-            logger.info(f"=== DEBUG: {len(data['debug_lines'])} Active Lines assigned to {eng_name} ===")
-            for line in data['debug_lines']:
-                logger.info(f"  > {line}")
-
-    def _render_detail_pie(self, title: str, req_data: Dict[str, int]) -> None:
-        self.lbl_req_title.setText(title)
+    def _render_req_pie(self, req_data: Dict[str, int], title: str) -> None:
         self.chart_req.removeAllSeries()
+        self.lbl_req_title.setText(title)
 
         if not req_data: return
 
-        pie = QPieSeries()
-        pie.setHoleSize(0.3)
-        font = QFont("Segoe UI", 8)
+        series = QPieSeries()
+        series.setHoleSize(0.5)
 
-        for req_name, count in req_data.items():
-            short_name = self._abbr_req(req_name)
-            slc = pie.append(f"{short_name} ({count})", count)
-            slc.setLabelVisible(True)
-            slc.setLabelColor(QColor("#CCCCCC"))
-            slc.setLabelFont(font)
-            slc.setBrush(QColor(self.get_req_color(req_name)))
-            slc.setPen(QPen(QColor("#1E1E20"), 2))
+        sorted_reqs = sorted(req_data.items(), key=lambda x: x[1], reverse=True)
 
-        self.chart_req.addSeries(pie)
+        for req_name, val in sorted_reqs:
+            slice_obj = QPieSlice(req_name, val)
+            slice_obj.setBrush(QColor(self.get_req_color(req_name)))
+            slice_obj.setLabelVisible(True)
+            slice_obj.setLabel(f"{self._abbr_req(req_name)} ({val})")
+            series.append(slice_obj)
+
+        self.chart_req.addSeries(series)
 
     def render_timeline_row(self, active_df: pd.DataFrame, comp_df: pd.DataFrame) -> None:
         chart = self.timeline_ui['chart']
         chart.removeAllSeries()
-        for axis in chart.axes(): chart.removeAxis(axis)
-        self._chart_refs = []
+        for ax in chart.axes(): chart.removeAxis(ax)
 
-        range_sel = self.timeline_ui['date_filter'].currentText()
+        date_filter_val = self.timeline_ui['date_filter'].currentText()
         today = pd.Timestamp.today().normalize()
 
-        if range_sel == "Last 4 Weeks":
-            start_date = today - pd.Timedelta(days=28)
-        elif range_sel == "Last 8 Weeks":
-            start_date = today - pd.Timedelta(days=56)
-        elif range_sel == "Year to Date":
+        if date_filter_val == "Last 4 Weeks":
+            start_date = today - pd.Timedelta(weeks=4)
+        elif date_filter_val == "Last 8 Weeks":
+            start_date = today - pd.Timedelta(weeks=8)
+        elif date_filter_val == "Year to Date":
             start_date = pd.Timestamp(year=today.year, month=1, day=1)
         else:
-            start_date = pd.Timestamp.min
+            start_date = pd.Timestamp(year=2000, month=1, day=1)
 
         weeks, reqs, df = DashboardService.prepare_timeline_data(comp_df, active_df, start_date)
-        if df.empty or not weeks: return
+
+        if not weeks or df.empty:
+            return
 
         self._timeline_df = df
         self._timeline_weeks = weeks
 
-        bar_series = QBarSeries()
-        bar_series.setBarWidth(0.9)
-        min_y, max_y = 0, 0
+        axis_x = QBarCategoryAxis()
+        display_weeks = [self.get_relative_week_label(w) for w in weeks]
+        axis_x.append(display_weeks)
+        axis_x.setLabelsColor(QColor("#AAAAAA"))
+        axis_x.setLinePenColor(QColor("#454548"))
+        chart.addAxis(axis_x, Qt.AlignmentFlag.AlignBottom)
 
-        for r in reqs:
-            actual_set = QBarSet(str(r))
-            base_color = QColor(self.get_req_color(r))
-            actual_set.setBrush(base_color)
+        axis_y = QValueAxis()
+        axis_y.setLabelsColor(QColor("#AAAAAA"))
+        axis_y.setLinePenColor(QColor("#454548"))
+        axis_y.setGridLineColor(QColor("#2E2E32"))
+        chart.addAxis(axis_y, Qt.AlignmentFlag.AlignLeft)
 
-            forecast_set = QBarSet(f"{r} (Forecast)")
-            forecast_color = QColor(base_color)
-            forecast_color.setAlpha(120)
-            forecast_set.setBrush(forecast_color)
+        series_comp = QBarSeries()
+        series_fcst = QBarSeries()
 
-            for wk in weeks:
-                mask_base = (df['REQUIREMENT'].replace('', 'Uncategorized') == r) & (df['YearWeek'] == wk)
+        max_val = 0.0
 
-                act_data = df[mask_base & (~df['IS_FORECAST'])]['VAR_DAYS']
-                act_val = float(act_data.mean()) if not act_data.empty else 0.0
-                if pd.isna(act_val): act_val = 0.0
+        for req in reqs:
+            set_c = QBarSet(req)
+            set_c.setColor(QColor(self.get_req_color(req)))
 
-                for_data = df[mask_base & (df['IS_FORECAST'])]['VAR_DAYS']
-                for_val = float(for_data.mean()) if not for_data.empty else 0.0
-                if pd.isna(for_val): for_val = 0.0
+            set_f = QBarSet(f"{req} (Forecast)")
+            fcst_color = QColor(self.get_req_color(req))
+            fcst_color.setAlpha(100)
+            set_f.setColor(fcst_color)
 
-                actual_set.append(act_val)
-                forecast_set.append(for_val)
-                min_y, max_y = min(min_y, act_val, for_val), max(max_y, act_val, for_val)
+            for w in weeks:
+                mask_c = (df['REQUIREMENT'].replace('', 'Uncategorized') == req) & (df['YearWeek'] == w) & (df['IS_FORECAST'] == False)
+                mask_f = (df['REQUIREMENT'].replace('', 'Uncategorized') == req) & (df['YearWeek'] == w) & (df['IS_FORECAST'] == True)
 
-            actual_set.hovered.connect(
-                lambda status, index, req=r, is_fc=False: self._on_bar_hovered(status, index, req, is_fc))
-            forecast_set.hovered.connect(
-                lambda status, index, req=r, is_fc=True: self._on_bar_hovered(status, index, req, is_fc))
+                c_val = float(df[mask_c]['LINE_COUNT'].sum() if 'LINE_COUNT' in df.columns else len(df[mask_c]))
+                f_val = float(df[mask_f]['LINE_COUNT'].sum() if 'LINE_COUNT' in df.columns else len(df[mask_f]))
 
-            bar_series.append(actual_set)
-            bar_series.append(forecast_set)
+                set_c.append(c_val)
+                set_f.append(f_val)
 
-        chart.addSeries(bar_series)
+            set_c.hovered.connect(lambda status, index, r=req: self._on_bar_hovered(status, index, r, False)) # type: ignore
+            set_f.hovered.connect(lambda status, index, r=req: self._on_bar_hovered(status, index, r, True)) # type: ignore
 
-        axisX = QBarCategoryAxis()
-        categories = [self.get_relative_week_label(wk) for wk in weeks]
-        axisX.append(categories)
-        font = QFont("Segoe UI", 8, QFont.Bold)
-        axisX.setLabelsFont(font)
-        axisX.setLabelsBrush(QColor("#AAAAAA"))
-        chart.addAxis(axisX, Qt.AlignBottom)
-        bar_series.attachAxis(axisX)
+            if set_c.sum() > 0: series_comp.append(set_c)
+            if set_f.sum() > 0: series_fcst.append(set_f)
 
-        axisX_top = QBarCategoryAxis()
-        top_categories = []
-        for wk in weeks:
-            try:
-                dt = pd.to_datetime(wk + '-1', format='%G-%V-%u')
-                top_categories.append(dt.strftime('%b %d'))
-            except Exception:
-                top_categories.append(wk)
+        chart.addSeries(series_comp)
+        chart.addSeries(series_fcst)
 
-        axisX_top.append(top_categories)
-        font_top = QFont("Segoe UI", 7)
-        axisX_top.setLabelsFont(font_top)
-        axisX_top.setLabelsBrush(QColor("#777777"))
-        chart.addAxis(axisX_top, Qt.AlignTop)
-        bar_series.attachAxis(axisX_top)
+        series_comp.attachAxis(axis_x)
+        series_comp.attachAxis(axis_y)
+        series_fcst.attachAxis(axis_x)
+        series_fcst.attachAxis(axis_y)
 
-        axisY = QValueAxis()
-        axisY.setLabelFormat("%d")
+        for s in [series_comp, series_fcst]:
+            for bar_set in s.barSets():
+                for i in range(bar_set.count()):
+                    max_val = max(max_val, bar_set.at(i))
 
-        padding = max(abs(max_y), abs(min_y)) * 0.2 + 2
-        y_min, y_max = min_y - padding, max_y + padding
-        axisY.setRange(y_min, y_max)
-        axisY.setLabelsBrush(QColor("#AAAAAA"))
-        chart.addAxis(axisY, Qt.AlignLeft)
-        bar_series.attachAxis(axisY)
+        axis_y.setRange(0, max_val + (max_val * 0.2) + 1)
+        axis_y.applyNiceNumbers()
 
-        axisX_line = QValueAxis()
-        axisX_line.setRange(-0.5, len(weeks) - 0.5)
-        axisX_line.setVisible(False)
-        chart.addAxis(axisX_line, Qt.AlignBottom)
+        axis_x_line = QValueAxis()
+        axis_x_line.setRange(-0.5, len(weeks) - 0.5)
+        axis_x_line.setVisible(False)
+        chart.addAxis(axis_x_line, Qt.AlignmentFlag.AlignBottom)
 
-        curr_idx = next((i for i, c in enumerate(categories) if "+" in c or "Current" in c), None)
-        if curr_idx is not None:
-            future_upper, future_lower = QLineSeries(), QLineSeries()
-            start_x, max_x = curr_idx - 0.5, len(weeks) - 0.5
-            future_upper.append(start_x, y_max); future_upper.append(max_x, y_max)
-            future_lower.append(start_x, y_min); future_lower.append(max_x, y_min)
+        today_year, today_week, _ = today.isocalendar()
+        curr_year_week = f"{today_year}-{today_week:02d}"
 
-            future_area = QAreaSeries(future_upper, future_lower)
+        if curr_year_week in weeks:
+            curr_idx = weeks.index(curr_year_week)
+
+            future_area = QAreaSeries()
             future_area.setName("Future Highlight")
-            self._chart_refs.extend([future_upper, future_lower, future_area])
-            highlight = QColor("#FFFFFF")
-            highlight.setAlpha(12)
+
+            lower = QLineSeries()
+            lower.append(curr_idx - 0.5, 0); lower.append(len(weeks) - 0.5, 0)
+            upper = QLineSeries()
+            upper.append(curr_idx - 0.5, axis_y.max()); upper.append(len(weeks) - 0.5, axis_y.max())
+
+            future_area.setLowerSeries(lower)
+            future_area.setUpperSeries(upper)
+
+            highlight = QColor("#007ACC")
+            highlight.setAlpha(20)
             future_area.setBrush(highlight)
-            future_area.setPen(Qt.NoPen)
+            future_area.setPen(Qt.PenStyle.NoPen)
             chart.addSeries(future_area)
-            future_area.attachAxis(axisX_line)
-            future_area.attachAxis(axisY)
+            future_area.attachAxis(axis_x_line)
+            future_area.attachAxis(axis_y)
 
         zero_line = QLineSeries()
         zero_line.setName("Target")
         zero_line.append(-0.5, 0); zero_line.append(len(weeks) - 0.5, 0)
-        zero_line.setPen(QPen(QColor("#FFFFFF"), 3, Qt.SolidLine))
+        zero_line.setPen(QPen(QColor("#FFFFFF"), 3, Qt.PenStyle.SolidLine))
         chart.addSeries(zero_line)
-        zero_line.attachAxis(axisX_line)
-        zero_line.attachAxis(axisY)
+        zero_line.attachAxis(axis_x_line)
+        zero_line.attachAxis(axis_y)
 
         chart.legend().show()
-        chart.legend().setAlignment(Qt.AlignBottom)
+        chart.legend().setAlignment(Qt.AlignmentFlag.AlignBottom)
         for marker in chart.legend().markers():
             label = marker.label()
             if "(Forecast)" in label or label == "Target" or label == "Future Highlight":
@@ -901,7 +887,7 @@ class DashboardWidget(QWidget):
             projects = list(proj_vars.items())
             for p_name, p_var in projects[:5]:
                 color = "#FF5252" if p_var < 0 else "#4CAF50"
-                details.append(f"• {p_name}: <span style='color:{color};'>{p_var:+.1f}d</span>")
+                details.append(f"• {str(p_name)}: <span style='color:{color};'>{p_var:+.1f}d</span>")
 
             if len(projects) > 5:
                 details.append(f"<i>...and {len(projects) - 5} more</i>")
@@ -916,6 +902,6 @@ class DashboardWidget(QWidget):
             self.chart_tooltip.show()
             self.chart_tooltip.raise_()
 
-        except Exception as e:
-            print(f"Tooltip Error: {e}")
+        except Exception as e: # type: ignore # noqa
+            logger.exception("Tooltip Error: %s", e)
             self.chart_tooltip.hide()

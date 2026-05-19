@@ -17,7 +17,7 @@ from PySide6.QtCore import Qt, QRectF, Signal, QTimer, QPointF
 
 class DueDateMarker(QGraphicsItem):
     """Draws a small yellow triangle to indicate a project's target due date."""
-    def __init__(self, x: float, y: float, height: float) -> None:
+    def __init__(self, x: float, y: float, _height: float) -> None:
         super().__init__()
         self.setPos(x, y)
         self.rect: QRectF = QRectF(-10, -5, 20, 20)
@@ -27,7 +27,7 @@ class DueDateMarker(QGraphicsItem):
         return self.rect
 
     def paint(self, painter: QPainter, option: Any, widget: Optional[QWidget] = None) -> None:
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setBrush(QBrush(QColor("#FFD54F")))
         painter.setPen(QPen(QColor("#252526"), 1))
 
@@ -40,8 +40,8 @@ class DueDateMarker(QGraphicsItem):
 
 
 class GanttBlock(QGraphicsObject):
-    block_dropped = Signal(str, float, float, bool, float, float)
-    assignee_changed = Signal(str, str)
+    block_dropped = Signal(str, float, float, bool, float, float) # type: ignore
+    assignee_changed = Signal(str, str) # type: ignore
 
     def __init__(self, project_data: Dict[str, Any], x: float, y: float, width: float,
                  height: float, day_width: float, dynamic_engineers: Optional[List[str]] = None,
@@ -49,7 +49,7 @@ class GanttBlock(QGraphicsObject):
         super().__init__()
         self.setPos(x, y)
 
-        self.data: Dict[str, Any] = project_data
+        self.block_data: Dict[str, Any] = project_data
         self.day_width: float = day_width
         self.rect: QRectF = QRectF(0, 0, width, height)
 
@@ -57,25 +57,42 @@ class GanttBlock(QGraphicsObject):
         self.dynamic_engineers: List[str] = dynamic_engineers if dynamic_engineers else []
         self.due_x_offset: float = due_x_offset
 
-        self.setAcceptHoverEvents(True)
-        self.setFlag(QGraphicsItem.ItemIsSelectable)
+        self.base_color: QColor = QColor()
+        self.text_color: QColor = QColor()
+        self.brush: QBrush = QBrush()
+
+        self.is_resizing_hover: bool = False
+        self.is_resizing: bool = False
+        self.is_moving: bool = False
+
+        self.start_pos: QPointF = QPointF()
+        self.start_scene_pos: QPointF = QPointF()
+        self.start_rect: QRectF = QRectF()
 
         self.can_move: bool = True
         self.can_resize: bool = True
         self.is_started: bool = False
 
+        self.setAcceptHoverEvents(True)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
+
         self.refresh_visuals()
 
+    @property
+    def data(self) -> Dict[str, Any]: # type: ignore # noqa
+        """Allows controller.py to access the payload via item.data without breaking Qt's native C++ methods."""
+        return self.block_data
+
     def refresh_visuals(self) -> None:
-        assignee = str(self.data.get('ASSIGNED TO', '')).strip().upper()
-        status = str(self.data.get('STATUS', '')).strip().upper()
-        raw_start = str(self.data.get('ENG START DATE', '')).strip()
-        est_start = str(self.data.get('EST START DATE', '')).strip()
-        est_days = str(self.data.get('EST DAYS', '')).strip()
-        req = str(self.data.get('REQUIREMENT', '')).strip().upper()
+        assignee = str(self.block_data.get('ASSIGNED TO', '')).strip().upper()
+        status = str(self.block_data.get('STATUS', '')).strip().upper()
+        raw_start = str(self.block_data.get('ENG START DATE', '')).strip()
+        est_start = str(self.block_data.get('EST START DATE', '')).strip()
+        est_days = str(self.block_data.get('EST DAYS', '')).strip()
+        req = str(self.block_data.get('REQUIREMENT', '')).strip().upper()
 
         self.is_started = bool(raw_start)
-        hex_color = str(self.data.get('HEX_COLOR', '#007ACC')).strip()
+        hex_color = str(self.block_data.get('HEX_COLOR', '#007ACC')).strip()
 
         self.base_color = QColor(hex_color)
         self.text_color = QColor("#FFFFFF")
@@ -84,27 +101,23 @@ class GanttBlock(QGraphicsObject):
         planned_color = QColor(self.base_color)
         ghost_color = QColor(self.base_color)
 
-        # --- UPDATED LOGIC: Apply hierarchy to both Parents and Children ---
         is_prod = 'PROD' in req
 
         if not is_prod:
-            # Dimmer opacities for non-production lines
             actual_color.setAlpha(90)
             planned_color.setAlpha(50)
             ghost_color.setAlpha(40)
             self.text_color = QColor("#AAAAAA")
         else:
-            # Standard opacities for Production lines
             actual_color.setAlpha(180)
             planned_color.setAlpha(120)
             ghost_color.setAlpha(120)
 
         if self.is_parent:
-            # Override text color slightly brighter for Prod parents, keep dim for non-prod
             self.text_color = QColor("#E0E0E0") if is_prod else QColor("#888888")
 
             if assignee == "MULTIPLE":
-                self.brush = QBrush(self.base_color, Qt.BDiagPattern)
+                self.brush = QBrush(self.base_color, Qt.BrushStyle.BDiagPattern)
             elif assignee and assignee != "UNASSIGNED":
                 self.brush = QBrush(actual_color)
             else:
@@ -118,16 +131,13 @@ class GanttBlock(QGraphicsObject):
         else:
             self.brush = QBrush(ghost_color)
 
-        # --- REDESIGN: INTERACTION RULES ---
         self.can_move = True
-
-        # Parent blocks are envelopes. They cannot be stretched directly!
         self.can_resize = not self.is_parent
 
         if status in ('RELEASED FOR PRODUCTION', 'COMPLETE'):
             self.can_move = False
             self.can_resize = False
-        elif getattr(self, 'is_started', False):
+        elif self.is_started:
             self.can_move = False
 
         self.update()
@@ -136,11 +146,11 @@ class GanttBlock(QGraphicsObject):
         return self.rect.adjusted(-2, -2, 2, 2)
 
     def paint(self, painter: QPainter, option: Any, widget: Optional[QWidget] = None) -> None:
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        if self.is_parent and self.brush.style() == Qt.BDiagPattern:
+        if self.is_parent and self.brush.style() == Qt.BrushStyle.BDiagPattern:
             painter.setBrush(QBrush(QColor("#2D2D30")))
-            painter.setPen(Qt.NoPen)
+            painter.setPen(Qt.PenStyle.NoPen)
             self._draw_shape(painter)
 
         painter.setBrush(self.brush)
@@ -148,12 +158,12 @@ class GanttBlock(QGraphicsObject):
         if self.isSelected():
             painter.setPen(QPen(QColor("#FFFFFF"), 2))
         else:
-            painter.setPen(Qt.NoPen)
+            painter.setPen(Qt.PenStyle.NoPen)
 
         self._draw_shape(painter)
 
-        if getattr(self, 'is_started', False):
-            painter.setPen(QPen(QColor("#A0A0A0"), 4, Qt.SolidLine, Qt.FlatCap))
+        if self.is_started:
+            painter.setPen(QPen(QColor("#A0A0A0"), 4, Qt.PenStyle.SolidLine, Qt.PenCapStyle.FlatCap))
             y_offset = 2 if not self.is_parent else 0
             painter.drawLine(
                 QPointF(self.rect.x() + 2, self.rect.y() + y_offset),
@@ -161,9 +171,9 @@ class GanttBlock(QGraphicsObject):
             )
 
         if self.is_parent:
-            label_text = str(self.data.get('PROJECT NAME', 'Unknown Project')).strip()
+            label_text = str(self.block_data.get('PROJECT NAME', 'Unknown Project')).strip()
         else:
-            label_text = str(self.data.get('ASSIGNED TO', '')).strip()
+            label_text = str(self.block_data.get('ASSIGNED TO', '')).strip()
 
         if label_text:
             painter.setPen(QPen(self.text_color))
@@ -174,8 +184,8 @@ class GanttBlock(QGraphicsObject):
             painter.setFont(font)
 
             metrics = QFontMetrics(font)
-            text_x_offset = 8 if getattr(self, 'is_started', False) else 4
-            elided_text = metrics.elidedText(label_text, Qt.ElideRight, int(self.rect.width() - text_x_offset - 4))
+            text_x_offset = 8 if self.is_started else 4
+            elided_text = metrics.elidedText(label_text, Qt.TextElideMode.ElideRight, int(self.rect.width() - text_x_offset - 4))
 
             text_rect = QRectF(
                 self.rect.x() + text_x_offset,
@@ -183,7 +193,7 @@ class GanttBlock(QGraphicsObject):
                 self.rect.width() - text_x_offset - 4,
                 self.rect.height() if not self.is_parent else self.rect.height() - 8
             )
-            painter.drawText(text_rect, Qt.AlignVCenter | Qt.AlignLeft, elided_text)
+            painter.drawText(text_rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, elided_text)
 
     def _draw_shape(self, painter: QPainter) -> None:
         if self.is_parent:
@@ -197,7 +207,7 @@ class GanttBlock(QGraphicsObject):
             ])
             painter.drawPolygon(poly)
         else:
-            painter.drawRoundedRect(self.rect, 4, 4)
+            painter.drawRoundedRect(self.rect, 4.0, 4.0)
 
     def contextMenuEvent(self, event: Any) -> None:
         menu = QMenu()
@@ -205,15 +215,15 @@ class GanttBlock(QGraphicsObject):
 
         for eng in self.dynamic_engineers:
             action = assign_menu.addAction(eng)
-            action.triggered.connect(lambda checked=False, e=eng: self.change_assignee(e))
+            action.triggered.connect(lambda checked=False, e=eng: self.change_assignee(e)) # type: ignore
 
         menu.exec(event.screenPos())
 
     def change_assignee(self, eng_name: str) -> None:
-        target_id = str(self.data.get('PROJECT_ID', '')) if self.is_parent else str(self.data.get('SMART_ID', ''))
+        target_id = str(self.block_data.get('PROJECT_ID', '')) if self.is_parent else str(self.block_data.get('SMART_ID', ''))
         if target_id:
             val = "" if eng_name == "Unassigned" else eng_name
-            def safe_emit():
+            def safe_emit() -> None:
                 try:
                     self.assignee_changed.emit(target_id, val)
                 except RuntimeError:
@@ -222,28 +232,28 @@ class GanttBlock(QGraphicsObject):
 
     def hoverMoveEvent(self, event: Any) -> None:
         if not self.can_resize and not self.can_move:
-            self.setCursor(Qt.ArrowCursor)
+            self.setCursor(Qt.CursorShape.ArrowCursor)
             return
 
         if self.can_resize and event.pos().x() >= self.rect.width() - 15:
-            self.setCursor(Qt.SizeHorCursor)
+            self.setCursor(Qt.CursorShape.SizeHorCursor)
             self.is_resizing_hover = True
         else:
-            self.setCursor(Qt.OpenHandCursor if self.can_move else Qt.ArrowCursor)
+            self.setCursor(Qt.CursorShape.OpenHandCursor if self.can_move else Qt.CursorShape.ArrowCursor)
             self.is_resizing_hover = False
 
     def mousePressEvent(self, event: Any) -> None:
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self.start_pos = event.scenePos()
             self.start_rect = QRectF(self.rect)
             self.start_scene_pos = self.scenePos()
 
-            if getattr(self, 'is_resizing_hover', False):
+            if self.is_resizing_hover:
                 self.is_resizing = True
                 self.is_moving = False
                 event.accept()
             elif self.can_move:
-                self.setCursor(Qt.ClosedHandCursor)
+                self.setCursor(Qt.CursorShape.ClosedHandCursor)
                 self.is_moving = True
                 self.is_resizing = False
                 event.accept()
@@ -251,8 +261,7 @@ class GanttBlock(QGraphicsObject):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: Any) -> None:
-        # --- REDESIGN: PURE UNCLAMPED MOVEMENT ---
-        if getattr(self, 'is_resizing', False):
+        if self.is_resizing:
             delta = event.scenePos().x() - self.start_pos.x()
             snapped_delta = round(delta / self.day_width) * self.day_width
             new_width = max(self.day_width, self.start_rect.width() + snapped_delta)
@@ -261,20 +270,20 @@ class GanttBlock(QGraphicsObject):
             self.rect.setWidth(new_width)
             self.update()
 
-        elif getattr(self, 'is_moving', False):
+        elif self.is_moving:
             delta = event.scenePos().x() - self.start_pos.x()
             snapped_delta = round(delta / self.day_width) * self.day_width
-            new_x = max(0, self.start_scene_pos.x() + snapped_delta)
+            new_x = max(0.0, self.start_scene_pos.x() + snapped_delta)
 
             self.setPos(new_x, self.start_scene_pos.y())
         else:
             super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: Any) -> None:
-        self.setCursor(Qt.OpenHandCursor if self.can_move else Qt.ArrowCursor)
+        self.setCursor(Qt.CursorShape.OpenHandCursor if self.can_move else Qt.CursorShape.ArrowCursor)
 
-        was_resizing = getattr(self, 'is_resizing', False)
-        was_moving = getattr(self, 'is_moving', False)
+        was_resizing = self.is_resizing
+        was_moving = self.is_moving
 
         self.is_resizing = False
         self.is_moving = False
@@ -282,16 +291,16 @@ class GanttBlock(QGraphicsObject):
         super().mouseReleaseEvent(event)
 
         if was_resizing or was_moving:
-            target_id = str(self.data.get('PROJECT_ID', '')) if self.is_parent else str(self.data.get('SMART_ID', ''))
+            target_id = str(self.block_data.get('PROJECT_ID', '')) if self.is_parent else str(self.block_data.get('SMART_ID', ''))
 
             if target_id:
-                cx = float(self.x())
-                cw = float(self.rect.width())
-                ip = bool(self.is_parent)
-                delta_x = float(cx - self.start_scene_pos.x())
-                delta_w = float(cw - self.start_rect.width())
+                cx = self.x()
+                cw = self.rect.width()
+                ip = self.is_parent
+                delta_x = cx - self.start_scene_pos.x()
+                delta_w = cw - self.start_rect.width()
 
-                def safe_emit():
+                def safe_emit() -> None:
                     try:
                         self.block_dropped.emit(target_id, cx, cw, ip, delta_x, delta_w)
                     except RuntimeError:

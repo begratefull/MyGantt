@@ -4,10 +4,10 @@ Provides the Interactive Gantt Chart interface.
 
 from typing import Optional, List, Dict, Any
 import pandas as pd
-import numpy as np  # <-- Added NumPy for pure business day mapping
-from logic.constants import AppConstants  # <-- Added AppConstants to read the Holidays
+import numpy as np
+from logic.constants import AppConstants
 
-from PySide6.QtCore import Qt, Signal, QRectF, QTimer
+from PySide6.QtCore import Qt, Signal, QRectF, QRect, QTimer
 from PySide6.QtGui import QPainter, QColor, QPen, QMouseEvent, QFont, QWheelEvent, QBrush
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
@@ -25,13 +25,13 @@ class GanttView(QGraphicsView):
     def __init__(self, scene: QGraphicsScene) -> None:
         super().__init__(scene)
         self.setRenderHint(QPainter.RenderHint.Antialiasing)
-        self.setAlignment(Qt.AlignLeft | Qt.AlignTop)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setObjectName("CanvasView")
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         super().mousePressEvent(event)
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             if not self.itemAt(event.pos()) and self.empty_clicked:
                 self.empty_clicked.emit()
 
@@ -40,7 +40,7 @@ class GanttView(QGraphicsView):
         Intercepts mouse wheel scrolling. If Shift is held down,
         translates the vertical wheel movement into horizontal scrolling.
         """
-        if event.modifiers() == Qt.ShiftModifier:
+        if event.modifiers() == Qt.KeyboardModifier.ShiftModifier:
             h_scrollbar = self.horizontalScrollBar()
             scroll_amount = event.angleDelta().y()
             h_scrollbar.setValue(h_scrollbar.value() - scroll_amount)
@@ -55,12 +55,12 @@ class GanttGridScene(QGraphicsScene):
         self.day_width = day_width
         self.row_height = row_height
 
-    def drawBackground(self, painter: QPainter, rect: QRectF) -> None:
+    def drawBackground(self, painter: QPainter, rect: QRect | QRectF) -> None:
         painter.fillRect(rect, QColor("#1E1E1E"))
 
         row_pen = QPen(QColor("#252526"))
         col_pen = QPen(QColor("#3E3E42"))
-        col_pen.setStyle(Qt.DotLine)
+        col_pen.setStyle(Qt.PenStyle.DotLine)
 
         top_y = int(rect.top()) - (int(rect.top()) % self.row_height)
         for y in range(top_y, int(rect.bottom()), self.row_height):
@@ -138,25 +138,25 @@ class GanttScreenWidget(QWidget):
         unified_layout.setContentsMargins(0, 0, 0, 0)
         unified_layout.setSpacing(0)
 
-        self.gantt_splitter = QSplitter(Qt.Horizontal)
+        self.gantt_splitter = QSplitter(Qt.Orientation.Horizontal)
 
         self.info_table = QTableWidget()
         self.info_table.setObjectName("LeftTable")
         self.info_table.setColumnCount(5)
         self.info_table.setHorizontalHeaderLabels(["Req.", "Quote", "Project", "ESD", "Status"])
-        self.info_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.info_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.info_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.info_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.info_table.setMouseTracking(True)
         self.info_table.viewport().setMouseTracking(True)
 
         self.info_table.verticalHeader().setDefaultSectionSize(self.row_height)
         self.info_table.verticalHeader().setVisible(False)
         self.info_table.horizontalHeader().setMinimumHeight(45)
-        self.info_table.horizontalHeader().setDefaultAlignment(Qt.AlignLeft | Qt.AlignBottom)
+        self.info_table.horizontalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         self.info_table.setShowGrid(False)
-        self.info_table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.info_table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
-        self.info_table.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+        self.info_table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.info_table.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.info_table.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.info_table.horizontalHeader().setStretchLastSection(True)
         self.info_table.setMinimumWidth(250)
 
@@ -168,9 +168,9 @@ class GanttScreenWidget(QWidget):
         self.header_scene = QGraphicsScene()
         self.header_view = QGraphicsView(self.header_scene)
         self.header_view.setFixedHeight(45)
-        self.header_view.setAlignment(Qt.AlignLeft | Qt.AlignTop)
-        self.header_view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.header_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.header_view.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        self.header_view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.header_view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.header_view.setObjectName("HeaderView")
 
         self.gantt_scene = GanttGridScene(day_width=self.day_width, row_height=self.row_height)
@@ -239,7 +239,7 @@ class GanttScreenWidget(QWidget):
         form_layout.addRow("Assign To:", self.inp_assignee)
 
         line = QFrame()
-        line.setFrameShape(QFrame.HLine)
+        line.setFrameShape(QFrame.Shape.HLine)
         line.setObjectName("SeparatorLine")
         form_layout.addRow(line)
 
@@ -307,11 +307,11 @@ class GanttScreenWidget(QWidget):
         table.setWordWrap(False)
 
         header = table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Interactive)
-        header.setSectionResizeMode(1, QHeaderView.Interactive)
-        header.setSectionResizeMode(2, QHeaderView.Interactive)
-        header.setSectionResizeMode(3, QHeaderView.Interactive)
-        header.setSectionResizeMode(4, QHeaderView.Interactive)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Interactive)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Interactive)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Interactive)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Interactive)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Interactive)
 
         table.setColumnWidth(0, 110)
         table.setColumnWidth(1, 110)
@@ -319,7 +319,7 @@ class GanttScreenWidget(QWidget):
         table.setColumnWidth(3, 85)
         table.setColumnWidth(4, 75)
 
-        font_parent = QFont("Segoe UI", 9, QFont.Bold)
+        font_parent = QFont("Segoe UI", 9, QFont.Weight.Bold)
         font_child = QFont("Segoe UI", 9)
 
         for row_idx, row in enumerate(visual_rows):
@@ -384,7 +384,7 @@ class GanttScreenWidget(QWidget):
                       r.get('ENG START DATE') or r.get('EST START DATE')]
 
         if all_starts:
-            start_series = pd.to_datetime(all_starts)
+            start_series = pd.to_datetime(pd.Series(all_starts))
             day_zero = min(start_series.min(), pd.Timestamp.today().normalize())
         else:
             day_zero = pd.Timestamp.today().normalize()
@@ -417,7 +417,7 @@ class GanttScreenWidget(QWidget):
         self.header_scene.setSceneRect(0, 0, total_width, 45)
         self.gantt_scene.setSceneRect(0, 0, total_width, total_height)
 
-        font_month = QFont("Segoe UI", 9, QFont.Bold)
+        font_month = QFont("Segoe UI", 9, QFont.Weight.Bold)
         font_day = QFont("Segoe UI", 8)
         current_x, today_x = 0, -1
         today = pd.Timestamp.today().normalize()
@@ -439,7 +439,7 @@ class GanttScreenWidget(QWidget):
             if current_date_str in AppConstants.COMPANY_HOLIDAYS:
                 self.gantt_scene.addRect(
                     current_x, 0, self.day_width, total_height + 2000,
-                    QPen(Qt.NoPen), QColor(255, 82, 82, 30)
+                    QPen(Qt.PenStyle.NoPen), QColor(255, 82, 82, 30)
                 )
                 h_text = self.header_scene.addText("H")
                 h_text.setDefaultTextColor(QColor("#FF5252"))
@@ -450,7 +450,7 @@ class GanttScreenWidget(QWidget):
             if current_date == today:
                 self.gantt_scene.addRect(
                     current_x, 0, self.day_width, total_height + 2000,
-                    QPen(Qt.NoPen), QColor(255, 255, 255, 25)
+                    QPen(Qt.PenStyle.NoPen), QColor(255, 255, 255, 25)
                 )
                 today_x = current_x
 

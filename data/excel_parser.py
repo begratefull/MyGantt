@@ -8,6 +8,7 @@ from logic.constants import AppConstants
 
 logger = logging.getLogger(__name__)
 
+
 class ExcelParser:
     def __init__(self):
         self.raw_header_mapping = {
@@ -67,7 +68,7 @@ class ExcelParser:
         try:
             dt = pd.to_datetime(value)
             return f"{dt.month}/{dt.day}/{dt.year}"
-        except Exception:
+        except (ValueError, TypeError):  # Narrowed the exception here
             return str(value)
 
     def parse_file(self, file_path: str):
@@ -96,9 +97,11 @@ class ExcelParser:
                 df[col] = df[col].map(clean_cell)
 
             header_idx = -1
-            for idx, row in df.head(50).iterrows():
+            # Avoid the Hashable iterrows issue by iterating over a strict integer range
+            for i in range(min(50, len(df))):
+                row = df.iloc[i]
                 if "ORDER NUMBER" in [str(cell).upper() for cell in row]:
-                    header_idx = idx
+                    header_idx = i
                     break
 
             if header_idx == -1:
@@ -109,17 +112,20 @@ class ExcelParser:
             df = df.iloc[header_idx + 1:].reset_index(drop=True)
 
             rename_dict = {}
-            for actual_col in list(df.columns):
-                norm_col = re.sub(r'[\W_]+', '', str(actual_col).upper())
+            for actual_col in df.columns:
+                # actual_col is already a string, no need for str() wrapping
+                norm_col = re.sub(r'[\W_]+', '', actual_col.upper())
                 if norm_col in self.raw_header_mapping:
                     rename_dict[actual_col] = self.raw_header_mapping[norm_col]
 
             df = df.rename(columns=rename_dict)
 
             end_idx = -1
-            for idx, row in df.iterrows():
+            # Strict integer range again
+            for i in range(len(df)):
+                row = df.iloc[i]
                 if "END OF LINE" in [str(cell).upper() for cell in row]:
-                    end_idx = idx
+                    end_idx = i
                     break
             if end_idx != -1:
                 df = df.iloc[:end_idx]
@@ -154,12 +160,9 @@ class ExcelParser:
                 hol_df = pd.read_excel(temp_path, sheet_name=AppConstants.HOLIDAY_SHEET_NAME, header=None,
                                        engine='openpyxl')
 
-                # Scan through each column in the sheet
                 for col in hol_df.columns:
-                    # Try to convert the column to dates
                     raw_dates = pd.to_datetime(hol_df[col], errors='coerce', format='mixed').dropna()
 
-                    # If we found actual dates, save them and stop looking!
                     if len(raw_dates) > 0:
                         holiday_dates = raw_dates.dt.strftime('%Y-%m-%d').tolist()
                         logger.info(f"Found {len(holiday_dates)} company holidays in column {col}.")
@@ -171,7 +174,6 @@ class ExcelParser:
             except Exception as e:
                 logger.warning(f"Could not parse holiday sheet (it may not exist): {e}")
 
-
             return df, holiday_dates, ""
 
         except PermissionError:
@@ -181,12 +183,11 @@ class ExcelParser:
             logger.error("Excel Sync Failed: The shadow copy could not be created or found.")
             return None, "File Not Found."
         except Exception as e:
-            # Using logging.exception automatically captures and formats the full traceback
-            logger.exception("Unexpected error parsing Excel:")
+            logger.exception("Unexpected error parsing Excel: %s", e)
             return None, "Sync failed! Check the log console for the traceback."
         finally:
             if os.path.exists(temp_path):
                 try:
                     os.remove(temp_path)
-                except Exception:
+                except OSError:
                     pass

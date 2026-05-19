@@ -25,13 +25,13 @@ class TeamManagementWidget(QWidget):
     The main widget for the Team Management screen.
     Handles engineer configurations (Team/Color) and displays workload analytics.
     """
-    save_engineer_requested = Signal(str, str, str)
-    engineer_selected = Signal(str)
+    save_engineer_requested = Signal(str, str, str) # type: ignore
+    engineer_selected = Signal(str) # type: ignore
 
     def __init__(self) -> None:
         super().__init__()
 
-        self.palette: List[str] = [
+        self.chart_palette: List[str] = [
             "#D32F2F", "#F44336", "#FF5252", "#E91E63", "#C2185B",
             "#7B1FA2", "#9C27B0", "#673AB7", "#512DA8", "#3F51B5",
             "#1976D2", "#2196F3", "#03A9F4", "#00BCD4", "#0097A7",
@@ -40,23 +40,25 @@ class TeamManagementWidget(QWidget):
         ]
 
         self.swatch_buttons: List[Tuple[QPushButton, str]] = []
-        self._current_selected_color: str = self.palette[11]
+        self._current_selected_color: str = self.chart_palette[11]
         self.roster_data: Optional[pd.DataFrame] = None
 
         # Store animations so PySide6's garbage collector doesn't destroy them
-        self.progress_animations = []
+        self.progress_animations: List[QPropertyAnimation] = []
 
         self._setup_ui()
 
-    def _get_empty_dark_chart(self) -> QChart:
+    @staticmethod
+    def _get_empty_dark_chart() -> QChart:
         chart = QChart()
-        chart.setTheme(QChart.ChartThemeDark)
-        chart.setBackgroundBrush(Qt.NoBrush)
+        chart.setTheme(QChart.ChartTheme.ChartThemeDark)
+        chart.setBackgroundBrush(Qt.BrushStyle.NoBrush)
         chart.layout().setContentsMargins(10, 10, 10, 10)
         chart.legend().hide()
         return chart
 
-    def _safe_set_chart(self, chart_view: QChartView, new_chart: QChart) -> None:
+    @staticmethod
+    def _safe_set_chart(chart_view: QChartView, new_chart: QChart) -> None:
         old_chart = chart_view.chart()
         chart_view.setChart(new_chart)
         if old_chart:
@@ -88,14 +90,14 @@ class TeamManagementWidget(QWidget):
         self.roster_table.setHorizontalHeaderLabels(["Engineer", "Team", "Color"])
         self.roster_table.verticalHeader().setVisible(False)
         self.roster_table.setShowGrid(False)
-        self.roster_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.roster_table.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.roster_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.roster_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.roster_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.roster_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.roster_table.itemSelectionChanged.connect(self._on_roster_selection)
 
-        self.roster_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        self.roster_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.roster_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Fixed)
+        self.roster_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        self.roster_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.roster_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
         self.roster_table.setColumnWidth(2, 60)
 
         roster_layout.addWidget(self.roster_table)
@@ -127,13 +129,13 @@ class TeamManagementWidget(QWidget):
         swatch_layout = QGridLayout(swatch_container)
         swatch_layout.setContentsMargins(0, 0, 0, 0)
         swatch_layout.setSpacing(8)
-        swatch_layout.setAlignment(Qt.AlignLeft)
+        swatch_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
-        for index, color in enumerate(self.palette):
+        for index, color in enumerate(self.chart_palette):
             btn = QPushButton()
             btn.setFixedSize(24, 24)
-            btn.setCursor(Qt.PointingHandCursor)
-            btn.clicked.connect(lambda checked=False, c=color: self.set_selected_color(c))
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.clicked.connect(lambda checked=False, c=color: self.set_selected_color(c)) # type: ignore
             self.swatch_buttons.append((btn, color))
             row = index // 5
             col = index % 5
@@ -161,25 +163,20 @@ class TeamManagementWidget(QWidget):
         analytics_layout.setContentsMargins(20, 20, 20, 20)
         analytics_layout.setSpacing(20)
 
-        # Main Title Header - Bumped up font size!
         self.lbl_analytics_title = QLabel("Workload Analytics: Select an Engineer")
         self.lbl_analytics_title.setStyleSheet("color: #FFFFFF; font-size: 24px; font-weight: bold;")
         analytics_layout.addWidget(self.lbl_analytics_title)
 
-        # Dashboard Body Split (Left Sidebar / Right Main Stage)
         dashboard_body_layout = QHBoxLayout()
         dashboard_body_layout.setSpacing(20)
 
-        # --- DASHBOARD LEFT SIDEBAR (KPIs, List, Circle) ---
         dash_left_layout = QVBoxLayout()
         dash_left_layout.setSpacing(15)
 
-        # Custom Progress Bar Leaderboard (With KPIs merged into header)
         projects_frame = QFrame()
         projects_frame.setObjectName("DashCard")
         projects_layout = QVBoxLayout(projects_frame)
 
-        # 1. Cleaned up KPIs - no inner borders, pure data
         kpi_layout = QHBoxLayout()
         kpi_layout.setSpacing(20)
 
@@ -204,9 +201,8 @@ class TeamManagementWidget(QWidget):
 
         projects_layout.addLayout(kpi_layout)
 
-        # Sleek Divider
         sep = QFrame()
-        sep.setFrameShape(QFrame.HLine)
+        sep.setFrameShape(QFrame.Shape.HLine)
         sep.setStyleSheet("background-color: #2E2E32;")
         projects_layout.addWidget(sep)
 
@@ -216,14 +212,13 @@ class TeamManagementWidget(QWidget):
 
         self.projects_container = QWidget()
         self.projects_vbox = QVBoxLayout(self.projects_container)
-        self.projects_vbox.setAlignment(Qt.AlignTop)
+        self.projects_vbox.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.projects_vbox.setContentsMargins(0, 10, 0, 0)
         self.projects_vbox.setSpacing(15)
 
         projects_layout.addWidget(self.projects_container, 1)
         dash_left_layout.addWidget(projects_frame, 1)
 
-        # 3. Radar Chart
         radar_frame = QFrame()
         radar_frame.setObjectName("DashCard")
         radar_layout = QVBoxLayout(radar_frame)
@@ -232,25 +227,21 @@ class TeamManagementWidget(QWidget):
         radar_layout.addWidget(radar_title)
 
         empty_polar = QPolarChart()
-        empty_polar.setTheme(QChart.ChartThemeDark)
-        empty_polar.setBackgroundBrush(Qt.NoBrush)
+        empty_polar.setTheme(QChart.ChartTheme.ChartThemeDark)
+        empty_polar.setBackgroundBrush(Qt.BrushStyle.NoBrush)
         empty_polar.layout().setContentsMargins(5, 5, 5, 5)
 
         self.radar_view = QChartView(empty_polar)
-        self.radar_view.setRenderHint(QPainter.Antialiasing)
+        self.radar_view.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.radar_view.setStyleSheet("background: transparent;")
         radar_layout.addWidget(self.radar_view, 1)
 
         dash_left_layout.addWidget(radar_frame, 1)
-
         dashboard_body_layout.addLayout(dash_left_layout, 1)
 
-
-        # --- DASHBOARD RIGHT MAIN STAGE (Wide Charts) ---
         dash_right_layout = QVBoxLayout()
         dash_right_layout.setSpacing(15)
 
-        # 1. Production Throughput Chart (Top)
         self.prod_card = QFrame()
         self.prod_card.setObjectName("DashCard")
         self.prod_layout = QVBoxLayout(self.prod_card)
@@ -258,14 +249,13 @@ class TeamManagementWidget(QWidget):
         prod_title.setObjectName("CardTitle")
         self.prod_layout.addWidget(prod_title)
 
-        self.prod_chart_view = QChartView(self._get_empty_dark_chart())
-        self.prod_chart_view.setRenderHint(QPainter.Antialiasing)
+        self.prod_chart_view = QChartView(TeamManagementWidget._get_empty_dark_chart())
+        self.prod_chart_view.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.prod_chart_view.setStyleSheet("background: transparent;")
         self.prod_layout.addWidget(self.prod_chart_view, 1)
 
         dash_right_layout.addWidget(self.prod_card, 1)
 
-        # 2. Submittal Throughput Chart (Bottom)
         self.sub_card = QFrame()
         self.sub_card.setObjectName("DashCard")
         self.sub_layout = QVBoxLayout(self.sub_card)
@@ -273,15 +263,13 @@ class TeamManagementWidget(QWidget):
         sub_title.setObjectName("CardTitle")
         self.sub_layout.addWidget(sub_title)
 
-        self.sub_chart_view = QChartView(self._get_empty_dark_chart())
-        self.sub_chart_view.setRenderHint(QPainter.Antialiasing)
+        self.sub_chart_view = QChartView(TeamManagementWidget._get_empty_dark_chart())
+        self.sub_chart_view.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.sub_chart_view.setStyleSheet("background: transparent;")
         self.sub_layout.addWidget(self.sub_chart_view, 1)
 
         dash_right_layout.addWidget(self.sub_card, 1)
-
         dashboard_body_layout.addLayout(dash_right_layout, 2)
-
         analytics_layout.addLayout(dashboard_body_layout, 1)
         main_layout.addWidget(analytics_frame, 3)
 
@@ -300,16 +288,18 @@ class TeamManagementWidget(QWidget):
         if not selected_rows: return
 
         row_idx = selected_rows[0].row()
-        name = self.roster_table.item(row_idx, 0).text()
+        item = self.roster_table.item(row_idx, 0)
+        if item is None: return
+        name = item.text()
 
         if self.roster_data is not None and not self.roster_data.empty:
             match = self.roster_data[self.roster_data['name'].str.upper() == name.upper()]
             if not match.empty:
                 team = match.iloc[0].get('team_name', '')
-                color = match.iloc[0].get('hex_color', self.palette[11])
+                color = match.iloc[0].get('hex_color', self.chart_palette[11])
                 self.inp_name.setCurrentText(name)
                 self.inp_team.setCurrentText(team)
-                if color.upper() in [c.upper() for c in self.palette]:
+                if color.upper() in [c.upper() for c in self.chart_palette]:
                     self.set_selected_color(color)
 
         self.engineer_selected.emit(name)
@@ -334,7 +324,9 @@ class TeamManagementWidget(QWidget):
         self.roster_data = df_sorted
         self.roster_table.setRowCount(len(df_sorted))
 
-        for row_idx, row in df_sorted.iterrows():
+        # Use an explicit integer index to satisfy Pyrefly's strict type rules
+        for row_idx in range(len(df_sorted)):
+            row = df_sorted.iloc[row_idx]
             name = str(row.get('name', ''))
             team = str(row.get('team_name', ''))
             color = str(row.get('hex_color', '#888888'))
@@ -345,7 +337,7 @@ class TeamManagementWidget(QWidget):
             color_widget = QWidget()
             color_layout = QHBoxLayout(color_widget)
             color_layout.setContentsMargins(0, 0, 0, 0)
-            color_layout.setAlignment(Qt.AlignCenter)
+            color_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
             color_badge = QFrame()
             color_badge.setFixedSize(16, 16)
@@ -358,12 +350,13 @@ class TeamManagementWidget(QWidget):
     # VISUAL CHART GENERATORS
     # ===============================================
 
-    def _populate_throughput(self, chart_view: QChartView, data_dict: Dict[str, Dict[str, float]], primary_color: str) -> None:
-        new_chart = self._get_empty_dark_chart()
-        new_chart.setAnimationOptions(QChart.SeriesAnimations) # Retain animation for bars
+    @staticmethod
+    def _populate_throughput(chart_view: QChartView, data_dict: Dict[str, Dict[str, float]], primary_color: str) -> None:
+        new_chart = TeamManagementWidget._get_empty_dark_chart()
+        new_chart.setAnimationOptions(QChart.AnimationOption.SeriesAnimations)
 
         if not data_dict:
-            self._safe_set_chart(chart_view, new_chart)
+            TeamManagementWidget._safe_set_chart(chart_view, new_chart)
             return
 
         bar_series = QBarSeries()
@@ -390,11 +383,10 @@ class TeamManagementWidget(QWidget):
             bar_set.append(lines)
             speed_series.append(i, days)
 
-            if lines > max_lines: max_lines = lines
+            if lines > max_lines: max_lines = int(lines)
             if days > max_days: max_days = days
 
         bar_series.append(bar_set)
-
         new_chart.addSeries(bar_series)
         new_chart.addSeries(speed_series)
 
@@ -402,7 +394,7 @@ class TeamManagementWidget(QWidget):
         axis_x.append(categories)
         axis_x.setLabelsBrush(QColor("#AAAAAA"))
         axis_x.setGridLineVisible(False)
-        new_chart.addAxis(axis_x, Qt.AlignBottom)
+        new_chart.addAxis(axis_x, Qt.AlignmentFlag.AlignBottom)
         bar_series.attachAxis(axis_x)
         speed_series.attachAxis(axis_x)
 
@@ -413,7 +405,7 @@ class TeamManagementWidget(QWidget):
         axis_y_left.setRange(0, max_lines + (max_lines * 0.2) + 1)
         axis_y_left.setLabelsBrush(QColor(primary_color))
         axis_y_left.setGridLineColor(QColor("#333333"))
-        new_chart.addAxis(axis_y_left, Qt.AlignLeft)
+        new_chart.addAxis(axis_y_left, Qt.AlignmentFlag.AlignLeft)
         bar_series.attachAxis(axis_y_left)
 
         axis_y_right = QValueAxis()
@@ -423,25 +415,27 @@ class TeamManagementWidget(QWidget):
         axis_y_right.setRange(0, max_days + (max_days * 0.2) + 1)
         axis_y_right.setLabelsBrush(QColor("#FFFFFF"))
         axis_y_right.setGridLineVisible(False)
-        new_chart.addAxis(axis_y_right, Qt.AlignRight)
+        new_chart.addAxis(axis_y_right, Qt.AlignmentFlag.AlignRight)
         speed_series.attachAxis(axis_y_right)
 
         bar_series.setLabelsVisible(True)
         bar_set.setLabelColor(QColor("#FFFFFF"))
 
         new_chart.legend().show()
-        new_chart.legend().setAlignment(Qt.AlignBottom)
+        new_chart.legend().setAlignment(Qt.AlignmentFlag.AlignBottom)
         new_chart.legend().setLabelBrush(QColor("#FFFFFF"))
 
-        self._safe_set_chart(chart_view, new_chart)
+        TeamManagementWidget._safe_set_chart(chart_view, new_chart)
 
     def _populate_top_projects(self, projects_list: List[Dict[str, Any]], primary_color: str) -> None:
-        self.progress_animations.clear() # Clear out old animations
+        self.progress_animations.clear()
 
         while self.projects_vbox.count():
             child = self.projects_vbox.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
+            if child is not None:
+                widget = child.widget()
+                if widget is not None:
+                    widget.deleteLater()
 
         if not projects_list:
             empty_label = QLabel("No high-value projects found.")
@@ -453,7 +447,7 @@ class TeamManagementWidget(QWidget):
         if max_val == 0: max_val = 1
 
         for index, proj in enumerate(projects_list):
-            val = float(proj.get('total_sell', 0.0))
+            val = proj.get('total_sell', 0.0)
             name = str(proj.get('FUZZY_PROJ', 'Unknown Project'))
 
             row_container = QWidget()
@@ -479,7 +473,7 @@ class TeamManagementWidget(QWidget):
             bar.setFixedHeight(6)
             bar.setTextVisible(False)
             bar.setRange(0, int(max_val))
-            bar.setValue(0) # Start at 0 for animation
+            bar.setValue(0)
 
             bar.setStyleSheet(f"""
                 QProgressBar {{
@@ -496,28 +490,25 @@ class TeamManagementWidget(QWidget):
             row_layout.addWidget(bar)
             self.projects_vbox.addWidget(row_container)
 
-            # Create a smooth animation for each bar sliding in!
             anim = QPropertyAnimation(bar, b"value")
-            anim.setDuration(800) # milliseconds
+            anim.setDuration(800)
             anim.setStartValue(0)
             anim.setEndValue(int(val))
-            anim.setEasingCurve(QEasingCurve.OutCubic)
+            anim.setEasingCurve(QEasingCurve.Type.OutCubic)
             self.progress_animations.append(anim)
             anim.start()
 
     def _populate_radar(self, radar_data: Dict[str, Any], primary_color: str) -> None:
         new_chart = QPolarChart()
-        new_chart.setTheme(QChart.ChartThemeDark)
-        new_chart.setBackgroundBrush(Qt.NoBrush)
+        new_chart.setTheme(QChart.ChartTheme.ChartThemeDark)
+        new_chart.setBackgroundBrush(Qt.BrushStyle.NoBrush)
         new_chart.layout().setContentsMargins(5, 5, 5, 5)
-
-        # Explicitly NO animations added here to respect request
 
         categories = radar_data.get('categories', [])
         prod_vals = radar_data.get('prod', [])
 
         if not categories:
-            self._safe_set_chart(self.radar_view, new_chart)
+            TeamManagementWidget._safe_set_chart(self.radar_view, new_chart)
             return
 
         series_prod = QLineSeries()
@@ -529,20 +520,18 @@ class TeamManagementWidget(QWidget):
 
         max_val = 0
         for i, cat in enumerate(categories):
-            p_val = prod_vals[i] if i < len(prod_vals) else 0
+            p_val = int(prod_vals[i]) if i < len(prod_vals) else 0
 
             series_prod.append(i, p_val)
-            series_zero.append(i, 0)
+            series_zero.append(i, 0.0)
             max_val = max(max_val, p_val)
 
         if categories:
             series_prod.append(len(categories), series_prod.at(0).y())
-            series_zero.append(len(categories), 0)
+            series_zero.append(len(categories), 0.0)
 
         area_prod = QAreaSeries(series_prod, series_zero)
         area_prod.setName("Production Lines")
-        area_prod._series_prod_ref = series_prod
-        area_prod._series_zero_ref = series_zero
 
         fill_color = QColor(primary_color)
         fill_color.setAlpha(80)
@@ -553,15 +542,15 @@ class TeamManagementWidget(QWidget):
 
         angular_axis = QCategoryAxis()
         angular_axis.setLabelsBrush(QColor("#AAAAAA"))
-        angular_axis.setLabelsPosition(QCategoryAxis.AxisLabelsPositionOnValue)
+        angular_axis.setLabelsPosition(QCategoryAxis.AxisLabelsPosition.AxisLabelsPositionOnValue)
 
         for i, cat in enumerate(categories):
-            angular_axis.append(cat, i)
+            angular_axis.append(str(cat), i)
 
         angular_axis.append("\u200B", len(categories))
         angular_axis.setRange(0, len(categories))
 
-        new_chart.addAxis(angular_axis, QPolarChart.PolarOrientationAngular)
+        new_chart.addAxis(angular_axis, QPolarChart.PolarOrientation.PolarOrientationAngular)
         area_prod.attachAxis(angular_axis)
 
         radial_axis = QValueAxis()
@@ -570,13 +559,13 @@ class TeamManagementWidget(QWidget):
         radial_axis.setRange(0, max_val + (max_val * 0.2) + 1)
         radial_axis.setTickCount(4)
 
-        new_chart.addAxis(radial_axis, QPolarChart.PolarOrientationRadial)
+        new_chart.addAxis(radial_axis, QPolarChart.PolarOrientation.PolarOrientationRadial)
         area_prod.attachAxis(radial_axis)
 
-        new_chart.legend().setAlignment(Qt.AlignBottom)
+        new_chart.legend().setAlignment(Qt.AlignmentFlag.AlignBottom)
         new_chart.legend().setLabelBrush(QColor("#FFFFFF"))
 
-        self._safe_set_chart(self.radar_view, new_chart)
+        TeamManagementWidget._safe_set_chart(self.radar_view, new_chart)
 
     def update_analytics(self, engineer_name: str, analytics_payload: Dict[str, Any], primary_color: str = "#007ACC") -> None:
         self.lbl_analytics_title.setText(f"Workload Analytics: {engineer_name}")
@@ -585,8 +574,8 @@ class TeamManagementWidget(QWidget):
         self.kpi_prod_lbl.setText(str(kpis['total_prod']))
         self.kpi_sub_lbl.setText(str(kpis['total_sub']))
 
-        self._populate_throughput(self.prod_chart_view, analytics_payload['throughput'].get('prod', {}), primary_color)
-        self._populate_throughput(self.sub_chart_view, analytics_payload['throughput'].get('sub', {}), primary_color)
+        self._populate_throughput(self.prod_chart_view, analytics_payload.get('throughput', {}).get('prod', {}), primary_color)
+        self._populate_throughput(self.sub_chart_view, analytics_payload.get('throughput', {}).get('sub', {}), primary_color)
 
         self._populate_top_projects(analytics_payload.get('projects', []), primary_color)
         self._populate_radar(analytics_payload.get('radar', {}), primary_color)

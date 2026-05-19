@@ -2,7 +2,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
 
 
 class DataViewWidget(QWidget):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         main_layout = QVBoxLayout(self)
@@ -18,8 +18,8 @@ class DataViewWidget(QWidget):
         raw_well_layout.setContentsMargins(2, 2, 2, 2)
 
         self.raw_table = QTableWidget()
-        self.raw_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.raw_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.raw_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.raw_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.raw_table.setShowGrid(False)
         self.raw_table.verticalHeader().setVisible(False)
 

@@ -31,7 +31,6 @@ class SyncWorker(QThread):
 
 
 class DataRefreshWorker(QThread):
-    # Emits: (raw_df, filtered_plan_df, actual_excel_df, full_plan_df)
     data_ready = Signal(object, object, object, object)
 
     def __init__(self, model: Any, staged_edits: Dict[str, Any], team_filter: str,

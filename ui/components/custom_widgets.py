@@ -9,8 +9,9 @@ Phase 3 Updates:
   the default toggle (click to open, click to close) behavior.
 """
 
-from PySide6.QtWidgets import QComboBox
-from PySide6.QtCore import Qt, Signal
+from typing import List
+from PySide6.QtWidgets import QComboBox, QLineEdit
+from PySide6.QtCore import Qt, Signal, QModelIndex
 from PySide6.QtGui import QStandardItemModel, QStandardItem
 
 class CheckableComboBox(QComboBox):
@@ -19,56 +20,63 @@ class CheckableComboBox(QComboBox):
     Allows users to check/uncheck multiple items, and updates the display text
     to show how many items are currently selected.
     """
-    selection_changed = Signal()
+    selection_changed = Signal()  # type: ignore
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-        # Make it editable so we can display custom text (e.g., "3 Types Selected")
         self.setEditable(True)
-        self.lineEdit().setReadOnly(True)
-        self.lineEdit().setAlignment(Qt.AlignCenter)
 
-        # ---> THE PERFECT UX FIX <---
-        # Makes the line edit a "ghost" to the mouse. Clicks fall right through
-        # to the underlying QComboBox, restoring perfect native toggle behavior!
-        self.lineEdit().setAttribute(Qt.WA_TransparentForMouseEvents)
+        line_edit: QLineEdit | None = self.lineEdit()
+        if line_edit is not None:
+            line_edit.setReadOnly(True)
+            line_edit.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            line_edit.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
-        self.model = QStandardItemModel(self)
-        self.setModel(self.model)
-        self.view().pressed.connect(self.handle_item_pressed)
-        self.model.dataChanged.connect(self.on_data_changed)
+        # Renamed to _model to avoid colliding with QComboBox's built-in model() method
+        self._model = QStandardItemModel(self)
+        self.setModel(self._model)
 
-    def handle_item_pressed(self, index):
+        view = self.view()
+        if view is not None:
+            view.pressed.connect(self.handle_item_pressed)
+
+        self._model.dataChanged.connect(self.on_data_changed)
+
+    def handle_item_pressed(self, index: QModelIndex) -> None:
         """Toggles the check state of the item clicked in the dropdown list."""
-        item = self.model.itemFromIndex(index)
-        if item.checkState() == Qt.Checked:
-            item.setCheckState(Qt.Unchecked)
-        else:
-            item.setCheckState(Qt.Checked)
+        item = self._model.itemFromIndex(index)
+        if item is not None:
+            if item.checkState() == Qt.CheckState.Checked:
+                item.setCheckState(Qt.CheckState.Unchecked)
+            else:
+                item.setCheckState(Qt.CheckState.Checked)
 
-    def on_data_changed(self):
+    def on_data_changed(self) -> None:
         """Fired whenever an item is checked/unchecked to update UI and emit signals."""
         self.update_text()
         self.selection_changed.emit()
 
-    def update_text(self):
+    def update_text(self) -> None:
         """Updates the placeholder text based on the number of checked items."""
         checked = self.get_checked_items()
-        if not checked:
-            self.lineEdit().setText("No Types Selected")
-        elif len(checked) == 1:
-            self.lineEdit().setText(checked[0])
-        else:
-            self.lineEdit().setText(f"{len(checked)} Types Selected")
+        line_edit = self.lineEdit()
 
-    def add_item(self, text, checked=False):
+        if line_edit is not None:
+            if not checked:
+                line_edit.setText("No Types Selected")
+            elif len(checked) == 1:
+                line_edit.setText(checked[0])
+            else:
+                line_edit.setText(f"{len(checked)} Types Selected")
+
+    def add_item(self, text: str, checked: bool = False) -> None:
         """Adds a new checkable item to the dropdown list."""
         item = QStandardItem(text)
-        item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable)
-        item.setData(Qt.Checked if checked else Qt.Unchecked, Qt.CheckStateRole)
-        self.model.appendRow(item)
+        item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable)
+        item.setData(Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked, Qt.ItemDataRole.CheckStateRole)
+        self._model.appendRow(item)
 
-    def get_checked_items(self):
+    def get_checked_items(self) -> List[str]:
         """Returns a list of strings representing the currently checked items."""
-        return [self.model.item(i).text() for i in range(self.model.rowCount()) if
-                self.model.item(i).checkState() == Qt.Checked]
+        return [self._model.item(i).text() for i in range(self._model.rowCount()) if
+                self._model.item(i).checkState() == Qt.CheckState.Checked]
