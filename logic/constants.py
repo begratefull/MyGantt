@@ -37,3 +37,18 @@ class AppConstants:
     UNASSIGNED_LABEL = 'UNASSIGNED'
     STANDARD_TEAM_LABEL = 'STANDARD TEAM'
     CUSTOM_TEAM_LABEL = 'CUSTOM TEAM'
+
+    # --- ENGINEERS LIST ---
+    OFFICIAL_ENGINEERS = [
+        "Adam T", "Andy C", "David M", "Matt M", "Soree S",
+        "Shruti K", "Dinesh S", "Inside Sales", "Josh F",
+        "Diana E", "Kathryn K", "Josh D", "Eric J",
+        "Jason B", "Frank G"
+    ]
+
+    # --- ALIAS MAP FOR TYPOS IN OUTLOOK CALENDAR ---
+    ALIAS_MAP = {
+        "dave m": "David M",
+        "frank": "Frank G",
+        "david m.": "David M",  # Example of catching typos
+    }

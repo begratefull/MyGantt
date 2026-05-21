@@ -4,7 +4,7 @@ into hierarchical, visually-ready data structures for the UI.
 """
 
 import re
-from typing import Dict, Any, List, Set
+from typing import Dict, Any, List, Set, Optional
 from logic.constants import AppConstants
 import pandas as pd
 from logic.calendar_engine import CalendarEngine
@@ -16,7 +16,12 @@ class GanttDataBuilder:
         return re.sub(r'(?i)drawing', '', str(req_text)).strip()
 
     @staticmethod
-    def build_visual_hierarchy(df: pd.DataFrame, expanded_projects: Set[str], color_map: Dict[str, str]) -> List[Dict[str, Any]]:
+    def build_visual_hierarchy(
+            df: pd.DataFrame,
+            expanded_projects: Set[str],
+            color_map: Dict[str, str],
+            pto_dict: Optional[Dict[str, List[str]]] = None
+    ) -> List[Dict[str, Any]]:
         visual_rows: List[Dict[str, Any]] = []
         if df.empty:
             return visual_rows
@@ -35,8 +40,13 @@ class GanttDataBuilder:
                 est_days = pd.to_numeric(group.loc[valid_idx, 'EST DAYS'], errors='coerce').fillna(AppConstants.DEFAULT_EST_DAYS).astype(int)
 
                 # --- Routed through Central Engine ---
-                end_strings = CalendarEngine.calculate_end_dates_vectorized(est_starts, est_days)
+                assignee_series = group.loc[valid_idx, 'ASSIGNED TO']
+                end_strings = CalendarEngine.calculate_end_dates_vectorized(
+                    est_starts, est_days, assignee_series, pto_dict
+                )
                 est_ends = pd.to_datetime(end_strings, errors='coerce')
+
+                group.loc[valid_idx, 'EST END DATE'] = end_strings
 
             all_starts = pd.concat([real_starts, est_starts])
             all_ends = pd.concat([real_ends, est_ends])
@@ -60,6 +70,8 @@ class GanttDataBuilder:
             assignees = [str(x).strip().upper() for x in group['ASSIGNED TO'].unique() if
                          str(x).strip().upper() not in ('', AppConstants.UNASSIGNED_LABEL, 'NAN')]
             parent_assignee = assignees[0] if len(assignees) == 1 else "MULTIPLE" if len(assignees) > 1 else AppConstants.UNASSIGNED_LABEL
+
+            all_colors = [color_map.get(a, "#555555") for a in assignees] if assignees else ["#555555"]
 
             parent_color = color_map.get(parent_assignee, "#555555")
             if parent_assignee == "MULTIPLE": parent_color = "#888888"
@@ -94,6 +106,8 @@ class GanttDataBuilder:
                 'STATUS': parent_status,
                 'ASSIGNED TO': parent_assignee,
                 'HEX_COLOR': parent_color,
+                'ALL_ASSIGNEES': assignees,
+                'ALL_COLORS': all_colors,
 
                 'ENG START DATE': parent_eng_start.strftime('%m/%d/%Y') if pd.notna(parent_eng_start) else "",
                 'COMPLETE DATE': parent_comp_date.strftime('%m/%d/%Y') if pd.notna(parent_comp_date) else "",
@@ -131,8 +145,9 @@ class GanttDataBuilder:
                     else:
                         child_color = color_map.get(child_assignee, "#555555")
 
-                    # Unindented to apply to all children properly!
                     child_row['HEX_COLOR'] = child_color
+                    child_row['ALL_ASSIGNEES'] = [child_assignee] if child_assignee else []
+                    child_row['ALL_COLORS'] = [child_color]
 
                     visual_rows.append(child_row)
 

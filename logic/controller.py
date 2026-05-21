@@ -20,6 +20,7 @@ from logic.history import HistoryManager
 from logic.workers import SyncWorker, DataRefreshWorker
 from logic.data_builder import GanttDataBuilder
 from logic.calendar_engine import CalendarEngine
+from logic.pto_parser import PTOParser
 from ui.components.gantt_components import GanttBlock
 
 logger = logging.getLogger(__name__)
@@ -60,6 +61,12 @@ class AppController:
         self.initial_scroll_done = False
         self.refresh_worker: Optional[DataRefreshWorker] = None
         self._old_workers: List[DataRefreshWorker] = []
+
+        self.pto_path = self.config_data.get('pto_path', '')
+        if not self.pto_path or not os.path.exists(self.pto_path):
+            self.pto_path = self.prompt_for_pto()
+
+        self.pto_dict = PTOParser.load_pto_data(self.pto_path) if self.pto_path else {}
 
         self.setup_shortcuts()
 
@@ -141,6 +148,16 @@ class AppController:
         )
         if file_path:
             self.config_data['excel_path'] = file_path
+            self.save_config()
+            return file_path
+        return ""
+
+    def prompt_for_pto(self) -> str:
+        file_path, _ = QFileDialog.getOpenFileName(
+            self.view, "Select Power Automate PTO CSV", "", "CSV Files (*.csv)"
+        )
+        if file_path:
+            self.config_data['pto_path'] = file_path
             self.save_config()
             return file_path
         return ""
@@ -315,14 +332,21 @@ class AppController:
     def _rebuild_and_render_canvas(self, target_id_to_restore: Optional[str]) -> None:
         """Forces a pure recalculation of the visual hierarchy to prevent UI feedback loops."""
         eng_df = self.model.db.get_engineers_df()
-        color_map = {str(k).strip().upper(): str(v).strip().upper() for k, v in zip(eng_df['name'], eng_df['hex_color'])} if not eng_df.empty else {}
+        color_map = {str(k).strip().upper(): str(v).strip().upper() for k, v in
+                     zip(eng_df['name'], eng_df['hex_color'])} if not eng_df.empty else {}
+
 
         self.current_visual_rows = GanttDataBuilder.build_visual_hierarchy(
-            self.current_plan_df, self.expanded_projects, color_map
+            self.current_plan_df, self.expanded_projects, color_map, self.pto_dict
         )
 
-        dynamic_engineers = [self.view.inp_assignee.itemText(i) for i in range(self.view.inp_assignee.count())]
-        self.view.gantt_screen.render_gantt(self.current_visual_rows, dynamic_engineers, self.expanded_projects)
+        dynamic_engineers = [self.view.inp_assignee.itemText(i)
+                             for i in range(self.view.inp_assignee.count())]
+
+        self.view.gantt_screen.render_gantt(
+            self.current_visual_rows, dynamic_engineers, self.expanded_projects, color_map, self.pto_dict
+        )
+
         self.restore_selection(target_id_to_restore)
 
     def on_data_refreshed(self, raw_df: pd.DataFrame, plan_df: pd.DataFrame, actual_df: pd.DataFrame, full_plan_df: pd.DataFrame) -> None:
@@ -528,29 +552,30 @@ class AppController:
             primary_color=primary_color
         )
 
-    def update_kpi_variances_locally(self, start_x: float, est_days_str: str) -> None:
+    def update_kpi_variances_locally(self, start_x: float, est_days_str: str, pto_dates: Optional[List[str]] = None) -> None:
         day_zero = self.view.gantt_screen.day_zero
         if not day_zero: return
 
-        # Visual math maps screen space back to a raw date, then strictly routes through Engine
         start_date_raw = day_zero + pd.tseries.offsets.BusinessDay(round(start_x / self.day_width))
         days = int(est_days_str) if est_days_str.isdigit() else 5
 
-        # Calculate exactly where it ends using the Engine
         adjusted_days = days - 1 if days > 0 else days
-        end_date = CalendarEngine.shift_date(start_date_raw, adjusted_days)
+        end_date = CalendarEngine.shift_date(start_date_raw, adjusted_days, pto_dates) # <-- PASS PTO
+
+        if end_date is None:
+            return
 
         due_date_str = self.view.kpi_eng_due.text()
         if due_date_str and due_date_str != '--':
             try:
-                var = CalendarEngine.get_working_days_variance(end_date, pd.to_datetime(due_date_str))
+                var = CalendarEngine.get_working_days_variance(end_date, pd.to_datetime(due_date_str), pto_dates)
                 self.view.kpi_eng_var.setText(f"{var} days")
             except ValueError: pass
 
         esd_str = self.view.kpi_esd.text()
         if esd_str and esd_str != '--':
             try:
-                var_esd = CalendarEngine.get_working_days_variance(end_date, pd.to_datetime(esd_str))
+                var_esd = CalendarEngine.get_working_days_variance(end_date, pd.to_datetime(esd_str), pto_dates)
                 self.view.kpi_esd_var.setText(f"{var_esd} days")
             except ValueError: pass
 
@@ -560,14 +585,24 @@ class AppController:
         if not day_zero: return
         day_width = self.view.gantt_screen.day_width
 
+        # --- NEW: Grab the Assignee's PTO dates to fuel the drag math ---
+        mask = self.current_plan_df['SMART_ID'] == target_id
+        assignee = self.current_plan_df.loc[mask, 'ASSIGNED TO'].values[0] if not is_parent else ""
+        safe_assignee = str(assignee).strip().title()
+        pto_dates = self.pto_dict.get(safe_assignee, []) if hasattr(self, 'pto_dict') and self.pto_dict else []
+        # ----------------------------------------------------------------
+
         if not is_parent:
             # 1. Map visual drop location to a physical date via the Engine
             new_date_raw = day_zero + pd.tseries.offsets.BusinessDay(round(new_x / day_width))
-            new_start_pd = CalendarEngine.shift_date(new_date_raw, 0)
+            new_start_pd = CalendarEngine.shift_date(new_date_raw, 0, pto_dates)  # <-- PASS PTO
+
+            if new_start_pd is None:
+                return
+
             start_date_str = f"{new_start_pd.month}/{new_start_pd.day}/{new_start_pd.year}"
 
             # 2. INSTANT CACHE UPDATE
-            mask = self.current_plan_df['SMART_ID'] == target_id
             self.current_plan_df.loc[mask, 'EST START DATE'] = start_date_str
             self.history.stage_edit(target_id, {'MAN_START_DATE': start_date_str})
 
@@ -575,8 +610,9 @@ class AppController:
             days_val = int(est_days_str) if est_days_str.isdigit() else 5
             adjusted_days = days_val - 1 if days_val > 0 else days_val
 
-            new_end_pd = CalendarEngine.shift_date(new_start_pd, adjusted_days)
-            if pd.notna(new_end_pd):
+            new_end_pd = CalendarEngine.shift_date(new_start_pd, adjusted_days, pto_dates)
+
+            if new_end_pd is not None:
                 self.current_plan_df.loc[
                     mask, 'EST END DATE'] = f"{new_end_pd.month}/{new_end_pd.day}/{new_end_pd.year}"
 
@@ -586,14 +622,15 @@ class AppController:
                 end_date_raw = new_date_raw + pd.tseries.offsets.BusinessDay(visual_days - 1)
 
                 # Use Engine's exact inclusive duration math!
-                raw_work_days = CalendarEngine.get_working_days_duration(new_start_pd, end_date_raw)
+                raw_work_days = CalendarEngine.get_working_days_duration(new_start_pd, end_date_raw,
+                                                                         pto_dates)
                 new_days_str = str(max(1, raw_work_days))
 
                 self.current_plan_df.loc[mask, 'EST DAYS'] = new_days_str
                 self.history.stage_edit(target_id, {'MAN_EST_DAYS': new_days_str})
 
                 if hasattr(self, 'update_kpi_variances_locally'):
-                    self.update_kpi_variances_locally(new_x, new_days_str)
+                    self.update_kpi_variances_locally(new_x, new_days_str, pto_dates)
 
         else:
             # 4. GHOST PARENT DRAGGING
@@ -615,6 +652,11 @@ class AppController:
 
             # Find exact shift working days using the Engine
             new_parent_start_safe = CalendarEngine.shift_date(old_parent_start, delta_days_visual)
+
+            if new_parent_start_safe is None:
+                self._rebuild_and_render_canvas(target_id)
+                return
+
             shift_working_days = CalendarEngine.get_working_days_variance(old_parent_start, new_parent_start_safe)
 
             if shift_working_days == 0:
@@ -633,7 +675,9 @@ class AppController:
                 if pd.isna(old_child_start): continue
 
                 new_child_pd = CalendarEngine.shift_date(old_child_start, shift_working_days)
-                if pd.isna(new_child_pd): continue
+
+                if new_child_pd is None:
+                    continue
 
                 start_date_str = f"{new_child_pd.month}/{new_child_pd.day}/{new_child_pd.year}"
 

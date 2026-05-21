@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QGraphicsObject, QGraphicsItem, QMenu, QWidget
 )
 from PySide6.QtGui import (
-    QBrush, QColor, QPen, QPainter, QFontMetrics, QPolygonF
+    QBrush, QColor, QPen, QPainter, QFontMetrics, QPolygonF, QPainterPath
 )
 from PySide6.QtCore import Qt, QRectF, Signal, QTimer, QPointF
 
@@ -117,7 +117,7 @@ class GanttBlock(QGraphicsObject):
             self.text_color = QColor("#E0E0E0") if is_prod else QColor("#888888")
 
             if assignee == "MULTIPLE":
-                self.brush = QBrush(self.base_color, Qt.BrushStyle.BDiagPattern)
+                self.brush = QBrush(Qt.BrushStyle.NoBrush)
             elif assignee and assignee != "UNASSIGNED":
                 self.brush = QBrush(actual_color)
             else:
@@ -148,13 +148,8 @@ class GanttBlock(QGraphicsObject):
     def paint(self, painter: QPainter, option: Any, widget: Optional[QWidget] = None) -> None:
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        if self.is_parent and self.brush.style() == Qt.BrushStyle.BDiagPattern:
-            painter.setBrush(QBrush(QColor("#2D2D30")))
-            painter.setPen(Qt.PenStyle.NoPen)
-            self._draw_shape(painter)
-
+        # Let _draw_shape handle both the fill and the background clipping
         painter.setBrush(self.brush)
-
         if self.isSelected():
             painter.setPen(QPen(QColor("#FFFFFF"), 2))
         else:
@@ -196,6 +191,8 @@ class GanttBlock(QGraphicsObject):
             painter.drawText(text_rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, elided_text)
 
     def _draw_shape(self, painter: QPainter) -> None:
+        # 1. Define the outline shape of the block
+        path = QPainterPath()
         if self.is_parent:
             poly = QPolygonF([
                 QPointF(0, 0),
@@ -205,9 +202,52 @@ class GanttBlock(QGraphicsObject):
                 QPointF(8, self.rect.height() - 8),
                 QPointF(0, self.rect.height())
             ])
-            painter.drawPolygon(poly)
+            path.addPolygon(poly)
         else:
-            painter.drawRoundedRect(self.rect, 4.0, 4.0)
+            path.addRoundedRect(self.rect, 4.0, 4.0)
+
+        assignee = str(self.block_data.get('ASSIGNED TO', '')).strip().upper()
+        all_colors = self.block_data.get('ALL_COLORS', [])
+
+        if self.is_parent and assignee == "MULTIPLE" and len(all_colors) > 1:
+            # 2. Save state and clip to the parent's chamfered outline
+            painter.save()
+            painter.setClipPath(path)
+
+            req = str(self.block_data.get('REQUIREMENT', '')).strip().upper()
+            alpha = 120 if 'PROD' in req else 60
+
+            w = self.rect.width()
+            h = self.rect.height()
+            step = w / len(all_colors)
+
+            painter.setPen(Qt.PenStyle.NoPen)
+            for i, c_hex in enumerate(all_colors):
+                qc = QColor(c_hex)
+                qc.setAlpha(alpha)
+                painter.setBrush(QBrush(qc))
+
+                # 3. Draw solid 45-degree slanted blocks!
+                slice_poly = QPolygonF([
+                    QPointF(i * step, 0),
+                    QPointF((i + 1) * step, 0),
+                    QPointF((i + 1) * step - h, h),
+                    QPointF(i * step - h, h)
+                ])
+                painter.drawPolygon(slice_poly)
+
+            painter.restore()
+
+            # 4. Redraw the border cleanly over the clipped slices
+            if self.isSelected():
+                painter.setPen(QPen(QColor("#FFFFFF"), 2))
+            else:
+                painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawPath(path)
+        else:
+            # Normal single-color fill
+            painter.drawPath(path)
 
     def contextMenuEvent(self, event: Any) -> None:
         menu = QMenu()

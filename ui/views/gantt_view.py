@@ -2,12 +2,13 @@
 Provides the Interactive Gantt Chart interface.
 """
 
+from PySide6.QtCore import QPointF
 from typing import Optional, List, Dict, Any
 
 import numpy as np
 import pandas as pd
 from PySide6.QtCore import Qt, Signal, QRectF, QRect, QTimer
-from PySide6.QtGui import QPainter, QColor, QPen, QMouseEvent, QFont, QWheelEvent, QBrush
+from PySide6.QtGui import QPainter, QColor, QPen, QMouseEvent, QFont, QWheelEvent, QBrush, QPolygonF, QPainterPath
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QComboBox, QSplitter, QTableWidget, QAbstractItemView,
@@ -378,7 +379,14 @@ class GanttScreenWidget(QWidget):
         except ValueError:
             return 0
 
-    def draw_gantt_canvas(self, visual_rows: List[Dict[str, Any]], dynamic_engineers: List[str]) -> None:
+    def draw_gantt_canvas(
+            self,
+            visual_rows: List[Dict[str, Any]],
+            dynamic_engineers: List[str],
+            color_map: Optional[Dict[str, str]] = None,
+            pto_dict: Optional[Dict[str, List[str]]] = None
+    ) -> None:
+
         self.header_scene.clear()
         self.gantt_scene.clear()
 
@@ -431,8 +439,10 @@ class GanttScreenWidget(QWidget):
         temp_start_x = 0
         temp_month_date = day_zero
 
+        # Safely extract company holidays as strings
         safe_holiday = [str(h)[:10] for h in AppConstants.COMPANY_HOLIDAYS]
 
+        # Draw the background grid and Headers
         for i in range(total_business_days):
             current_date = day_zero + pd.tseries.offsets.BusinessDay(i)
 
@@ -441,13 +451,15 @@ class GanttScreenWidget(QWidget):
                 temp_start_x = current_x
                 temp_month_date = current_date
 
-            # Highlight Holidays in red on the grid
+            # Highlight Company Holidays (Using QPainterPath for safe rounded corners)
             current_date_str = current_date.strftime('%Y-%m-%d')
             if current_date_str in safe_holiday:
-                self.gantt_scene.addRect(
-                    current_x, 0, self.day_width, total_height + 2000,
-                    QPen(Qt.PenStyle.NoPen), QColor(255, 82, 82, 30)
+                holiday_path = QPainterPath()
+                holiday_path.addRoundedRect(current_x + 2, 0, self.day_width - 4, total_height + 2000, 4, 4)
+                self.gantt_scene.addPath(
+                    holiday_path, QPen(Qt.PenStyle.NoPen), QBrush(QColor(255, 82, 82, 30))
                 )
+
                 h_text = self.header_scene.addText("H")
                 h_text.setDefaultTextColor(QColor("#FF5252"))
                 h_text.setFont(font_day)
@@ -490,6 +502,7 @@ class GanttScreenWidget(QWidget):
                 m_text.setPlainText(m_date.strftime("%b"))
                 m_text.setPos(start_x + 2, -2)
 
+        # Draw the Gantt Blocks and Row-Specific PTO
         for index, row in enumerate(visual_rows):
             y = index * self.row_height
             is_parent = row.get('IS_PARENT', False)
@@ -504,7 +517,6 @@ class GanttScreenWidget(QWidget):
                 x = self.get_business_day_offset(day_zero, start_dt) * self.day_width
                 if pd.notna(end_dt):
                     try:
-                        # Safely handle weekend data before calculating the visual span
                         d1_safe = np.busday_offset(start_dt.date(), 0, roll='forward')
                         d2_safe = np.busday_offset(end_dt.date(), 0, roll='forward')
 
@@ -528,11 +540,68 @@ class GanttScreenWidget(QWidget):
             )
             block.block_dropped.connect(self.block_dropped_signal.emit)
             block.assignee_changed.connect(self.assignee_changed_signal.emit)
+
+            # --- ROW-BASED PTO DRAWING (Contiguous Blocks, Strict Deduplication) ---
+            if not is_parent and pto_dict:
+                assignee = str(row.get('ASSIGNED TO', '')).strip().title()
+                if assignee in pto_dict:
+                    color = color_map.get(assignee.upper(), "#555555") if color_map else "#555555"
+
+                    # 1. Deduplicate the dates to fix darker overlapping blocks
+                    raw_dates = pto_dict[assignee]
+                    unique_dates = sorted(list(set(raw_dates)))
+
+                    # 2. Filter out company holidays and get valid X-offsets
+                    valid_offsets = []
+                    for d_str in unique_dates:
+                        if d_str[:10] in safe_holiday:
+                            continue
+                        dt = pd.to_datetime(d_str)
+                        if pd.notna(dt):
+                            off = self.get_business_day_offset(day_zero, dt)
+                            if off >= 0:
+                                valid_offsets.append(off)
+
+                    # Extra safety: Ensure no duplicate mathematical offsets exist
+                    valid_offsets = sorted(list(set(valid_offsets)))
+
+                    # 3. Group consecutive days into solid blocks
+                    if valid_offsets:
+                        blocks = []
+                        current_start = valid_offsets[0]
+                        current_end = valid_offsets[0]
+
+                        for off in valid_offsets[1:]:
+                            if off == current_end + 1:
+                                current_end = off  # Extend the block
+                            else:
+                                blocks.append((current_start, current_end))  # Save the block
+                                current_start = off  # Start a new block
+                                current_end = off
+                        blocks.append((current_start, current_end))  # Save the final block
+
+                        # 4. Draw the spanned blocks as single wide pills
+                        pto_color = QColor(color)
+                        pto_color.setAlpha(40)  # Keep subtle
+
+                        for start_off, end_off in blocks:
+                            span_width = (end_off - start_off) + 1
+
+                            pto_x = (start_off * self.day_width) + 2
+                            pto_y = y + 2
+                            pto_w = (span_width * self.day_width) - 4
+                            pto_h = self.row_height - 4
+
+                            pto_path = QPainterPath()
+                            pto_path.addRoundedRect(pto_x, pto_y, pto_w, pto_h, 4, 4)
+                            self.gantt_scene.addPath(
+                                pto_path, QPen(Qt.PenStyle.NoPen), QBrush(pto_color)
+                            )
+
+            # ADD THE BLOCK LAST (So it sits on top of the PTO!)
             self.gantt_scene.addItem(block)
 
-            due_dt = pd.to_datetime(row.get('ENG DUE DATE', '')) \
-                if str(row.get('ENG DUE DATE', '')) \
-                else pd.NaT
+            due_dt = pd.to_datetime(row.get('ENG DUE DATE', '')) if str(row.get('ENG DUE DATE', '')) else pd.NaT
             if pd.notna(due_dt):
                 due_offset = self.get_business_day_offset(day_zero, due_dt)
                 due_x = due_offset * self.day_width
@@ -544,7 +613,14 @@ class GanttScreenWidget(QWidget):
             QTimer.singleShot(0, lambda: self.gantt_view.horizontalScrollBar().setValue(scroll_x))
             self.initial_scroll_done = True
 
-    def render_gantt(self, visual_rows: List[Dict[str, Any]], dynamic_engineers: List[str],
-                     expanded_projects: set) -> None:
+    def render_gantt(
+        self,
+        visual_rows: List[Dict[str, Any]],
+        dynamic_engineers: List[str],
+        expanded_projects: set,
+        color_map: Optional[Dict[str, str]] = None,
+        pto_dict: Optional[Dict[str, List[str]]] = None
+    ) -> None:
+
         self.populate_left_table(visual_rows, expanded_projects)
-        self.draw_gantt_canvas(visual_rows, dynamic_engineers)
+        self.draw_gantt_canvas(visual_rows, dynamic_engineers, color_map, pto_dict)
