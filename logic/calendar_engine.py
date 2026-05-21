@@ -97,3 +97,20 @@ class CalendarEngine:
             except Exception as e:
                 logger.exception("Calendar Engine Error: %s", e)
         return res
+
+    @staticmethod
+    def get_visual_grid_span(start_date: Union[str, pd.Timestamp], end_date: Union[str, pd.Timestamp]) -> int:
+        """
+        Calculates Standard Business Days (M-F) ignoring holidays.
+        This dictates exactly how many columns a block must span visually on the UI.
+        """
+        if pd.isna(start_date) or pd.isna(end_date):
+            return 0
+        try:
+            # We strictly exclude 'holidays' here to map 1:1 with the UI BusinessDay grid
+            d1_safe = pd.to_datetime(start_date).date()
+            d2_safe = pd.to_datetime(end_date).date()
+            raw = np.busday_count(d1_safe, d2_safe)
+            return int(raw + 1 if raw >= 0 else raw - 1)
+        except ValueError:
+            return 0

@@ -3,10 +3,9 @@ Provides the Interactive Gantt Chart interface.
 """
 
 from typing import Optional, List, Dict, Any
-import pandas as pd
-import numpy as np
-from logic.constants import AppConstants
 
+import numpy as np
+import pandas as pd
 from PySide6.QtCore import Qt, Signal, QRectF, QRect, QTimer
 from PySide6.QtGui import QPainter, QColor, QPen, QMouseEvent, QFont, QWheelEvent, QBrush
 from PySide6.QtWidgets import (
@@ -16,6 +15,7 @@ from PySide6.QtWidgets import (
     QTableWidgetItem, QHeaderView
 )
 
+from logic.constants import AppConstants
 from ui.components.gantt_components import GanttBlock, DueDateMarker
 
 
@@ -74,7 +74,6 @@ class GanttGridScene(QGraphicsScene):
 
 
 class GanttScreenWidget(QWidget):
-
     block_dropped_signal = Signal(str, float, float, bool, float, float)
     assignee_changed_signal = Signal(str, str)
 
@@ -287,7 +286,8 @@ class GanttScreenWidget(QWidget):
 
         if is_parent:
             self.inp_est_days.setEnabled(False)
-            self.inp_est_days.setToolTip("Parent durations are calculated automatically from their sub-lines. Stretch a sub-line to extend this project.")
+            self.inp_est_days.setToolTip(
+                "Parent durations are calculated automatically from their sub-lines. Stretch a sub-line to extend this project.")
         else:
             self.inp_est_days.setEnabled(True)
             self.inp_est_days.setToolTip("Type a number of days to override the duration.")
@@ -348,11 +348,11 @@ class GanttScreenWidget(QWidget):
                     table.setItem(row_idx, col, item)
             else:
                 part_no = str(row.get('LUMINARIE SPECIFICATION',
-                            row.get('CONFIGURED STRING',
-                            row.get('PART NUMBER',
-                            row.get('CATALOG CODE',
-                            row.get('CATALOG',
-                            row.get('FAMILY', ''))))))).strip()
+                                      row.get('CONFIGURED STRING',
+                                              row.get('PART NUMBER',
+                                                      row.get('CATALOG CODE',
+                                                              row.get('CATALOG',
+                                                                      row.get('FAMILY', ''))))))).strip()
 
                 if not part_no or part_no.lower() == 'nan':
                     part_no = "Unknown Specification"
@@ -370,8 +370,13 @@ class GanttScreenWidget(QWidget):
     def get_business_day_offset(start_date: pd.Timestamp, target_date: pd.Timestamp) -> int:
         if pd.isna(target_date) or pd.isna(start_date):
             return 0
-        # --- NEW: Use pure M-F columns for visual alignment ---
-        return int(np.busday_count(start_date.date(), target_date.date()))
+        try:
+            # Safely roll to nearest business day in case the user typed a weekend in Excel
+            d1_safe = np.busday_offset(start_date.date(), 0, roll='forward')
+            d2_safe = np.busday_offset(target_date.date(), 0, roll='forward')
+            return int(np.busday_count(d1_safe, d2_safe))
+        except ValueError:
+            return 0
 
     def draw_gantt_canvas(self, visual_rows: List[Dict[str, Any]], dynamic_engineers: List[str]) -> None:
         self.header_scene.clear()
@@ -426,6 +431,8 @@ class GanttScreenWidget(QWidget):
         temp_start_x = 0
         temp_month_date = day_zero
 
+        safe_holiday = [str(h)[:10] for h in AppConstants.COMPANY_HOLIDAYS]
+
         for i in range(total_business_days):
             current_date = day_zero + pd.tseries.offsets.BusinessDay(i)
 
@@ -434,9 +441,9 @@ class GanttScreenWidget(QWidget):
                 temp_start_x = current_x
                 temp_month_date = current_date
 
-            # --- NEW: Highlight Holidays in red on the grid! ---
+            # Highlight Holidays in red on the grid
             current_date_str = current_date.strftime('%Y-%m-%d')
-            if current_date_str in AppConstants.COMPANY_HOLIDAYS:
+            if current_date_str in safe_holiday:
                 self.gantt_scene.addRect(
                     current_x, 0, self.day_width, total_height + 2000,
                     QPen(Qt.PenStyle.NoPen), QColor(255, 82, 82, 30)
@@ -487,7 +494,6 @@ class GanttScreenWidget(QWidget):
             y = index * self.row_height
             is_parent = row.get('IS_PARENT', False)
 
-            # --- NEW: Calculate width based on visual spanning, stretching over holidays ---
             start_str = str(row.get('ENG START DATE') or row.get('EST START DATE')).strip()
             end_str = str(row.get('COMPLETE DATE') or row.get('EST END DATE')).strip()
 
@@ -497,9 +503,15 @@ class GanttScreenWidget(QWidget):
             if pd.notna(start_dt):
                 x = self.get_business_day_offset(day_zero, start_dt) * self.day_width
                 if pd.notna(end_dt):
-                    # How many M-F columns to bridge visually
-                    visual_days = int(np.busday_count(start_dt.date(), end_dt.date())) + 1
-                    width = max(1, visual_days) * self.day_width
+                    try:
+                        # Safely handle weekend data before calculating the visual span
+                        d1_safe = np.busday_offset(start_dt.date(), 0, roll='forward')
+                        d2_safe = np.busday_offset(end_dt.date(), 0, roll='forward')
+
+                        visual_days = int(np.busday_count(d1_safe, d2_safe)) + 1
+                        width = max(1, visual_days) * self.day_width
+                    except ValueError:
+                        width = self.day_width
                 else:
                     est_days = float(str(row.get('EST DAYS', 5)).strip() or 5)
                     width = est_days * self.day_width
@@ -518,7 +530,9 @@ class GanttScreenWidget(QWidget):
             block.assignee_changed.connect(self.assignee_changed_signal.emit)
             self.gantt_scene.addItem(block)
 
-            due_dt = pd.to_datetime(row.get('ENG DUE DATE', '')) if str(row.get('ENG DUE DATE', '')) else pd.NaT
+            due_dt = pd.to_datetime(row.get('ENG DUE DATE', '')) \
+                if str(row.get('ENG DUE DATE', '')) \
+                else pd.NaT
             if pd.notna(due_dt):
                 due_offset = self.get_business_day_offset(day_zero, due_dt)
                 due_x = due_offset * self.day_width
@@ -530,6 +544,7 @@ class GanttScreenWidget(QWidget):
             QTimer.singleShot(0, lambda: self.gantt_view.horizontalScrollBar().setValue(scroll_x))
             self.initial_scroll_done = True
 
-    def render_gantt(self, visual_rows: List[Dict[str, Any]], dynamic_engineers: List[str], expanded_projects: set) -> None:
+    def render_gantt(self, visual_rows: List[Dict[str, Any]], dynamic_engineers: List[str],
+                     expanded_projects: set) -> None:
         self.populate_left_table(visual_rows, expanded_projects)
         self.draw_gantt_canvas(visual_rows, dynamic_engineers)

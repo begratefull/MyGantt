@@ -45,8 +45,10 @@ class GanttDataBuilder:
             max_end = all_ends.max() if not all_ends.empty else pd.NaT
 
             parent_days = AppConstants.DEFAULT_EST_DAYS
+            parent_visual_days = AppConstants.DEFAULT_EST_DAYS
             if pd.notna(min_start) and pd.notna(max_end):
                 parent_days = max(1, CalendarEngine.get_working_days_duration(min_start, max_end))
+                parent_visual_days = max(1, CalendarEngine.get_visual_grid_span(min_start, max_end))
 
             parent_eng_start = real_starts.min() if not real_starts.empty else pd.NaT
             parent_comp_date = real_ends.max() if not real_ends.empty else pd.NaT
@@ -99,6 +101,7 @@ class GanttDataBuilder:
                 'EST START DATE': min_start.strftime('%m/%d/%Y') if pd.notna(min_start) else "",
                 'EST END DATE': max_end.strftime('%m/%d/%Y') if pd.notna(max_end) else "",
                 'EST DAYS': str(parent_days),
+                'VISUAL_DAYS': parent_visual_days,
                 'ENG DUE DATE': max_due.strftime('%m/%d/%Y') if pd.notna(max_due) else "",
                 'ESD': min_esd.strftime('%m/%d/%Y') if pd.notna(min_esd) else "",
                 'EST ENG VARIANCE': parent_eng_var,
@@ -111,6 +114,15 @@ class GanttDataBuilder:
                     child_row = row.to_dict()
                     child_row['IS_PARENT'] = False
                     child_row['REQUIREMENT'] = GanttDataBuilder.clean_requirement_text(child_row.get('REQUIREMENT', ''))
+
+                    c_start = pd.to_datetime(child_row.get('EST START DATE', ''))
+                    c_end = pd.to_datetime(child_row.get('EST END DATE', ''))
+
+                    if pd.notna(c_start) and pd.notna(c_end):
+                        child_row['VISUAL_DAYS'] = max(1, CalendarEngine.get_visual_grid_span(c_start, c_end))
+                    else:
+                        est_fallback = child_row.get('EST DAYS', AppConstants.DEFAULT_EST_DAYS)
+                        child_row['VISUAL_DAYS'] = int(est_fallback) if str(est_fallback).isdigit() else 5
 
                     child_assignee = str(child_row.get('ASSIGNED TO', '')).strip().upper()
 

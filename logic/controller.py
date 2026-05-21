@@ -31,7 +31,6 @@ class AppController:
     def __init__(self, view: Any, model: Any) -> None:
         self.view = view
         self.model = model
-        print(f"DEBUG: Attributes on MyGanttWindow: {dir(self.view)}")
         self.history = HistoryManager()
 
         # Declare all instance attributes upfront for strict typing
@@ -571,6 +570,15 @@ class AppController:
             mask = self.current_plan_df['SMART_ID'] == target_id
             self.current_plan_df.loc[mask, 'EST START DATE'] = start_date_str
             self.history.stage_edit(target_id, {'MAN_START_DATE': start_date_str})
+
+            est_days_str = str(self.current_plan_df.loc[mask, 'EST DAYS'].values[0])
+            days_val = int(est_days_str) if est_days_str.isdigit() else 5
+            adjusted_days = days_val - 1 if days_val > 0 else days_val
+
+            new_end_pd = CalendarEngine.shift_date(new_start_pd, adjusted_days)
+            if pd.notna(new_end_pd):
+                self.current_plan_df.loc[
+                    mask, 'EST END DATE'] = f"{new_end_pd.month}/{new_end_pd.day}/{new_end_pd.year}"
 
             # 3. Handle Resizing
             if abs(delta_w) > 0.1:
