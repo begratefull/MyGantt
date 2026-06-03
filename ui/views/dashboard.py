@@ -763,6 +763,7 @@ class DashboardWidget(QWidget):
         series_comp = QBarSeries()
         series_fcst = QBarSeries()
 
+        min_val = 0.0
         max_val = 0.0
 
         for req in reqs:
@@ -774,12 +775,22 @@ class DashboardWidget(QWidget):
             fcst_color.setAlpha(100)
             set_f.setColor(fcst_color)
 
+            has_comp_data = False
+            has_fcst_data = False
+
             for w in weeks:
                 mask_c = (df['REQUIREMENT'].replace('', 'Uncategorized') == req) & (df['YearWeek'] == w) & (df['IS_FORECAST'] == False)
                 mask_f = (df['REQUIREMENT'].replace('', 'Uncategorized') == req) & (df['YearWeek'] == w) & (df['IS_FORECAST'] == True)
 
-                c_val = float(df[mask_c]['LINE_COUNT'].sum() if 'LINE_COUNT' in df.columns else len(df[mask_c]))
-                f_val = float(df[mask_f]['LINE_COUNT'].sum() if 'LINE_COUNT' in df.columns else len(df[mask_f]))
+                subset_c = df[mask_c]
+                subset_f = df[mask_f]
+
+                # NEW: Plot Average Variance per week instead of Line Count!
+                c_val = float(subset_c['VAR_DAYS'].mean()) if not subset_c.empty else 0.0
+                f_val = float(subset_f['VAR_DAYS'].mean()) if not subset_f.empty else 0.0
+
+                if not subset_c.empty: has_comp_data = True
+                if not subset_f.empty: has_fcst_data = True
 
                 set_c.append(c_val)
                 set_f.append(f_val)
@@ -787,8 +798,9 @@ class DashboardWidget(QWidget):
             set_c.hovered.connect(lambda status, index, r=req: self._on_bar_hovered(status, index, r, False)) # type: ignore
             set_f.hovered.connect(lambda status, index, r=req: self._on_bar_hovered(status, index, r, True)) # type: ignore
 
-            if set_c.sum() > 0: series_comp.append(set_c)
-            if set_f.sum() > 0: series_fcst.append(set_f)
+            # NEW: Check our boolean flags instead of sum() to avoid dropping negative bars!
+            if has_comp_data: series_comp.append(set_c)
+            if has_fcst_data: series_fcst.append(set_f)
 
         chart.addSeries(series_comp)
         chart.addSeries(series_fcst)
@@ -801,9 +813,14 @@ class DashboardWidget(QWidget):
         for s in [series_comp, series_fcst]:
             for bar_set in s.barSets():
                 for i in range(bar_set.count()):
-                    max_val = max(max_val, bar_set.at(i))
+                    val = bar_set.at(i)
+                    max_val = max(max_val, val)
+                    min_val = min(min_val, val)
 
-        axis_y.setRange(0, max_val + (max_val * 0.2) + 1)
+        # Allow Y-Axis to expand dynamically in both positive and negative directions
+        y_padding = max(abs(max_val), abs(min_val)) * 0.2
+        if y_padding == 0: y_padding = 2
+        axis_y.setRange(min_val - y_padding - 1, max_val + y_padding + 1)
         axis_y.applyNiceNumbers()
 
         axis_x_line = QValueAxis()
@@ -820,10 +837,13 @@ class DashboardWidget(QWidget):
             future_area = QAreaSeries()
             future_area.setName("Future Highlight")
 
+            # Fix highlighter to cover the negative area below the zero line
             lower = QLineSeries()
-            lower.append(curr_idx - 0.5, 0); lower.append(len(weeks) - 0.5, 0)
+            lower.append(curr_idx - 0.5, axis_y.min())
+            lower.append(len(weeks) - 0.5, axis_y.min())
             upper = QLineSeries()
-            upper.append(curr_idx - 0.5, axis_y.max()); upper.append(len(weeks) - 0.5, axis_y.max())
+            upper.append(curr_idx - 0.5, axis_y.max())
+            upper.append(len(weeks) - 0.5, axis_y.max())
 
             future_area.setLowerSeries(lower)
             future_area.setUpperSeries(upper)
@@ -838,7 +858,8 @@ class DashboardWidget(QWidget):
 
         zero_line = QLineSeries()
         zero_line.setName("Target")
-        zero_line.append(-0.5, 0); zero_line.append(len(weeks) - 0.5, 0)
+        zero_line.append(-0.5, 0)
+        zero_line.append(len(weeks) - 0.5, 0)
         zero_line.setPen(QPen(QColor("#FFFFFF"), 3, Qt.PenStyle.SolidLine))
         chart.addSeries(zero_line)
         zero_line.attachAxis(axis_x_line)

@@ -4,15 +4,16 @@ engineers to specific teams, configuring their Gantt chart colors, and
 viewing their individual workload analytics.
 """
 
+from PySide6.QtGui import QBrush
 from typing import Dict, List, Tuple, Optional, Any
 
 import pandas as pd
 from PySide6.QtCharts import (
     QChart, QChartView, QPolarChart, QLineSeries, QBarSeries, QBarSet, QBarCategoryAxis,
-    QAreaSeries, QCategoryAxis, QValueAxis
+    QAreaSeries, QCategoryAxis, QValueAxis, QScatterSeries
 )
 from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve
-from PySide6.QtGui import QColor, QPainter, QPen
+from PySide6.QtGui import QColor, QPainter, QPen, QPainterPath
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTableWidget,
     QTableWidgetItem, QHeaderView, QFrame, QComboBox,
@@ -351,7 +352,8 @@ class TeamManagementWidget(QWidget):
     # ===============================================
 
     @staticmethod
-    def _populate_throughput(chart_view: QChartView, data_dict: Dict[str, Dict[str, float]], primary_color: str) -> None:
+    def _populate_throughput(chart_view: QChartView, data_dict: Dict[str, Dict[str, float]],
+                             primary_color: str) -> None:
         new_chart = TeamManagementWidget._get_empty_dark_chart()
         new_chart.setAnimationOptions(QChart.AnimationOption.SeriesAnimations)
 
@@ -366,11 +368,6 @@ class TeamManagementWidget(QWidget):
         bar_set.setColor(fill_color)
         bar_set.setBorderColor(QColor(primary_color))
 
-        speed_series = QLineSeries()
-        speed_series.setName("Avg Days")
-        speed_pen = QPen(QColor("#FFFFFF"), 3)
-        speed_series.setPen(speed_pen)
-
         categories = []
         max_lines = 0
         max_days = 0.0
@@ -379,16 +376,23 @@ class TeamManagementWidget(QWidget):
             lines = stats['lines']
             days = stats['avg_days']
             categories.append(l_type)
-
             bar_set.append(lines)
-            speed_series.append(i, days)
+
+            # Create a distinct LineSeries for THIS bar only to get a horizontal line
+            line_series = QLineSeries()
+            line_series.setName(f"Avg Days - {l_type}")
+            line_series.setPen(QPen(QColor("#FFFFFF"), 3))
+            # Append two points: Left edge and Right edge of the bar
+            line_series.append(i - 0.3, days)
+            line_series.append(i + 0.3, days)
+
+            new_chart.addSeries(line_series)
 
             if lines > max_lines: max_lines = int(lines)
             if days > max_days: max_days = days
 
         bar_series.append(bar_set)
         new_chart.addSeries(bar_series)
-        new_chart.addSeries(speed_series)
 
         axis_x = QBarCategoryAxis()
         axis_x.append(categories)
@@ -396,7 +400,11 @@ class TeamManagementWidget(QWidget):
         axis_x.setGridLineVisible(False)
         new_chart.addAxis(axis_x, Qt.AlignmentFlag.AlignBottom)
         bar_series.attachAxis(axis_x)
-        speed_series.attachAxis(axis_x)
+
+        # Attach the axis to every line series created
+        for series in new_chart.series():
+            if isinstance(series, QLineSeries):
+                series.attachAxis(axis_x)
 
         axis_y_left = QValueAxis()
         axis_y_left.setLabelFormat("%d")
@@ -416,10 +424,18 @@ class TeamManagementWidget(QWidget):
         axis_y_right.setLabelsBrush(QColor("#FFFFFF"))
         axis_y_right.setGridLineVisible(False)
         new_chart.addAxis(axis_y_right, Qt.AlignmentFlag.AlignRight)
-        speed_series.attachAxis(axis_y_right)
+
+        for series in new_chart.series():
+            if isinstance(series, QLineSeries):
+                series.attachAxis(axis_y_right)
 
         bar_series.setLabelsVisible(True)
         bar_set.setLabelColor(QColor("#FFFFFF"))
+
+        # Hide legends for individual lines so it's not cluttered
+        for series in new_chart.series():
+            if isinstance(series, QLineSeries):
+                series.setPointsVisible(False)
 
         new_chart.legend().show()
         new_chart.legend().setAlignment(Qt.AlignmentFlag.AlignBottom)
@@ -567,15 +583,22 @@ class TeamManagementWidget(QWidget):
 
         TeamManagementWidget._safe_set_chart(self.radar_view, new_chart)
 
-    def update_analytics(self, engineer_name: str, analytics_payload: Dict[str, Any], primary_color: str = "#007ACC") -> None:
+
+    def update_analytics(self, engineer_name: str, analytics_payload: Dict[str, Any],
+                         primary_color: str = "#007ACC") -> None:
+        # --- DEBUGGING LINE ---
+        print(f"DEBUG: Payload for {engineer_name}: {analytics_payload.get('throughput', {})}")
+
         self.lbl_analytics_title.setText(f"Workload Analytics: {engineer_name}")
 
         kpis = analytics_payload.get('kpis', {'total_prod': 0, 'total_sub': 0})
         self.kpi_prod_lbl.setText(str(kpis['total_prod']))
         self.kpi_sub_lbl.setText(str(kpis['total_sub']))
 
-        self._populate_throughput(self.prod_chart_view, analytics_payload.get('throughput', {}).get('prod', {}), primary_color)
-        self._populate_throughput(self.sub_chart_view, analytics_payload.get('throughput', {}).get('sub', {}), primary_color)
+        self._populate_throughput(self.prod_chart_view, analytics_payload.get('throughput', {}).get('prod', {}),
+                                  primary_color)
+        self._populate_throughput(self.sub_chart_view, analytics_payload.get('throughput', {}).get('sub', {}),
+                                  primary_color)
 
         self._populate_top_projects(analytics_payload.get('projects', []), primary_color)
         self._populate_radar(analytics_payload.get('radar', {}), primary_color)

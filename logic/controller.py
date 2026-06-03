@@ -499,6 +499,9 @@ class AppController:
             if db_holidays:
                 AppConstants.COMPANY_HOLIDAYS = db_holidays
 
+            if hasattr(self, 'pto_path') and self.pto_path:
+                self.pto_path = PTOParser.load_pto_data(self.pto_path)
+
             self.refresh_tables(maintain_state=False)
 
     def refresh_team_view(self) -> None:

@@ -319,6 +319,8 @@ class DashboardService:
     @staticmethod
     def prepare_timeline_data(comp_df: pd.DataFrame, active_df: pd.DataFrame, start_date: pd.Timestamp) -> Tuple[
         List[str], List[str], pd.DataFrame]:
+
+        # 1. Process Completed Data
         h_df = comp_df.copy()
         if not h_df.empty:
             comp_col = h_df['COMPLETE DATE'] if 'COMPLETE DATE' in h_df.columns else pd.Series(dtype=str,
@@ -329,10 +331,17 @@ class DashboardService:
             h_df['VAR_DAYS'] = var_col.apply(DashboardService.parse_variance).fillna(0)
             h_df['IS_FORECAST'] = False
 
+        # 2. Process Active Forecast Data
         f_df = active_df.copy()
         if not f_df.empty:
             est_col = f_df['EST END DATE'] if 'EST END DATE' in f_df.columns else pd.Series(dtype=str, index=f_df.index)
             f_df['TARGET_DATE'] = pd.to_datetime(est_col, errors='coerce')
+
+            today = pd.Timestamp.today().normalize()
+            overdue_mask = f_df['TARGET_DATE'] < today
+            if overdue_mask.any():
+                f_df.loc[overdue_mask, 'TARGET_DATE'] = today
+
             est_var_col = f_df['EST ENG VARIANCE'] if 'EST ENG VARIANCE' in f_df.columns else pd.Series(dtype=float,
                                                                                                         index=f_df.index)
             f_df['VAR_DAYS'] = est_var_col.apply(DashboardService.parse_variance).fillna(0)
