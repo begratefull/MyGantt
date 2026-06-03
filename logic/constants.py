@@ -3,8 +3,50 @@ Centralized configuration for business logic and "magic strings".
 Update these values when company processes, line types, or tracking rules change.
 """
 import datetime
+import sys
+import os
 
 class AppConstants:
+    # --- App Metadata ---
+    APP_VERSION = 'v1.0.0'
+
+    # --- Smart Pathing ---
+    @staticmethod
+    def get_data_dir() -> str:
+        """
+        If running as a compiled .exe, returns the sibling 'MyGantt_Data' folder.
+        If running as a Python script, returns the local 'data' folder.
+        :return: data_dir as String
+        """
+        if getattr(sys, 'frozen', False):
+            # Running as an .exe inside OneDrive/Engineering Workload_Data/MyGantt_App
+            exe_dir = os.path.dirname(sys.executable)
+            parent_dir = os.path.dirname(exe_dir)
+
+            data_dir = os.path.join(parent_dir, 'MyGantt_Data')
+            os.makedirs(data_dir, exist_ok=True)
+            return data_dir
+        else:
+            # Running locally in PyCharm (C:\dev\MyGantt)
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(current_dir)
+
+            data_dir = os.path.join(project_root, 'data')
+            os.makedirs(data_dir, exist_ok=True)
+            return data_dir
+
+    @staticmethod
+    def get_config_path() -> str:
+        """Keeps app_config.json in the root locally, but in MyGantt_Data when compiled."""
+        if getattr(sys, 'frozen', False):
+            # Compiled: Look in the sibling data folder
+            return os.path.join(AppConstants.get_data_dir(), 'app_config.json')
+        else:
+            # Local: Look in the root project folder
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(current_dir)
+            return os.path.join(project_root, 'app_config.json')
+
     # --- Company Holidays ---
     # Automatically populated when app runs or data is synced
     COMPANY_HOLIDAYS = []

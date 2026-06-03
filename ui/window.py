@@ -8,10 +8,11 @@ import os
 from typing import Any
 from PySide6.QtWidgets import (QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout,
                                QWidget, QMessageBox, QTableWidgetItem, QHeaderView,
-                               QStackedWidget, QFrame, QPlainTextEdit, QTableWidget)
+                               QStackedWidget, QFrame, QPlainTextEdit, QTableWidget, QLabel)
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon
 
+from logic.constants import AppConstants
 from ui.views.dashboard import DashboardWidget
 from ui.views.data_view import DataViewWidget
 from ui.views.gantt_view import GanttScreenWidget
@@ -30,6 +31,11 @@ class MyGanttWindow(QMainWindow):
 
         self.statusBar().showMessage("Ready")
         self.statusBar().setStyleSheet("color: #AAAAAA; background-color: #1E1E1E; border-top: 1px solid #3E3E42;")
+
+        # Version Number to far right of Status Bar
+        self.version_label = QLabel(AppConstants.APP_VERSION)
+        self.version_label.setStyleSheet("color: #666666; padding-right: 15px; font-weight: bold;")
+        self.statusBar().addPermanentWidget(self.version_label)
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)

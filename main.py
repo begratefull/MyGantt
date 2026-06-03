@@ -15,6 +15,12 @@ from logic.logger import UIQTextLogHandler
 myappid = 'mycompany.mygantt.app.1.0.0'
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
+def get_resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller."""
+    if hasattr(sys, '_MEIPASS'):
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
 
 def setup_global_logger(ui_view):
     """Configures application-wide logging and attaches the UI handler."""
@@ -43,8 +49,8 @@ if __name__ == "__main__":
     app.setStyleSheet(DARK_THEME)
 
     # Use the native Windows .ico file for the application level icon
-    base_path = os.path.dirname(__file__)
-    app.setWindowIcon(QIcon(os.path.join(base_path, "ui", "resources", "app_icon.ico")))
+    icon_path = get_resource_path(os.path.join("ui", "resources", "app_icon.ico"))
+    app.setWindowIcon(QIcon(icon_path))
 
     view = MyGanttWindow()
     setup_global_logger(view)

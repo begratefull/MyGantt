@@ -42,7 +42,7 @@ class AppController:
         self.is_maintaining_state: bool = False
         self.sync_worker: Optional[SyncWorker] = None
 
-        self.config_file = "app_config.json"
+        self.config_file = AppConstants.get_config_path()
         self.config_data = self.load_config()
         self.excel_path = self.config_data.get('excel_path', '')
 

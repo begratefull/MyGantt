@@ -3,16 +3,17 @@ import os
 import logging
 import pandas as pd
 from typing import Dict, Any, List
+from logic.constants import AppConstants
 
 logger = logging.getLogger(__name__)
 
 class DatabaseManager:
-    def __init__(self):
-        # Set up the path to the database file
-        base_path = os.path.dirname(__file__)
-        self.db_path = os.path.join(base_path, "gantt_data.db")
+    def __init__(self, db_path: str = "") -> None:
+        # If no path is provided, dynamically use smart data directory from AppConstants
+        if not db_path:
+            db_path = os.path.join(AppConstants.get_data_dir(), 'gantt_data.db')
 
-        # Force the static tables to exist the moment the app boots!
+        self.db_path = db_path
         self._ensure_static_tables()
 
     def get_connection(self):
