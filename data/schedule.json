@@ -1,0 +1,342 @@
+[
+    {
+        "SMART_ID": "65896-1.01-PRODUCTION",
+        "PROJECT_ID": "65896",
+        "ASSIGNED TO": "Andy C",
+        "EST START DATE": "5/11/2026",
+        "EST END DATE": "05/13/2026",
+        "EST DAYS": "3",
+        "STATUS": "In Process",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66036-2.01-PRODUCTION",
+        "PROJECT_ID": "66036",
+        "ASSIGNED TO": "David M",
+        "EST START DATE": "6/2/2026",
+        "EST END DATE": "06/04/2026",
+        "EST DAYS": "3",
+        "STATUS": "In Process",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66296-1.01-PRODUCTION",
+        "PROJECT_ID": "66296",
+        "ASSIGNED TO": "Andy C",
+        "EST START DATE": "6/3/2026",
+        "EST END DATE": "06/04/2026",
+        "EST DAYS": "2",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66296-2.01-PRODUCTION",
+        "PROJECT_ID": "66296",
+        "ASSIGNED TO": "Andy C",
+        "EST START DATE": "6/3/2026",
+        "EST END DATE": "06/04/2026",
+        "EST DAYS": "2",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66296-3.01-PRODUCTION",
+        "PROJECT_ID": "66296",
+        "ASSIGNED TO": "Andy C",
+        "EST START DATE": "6/3/2026",
+        "EST END DATE": "06/04/2026",
+        "EST DAYS": "2",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66107-1.01-PRODUCTION",
+        "PROJECT_ID": "66107",
+        "ASSIGNED TO": "David M",
+        "EST START DATE": "6/8/2026",
+        "EST END DATE": "06/09/2026",
+        "EST DAYS": "2",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66101-2.01-PRODUCTION",
+        "PROJECT_ID": "66101",
+        "ASSIGNED TO": "Adam T",
+        "EST START DATE": "5/26/2026",
+        "EST END DATE": "06/12/2026",
+        "EST DAYS": "14",
+        "STATUS": "In Process",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66101-3.01-PRODUCTION",
+        "PROJECT_ID": "66101",
+        "ASSIGNED TO": "Adam T",
+        "EST START DATE": "5/26/2026",
+        "EST END DATE": "06/12/2026",
+        "EST DAYS": "14",
+        "STATUS": "In Process",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66101-4.01-PRODUCTION",
+        "PROJECT_ID": "66101",
+        "ASSIGNED TO": "Adam T",
+        "EST START DATE": "5/26/2026",
+        "EST END DATE": "06/12/2026",
+        "EST DAYS": "14",
+        "STATUS": "In Process",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "65924-3.01-PRODUCTION",
+        "PROJECT_ID": "65924",
+        "ASSIGNED TO": "Andy C",
+        "EST START DATE": "5/25/2026",
+        "EST END DATE": "06/08/2026",
+        "EST DAYS": "10",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "65924-4.01-PRODUCTION",
+        "PROJECT_ID": "65924",
+        "ASSIGNED TO": "Andy C",
+        "EST START DATE": "5/25/2026",
+        "EST END DATE": "06/08/2026",
+        "EST DAYS": "10",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "65924-5.01-PRODUCTION",
+        "PROJECT_ID": "65924",
+        "ASSIGNED TO": "Andy C",
+        "EST START DATE": "5/25/2026",
+        "EST END DATE": "06/08/2026",
+        "EST DAYS": "10",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66172-1.01-PRODUCTION",
+        "PROJECT_ID": "66172",
+        "ASSIGNED TO": "Matt M",
+        "EST START DATE": "6/4/2026",
+        "EST END DATE": "06/08/2026",
+        "EST DAYS": "3",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66172-2.01-PRODUCTION",
+        "PROJECT_ID": "66172",
+        "ASSIGNED TO": "Matt M",
+        "EST START DATE": "6/4/2026",
+        "EST END DATE": "06/08/2026",
+        "EST DAYS": "3",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66172-3.01-PRODUCTION",
+        "PROJECT_ID": "66172",
+        "ASSIGNED TO": "Matt M",
+        "EST START DATE": "6/4/2026",
+        "EST END DATE": "06/08/2026",
+        "EST DAYS": "3",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66172-4.01-PRODUCTION",
+        "PROJECT_ID": "66172",
+        "ASSIGNED TO": "Matt M",
+        "EST START DATE": "6/4/2026",
+        "EST END DATE": "06/08/2026",
+        "EST DAYS": "3",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66224-1.01-PRODUCTION",
+        "PROJECT_ID": "66224",
+        "ASSIGNED TO": "David M",
+        "EST START DATE": "6/10/2026",
+        "EST END DATE": "06/11/2026",
+        "EST DAYS": "2",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66170-1.01-PRODUCTION",
+        "PROJECT_ID": "66170",
+        "ASSIGNED TO": "Adam T",
+        "EST START DATE": "6/15/2026",
+        "EST END DATE": "06/17/2026",
+        "EST DAYS": "3",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66170-2.01-PRODUCTION",
+        "PROJECT_ID": "66170",
+        "ASSIGNED TO": "Adam T",
+        "EST START DATE": "6/15/2026",
+        "EST END DATE": "06/17/2026",
+        "EST DAYS": "3",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66170-3.01-PRODUCTION",
+        "PROJECT_ID": "66170",
+        "ASSIGNED TO": "Adam T",
+        "EST START DATE": "6/15/2026",
+        "EST END DATE": "06/17/2026",
+        "EST DAYS": "3",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66285-1.01-PRODUCTION",
+        "PROJECT_ID": "66285",
+        "ASSIGNED TO": "Andy C",
+        "EST START DATE": "6/10/2026",
+        "EST END DATE": "06/19/2026",
+        "EST DAYS": "8",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66257-18.01-PRODUCTION",
+        "PROJECT_ID": "66257",
+        "ASSIGNED TO": "Matt M",
+        "EST START DATE": "6/9/2026",
+        "EST END DATE": "06/19/2026",
+        "EST DAYS": "10",
+        "STATUS": "Info Needed",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66257-19.01-PRODUCTION",
+        "PROJECT_ID": "66257",
+        "ASSIGNED TO": "Matt M",
+        "EST START DATE": "6/9/2026",
+        "EST END DATE": "06/19/2026",
+        "EST DAYS": "10",
+        "STATUS": "Info Needed",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66257-20.01-PRODUCTION",
+        "PROJECT_ID": "66257",
+        "ASSIGNED TO": "Matt M",
+        "EST START DATE": "6/9/2026",
+        "EST END DATE": "06/19/2026",
+        "EST DAYS": "10",
+        "STATUS": "Info Needed",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66257-21.01-PRODUCTION",
+        "PROJECT_ID": "66257",
+        "ASSIGNED TO": "Matt M",
+        "EST START DATE": "6/9/2026",
+        "EST END DATE": "06/19/2026",
+        "EST DAYS": "10",
+        "STATUS": "Info Needed",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66257-22.01-PRODUCTION",
+        "PROJECT_ID": "66257",
+        "ASSIGNED TO": "Matt M",
+        "EST START DATE": "6/9/2026",
+        "EST END DATE": "06/19/2026",
+        "EST DAYS": "10",
+        "STATUS": "Info Needed",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66222-1.01-PRODUCTION",
+        "PROJECT_ID": "66222",
+        "ASSIGNED TO": "Adam T",
+        "EST START DATE": "6/18/2026",
+        "EST END DATE": "06/19/2026",
+        "EST DAYS": "2",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66322-1.01-PRODUCTION",
+        "PROJECT_ID": "66322",
+        "ASSIGNED TO": "",
+        "EST START DATE": "",
+        "EST END DATE": "",
+        "EST DAYS": "5",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66331-1.01-PRODUCTION",
+        "PROJECT_ID": "66331",
+        "ASSIGNED TO": "",
+        "EST START DATE": "",
+        "EST END DATE": "",
+        "EST DAYS": "5",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66331-2.01-PRODUCTION",
+        "PROJECT_ID": "66331",
+        "ASSIGNED TO": "",
+        "EST START DATE": "",
+        "EST END DATE": "",
+        "EST DAYS": "5",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66331-3.01-PRODUCTION",
+        "PROJECT_ID": "66331",
+        "ASSIGNED TO": "",
+        "EST START DATE": "",
+        "EST END DATE": "",
+        "EST DAYS": "5",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66331-4.01-PRODUCTION",
+        "PROJECT_ID": "66331",
+        "ASSIGNED TO": "",
+        "EST START DATE": "",
+        "EST END DATE": "",
+        "EST DAYS": "5",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66331-5.01-PRODUCTION",
+        "PROJECT_ID": "66331",
+        "ASSIGNED TO": "",
+        "EST START DATE": "",
+        "EST END DATE": "",
+        "EST DAYS": "5",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    },
+    {
+        "SMART_ID": "66331-6.01-PRODUCTION",
+        "PROJECT_ID": "66331",
+        "ASSIGNED TO": "",
+        "EST START DATE": "",
+        "EST END DATE": "",
+        "EST DAYS": "5",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production"
+    }
+]
