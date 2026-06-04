@@ -22,6 +22,7 @@ from logic.data_builder import GanttDataBuilder
 from logic.calendar_engine import CalendarEngine
 from logic.pto_parser import PTOParser
 from ui.components.gantt_components import GanttBlock
+from logic.web_publisher import WebPublisher
 
 logger = logging.getLogger(__name__)
 
@@ -239,8 +240,21 @@ class AppController:
             self.model.commit_overrides(self.history.get_staged_edits())
             self.history.clear()
             self.refresh_tables(maintain_state=True)
-            if hasattr(self.view, 'show_status'):
-                self.view.show_status("All changes saved successfully.", 4000)
+
+            # --- Trigger Automated Push to Web Portal ---
+            if hasattr(self, 'current_plan_df') and not self.current_plan_df.empty:
+                if hasattr(self, 'view') and hasattr(self.view, 'show_status'):
+                    self.view.show_status("Saving locally and publishing to live web schedule...", 0)
+
+                success = WebPublisher.publish_schedule(self.current_plan_df, self.config_data)
+
+                if success and hasattr(self.view, 'show_status'):
+                    self.view.show_status("All changes saved locally and published live.", 4000)
+                elif hasattr(self.view, 'show_status'):
+                    self.view.show_status("Saved locally, but web publish failed. Check log file.", 5000)
+            else:
+                if hasattr(self.view, 'show_status'):
+                    self.view.show_status("All changes saved successfully.", 4000)
         else:
             if hasattr(self.view, 'show_status'):
                 self.view.show_status("No unsaved changes.", 3000)

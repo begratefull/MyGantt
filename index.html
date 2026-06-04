@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Engineering Line Assignment Schedule Viewer</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f6f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #e1e4e8;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        h1 { margin: 0; font-size: 24px; color: #1a202c; }
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        label { font-weight: 600; font-size: 14px; }
+        select {
+            padding: 8px 12px;
+            font-size: 14px;
+            border: 1px solid #cbd5e0;
+            border-radius: 4px;
+            min-width: 200px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            font-size: 14px;
+        }
+        th {
+            background-color: #ebf1f5;
+            color: #4a5568;
+            font-weight: 600;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        tr { border-bottom: 1px solid #edf2f7; }
+        tr:last-child { border-bottom: none; }
+        tr:hover { background-color: #f8fafc; }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-active { background-color: #e6fffa; color: #234e52; }
+        .no-data {
+            text-align: center;
+            padding: 4px 0;
+            color: #718096;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Engineering Line Assignment Schedule Portal</h1>
+        <div id="last-updated" style="font-size: 12px; color: #718096;"></div>
+    </header>
+
+    <div class="controls">
+        <label for="engineer-filter">Filter Assignment Roster:</label>
+        <select id="engineer-filter" onchange="filterSchedule()">
+            <option value="ALL">-- Show All Active Lines --</option>
+        </select>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Smart ID</th>
+                <th>Project ID</th>
+                <th>Requirement</th>
+                <th>Assigned To</th>
+                <th>Est Start Date</th>
+                <th>Expected Completion Date</th>
+                <th>Duration (Days)</th>
+            </tr>
+        </thead>
+        <tbody id="schedule-table-body">
+            <tr>
+                <td colspan="7" class="no-data">Loading synchronized dataset schedules...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    let scheduleData = [];
+    // Modify this path if you place your dataset into an alternate subdirectory
+    const dataUrl = 'data/schedule.json';
+
+    async function fetchSchedule() {
+        const tbody = document.getElementById('schedule-table-body');
+        try {
+            const response = await fetch(dataUrl, { cache: "no-cache" });
+            if (!response.ok) throw new Error(`HTTP status processing error: ${response.status}`);
+
+            scheduleData = await response.json();
+
+            // Deduplicate to extract unique active engineering keys
+            const engineers = [...new Set(scheduleData.map(item => item['ASSIGNED TO']))]
+                .filter(name => name && name.trim() !== '' && name.toUpperCase() !== 'UNASSIGNED')
+                .sort();
+
+            const filterDropdown = document.getElementById('engineer-filter');
+            engineers.forEach(eng => {
+                const opt = document.createElement('option');
+                opt.value = eng;
+                opt.textContent = eng;
+                filterDropdown.appendChild(opt);
+            });
+
+            renderTable(scheduleData);
+        } catch (err) {
+            console.error(err);
+            tbody.innerHTML = `<tr><td colspan="7" class="no-data" style="color: #c53030;">Failed to populate view. Ensure target schedule.json file has been generated.</td></tr>`;
+        }
+    }
+
+    function renderTable(data) {
+        const tbody = document.getElementById('schedule-table-body');
+        if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="no-data">No lines found match selection constraints.</td></tr>`;
+            return;
+        }
+
+        // Sort items sequentially by their predicted start dates
+        const sortedData = [...data].sort((a, b) => {
+            return new Date(a['EST START DATE'] || '1/1/2050') - new Date(b['EST START DATE'] || '1/1/2050');
+        });
+
+        tbody.innerHTML = sortedData.map(row => `
+            <tr>
+                <td><strong>${row['SMART_ID'] || '--'}</strong></td>
+                <td>${row['PROJECT_ID'] || '--'}</td>
+                <td><span class="badge status-active">${row['REQUIREMENT'] || 'Production'}</span></td>
+                <td>${row['ASSIGNED TO'] || 'Unassigned'}</td>
+                <td>${row['EST START DATE'] || '--'}</td>
+                <td><span style="color: #2b6cb0; font-weight:600;">${row['EST END DATE'] || '--'}</span></td>
+                <td>${row['EST DAYS'] || '--'}</td>
+            </tr>
+        `).join('');
+    }
+
+    function filterSchedule() {
+        const selectedEngineer = document.getElementById('engineer-filter').value;
+        if (selectedEngineer === 'ALL') {
+            renderTable(scheduleData);
+        } else {
+            const filtered = scheduleData.filter(item => item['ASSIGNED TO'] === selectedEngineer);
+            renderTable(filtered);
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', fetchSchedule);
+</script>
+
+</body>
+</html>

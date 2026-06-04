@@ -1,1 +1,7 @@
 /build/
+/dist/
+app_config.json
+*.db
+*.log
+__pycache__/
+.idea/
