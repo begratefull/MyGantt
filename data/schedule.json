@@ -7,7 +7,9 @@
         "EST END DATE": "05/13/2026",
         "EST DAYS": "3",
         "STATUS": "In Process",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-80755-4",
+        "PROJECT NAME": "BOEING - STL SITE EXPANSION"
     },
     {
         "SMART_ID": "66036-2.01-PRODUCTION",
@@ -17,7 +19,9 @@
         "EST END DATE": "06/04/2026",
         "EST DAYS": "3",
         "STATUS": "In Process",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-79879-1",
+        "PROJECT NAME": "MYRTLE BEACH CONVENTION CTR"
     },
     {
         "SMART_ID": "66296-1.01-PRODUCTION",
@@ -27,7 +31,9 @@
         "EST END DATE": "06/04/2026",
         "EST DAYS": "2",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-90194-2",
+        "PROJECT NAME": "LAX METRO 96TH ST TRANSIT - PA"
     },
     {
         "SMART_ID": "66296-2.01-PRODUCTION",
@@ -37,7 +43,9 @@
         "EST END DATE": "06/04/2026",
         "EST DAYS": "2",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-90194-2",
+        "PROJECT NAME": "LAX METRO 96TH ST TRANSIT - PA"
     },
     {
         "SMART_ID": "66296-3.01-PRODUCTION",
@@ -47,7 +55,9 @@
         "EST END DATE": "06/04/2026",
         "EST DAYS": "2",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-90194-2",
+        "PROJECT NAME": "LAX METRO 96TH ST TRANSIT - PA"
     },
     {
         "SMART_ID": "66107-1.01-PRODUCTION",
@@ -57,7 +67,9 @@
         "EST END DATE": "06/09/2026",
         "EST DAYS": "2",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-79917-1",
+        "PROJECT NAME": "CLEMENTS HS REBUILD-LIGHTING"
     },
     {
         "SMART_ID": "66101-2.01-PRODUCTION",
@@ -67,7 +79,9 @@
         "EST END DATE": "06/12/2026",
         "EST DAYS": "14",
         "STATUS": "In Process",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-87073-4",
+        "PROJECT NAME": "PUI - ACADEMIC SUCCESS BUILDIN"
     },
     {
         "SMART_ID": "66101-3.01-PRODUCTION",
@@ -77,7 +91,9 @@
         "EST END DATE": "06/12/2026",
         "EST DAYS": "14",
         "STATUS": "In Process",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-87073-4",
+        "PROJECT NAME": "PUI - ACADEMIC SUCCESS BUILDIN"
     },
     {
         "SMART_ID": "66101-4.01-PRODUCTION",
@@ -87,7 +103,9 @@
         "EST END DATE": "06/12/2026",
         "EST DAYS": "14",
         "STATUS": "In Process",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-87073-4",
+        "PROJECT NAME": "PUI - ACADEMIC SUCCESS BUILDIN"
     },
     {
         "SMART_ID": "65924-3.01-PRODUCTION",
@@ -97,7 +115,9 @@
         "EST END DATE": "06/08/2026",
         "EST DAYS": "10",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-87561-3",
+        "PROJECT NAME": "FAIR LANE POWERHOUSE & GARAGE"
     },
     {
         "SMART_ID": "65924-4.01-PRODUCTION",
@@ -107,7 +127,9 @@
         "EST END DATE": "06/08/2026",
         "EST DAYS": "10",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-87561-3",
+        "PROJECT NAME": "FAIR LANE POWERHOUSE & GARAGE"
     },
     {
         "SMART_ID": "65924-5.01-PRODUCTION",
@@ -117,7 +139,9 @@
         "EST END DATE": "06/08/2026",
         "EST DAYS": "10",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-87561-3",
+        "PROJECT NAME": "FAIR LANE POWERHOUSE & GARAGE"
     },
     {
         "SMART_ID": "66172-1.01-PRODUCTION",
@@ -127,7 +151,9 @@
         "EST END DATE": "06/08/2026",
         "EST DAYS": "3",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-81787-3",
+        "PROJECT NAME": "CURIA LOBBY"
     },
     {
         "SMART_ID": "66172-2.01-PRODUCTION",
@@ -137,7 +163,9 @@
         "EST END DATE": "06/08/2026",
         "EST DAYS": "3",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-81787-3",
+        "PROJECT NAME": "CURIA LOBBY"
     },
     {
         "SMART_ID": "66172-3.01-PRODUCTION",
@@ -147,7 +175,9 @@
         "EST END DATE": "06/08/2026",
         "EST DAYS": "3",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-81787-3",
+        "PROJECT NAME": "CURIA LOBBY"
     },
     {
         "SMART_ID": "66172-4.01-PRODUCTION",
@@ -157,7 +187,9 @@
         "EST END DATE": "06/08/2026",
         "EST DAYS": "3",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-81787-3",
+        "PROJECT NAME": "CURIA LOBBY"
     },
     {
         "SMART_ID": "66224-1.01-PRODUCTION",
@@ -167,7 +199,9 @@
         "EST END DATE": "06/11/2026",
         "EST DAYS": "2",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-86437-6",
+        "PROJECT NAME": "BMW FORT WASHINGTON"
     },
     {
         "SMART_ID": "66170-1.01-PRODUCTION",
@@ -177,7 +211,9 @@
         "EST END DATE": "06/17/2026",
         "EST DAYS": "3",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-80752-1",
+        "PROJECT NAME": "FIELDS CORNER LIBRARY - REL #2"
     },
     {
         "SMART_ID": "66170-2.01-PRODUCTION",
@@ -187,7 +223,9 @@
         "EST END DATE": "06/17/2026",
         "EST DAYS": "3",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-80752-1",
+        "PROJECT NAME": "FIELDS CORNER LIBRARY - REL #2"
     },
     {
         "SMART_ID": "66170-3.01-PRODUCTION",
@@ -197,7 +235,9 @@
         "EST END DATE": "06/17/2026",
         "EST DAYS": "3",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-80752-1",
+        "PROJECT NAME": "FIELDS CORNER LIBRARY - REL #2"
     },
     {
         "SMART_ID": "66285-1.01-PRODUCTION",
@@ -207,57 +247,69 @@
         "EST END DATE": "06/19/2026",
         "EST DAYS": "8",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-81084-6",
+        "PROJECT NAME": "220 PARK-CONFLUENT TI-3RD FLR"
     },
     {
         "SMART_ID": "66257-18.01-PRODUCTION",
         "PROJECT_ID": "66257",
         "ASSIGNED TO": "Matt M",
-        "EST START DATE": "6/8/2026",
-        "EST END DATE": "06/22/2026",
+        "EST START DATE": "6/9/2026",
+        "EST END DATE": "06/19/2026",
         "EST DAYS": "10",
         "STATUS": "Info Needed",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-83630-3",
+        "PROJECT NAME": "UTC HEALTH SCIENCES BUILDING"
     },
     {
         "SMART_ID": "66257-19.01-PRODUCTION",
         "PROJECT_ID": "66257",
         "ASSIGNED TO": "Matt M",
-        "EST START DATE": "6/8/2026",
-        "EST END DATE": "06/22/2026",
+        "EST START DATE": "6/9/2026",
+        "EST END DATE": "06/19/2026",
         "EST DAYS": "10",
         "STATUS": "Info Needed",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-83630-3",
+        "PROJECT NAME": "UTC HEALTH SCIENCES BUILDING"
     },
     {
         "SMART_ID": "66257-20.01-PRODUCTION",
         "PROJECT_ID": "66257",
         "ASSIGNED TO": "Matt M",
-        "EST START DATE": "6/8/2026",
-        "EST END DATE": "06/22/2026",
+        "EST START DATE": "6/9/2026",
+        "EST END DATE": "06/19/2026",
         "EST DAYS": "10",
         "STATUS": "Info Needed",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-83630-3",
+        "PROJECT NAME": "UTC HEALTH SCIENCES BUILDING"
     },
     {
         "SMART_ID": "66257-21.01-PRODUCTION",
         "PROJECT_ID": "66257",
         "ASSIGNED TO": "Matt M",
-        "EST START DATE": "6/8/2026",
-        "EST END DATE": "06/22/2026",
+        "EST START DATE": "6/9/2026",
+        "EST END DATE": "06/19/2026",
         "EST DAYS": "10",
         "STATUS": "Info Needed",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-83630-3",
+        "PROJECT NAME": "UTC HEALTH SCIENCES BUILDING"
     },
     {
         "SMART_ID": "66257-22.01-PRODUCTION",
         "PROJECT_ID": "66257",
         "ASSIGNED TO": "Matt M",
-        "EST START DATE": "6/8/2026",
-        "EST END DATE": "06/22/2026",
+        "EST START DATE": "6/9/2026",
+        "EST END DATE": "06/19/2026",
         "EST DAYS": "10",
         "STATUS": "Info Needed",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-83630-3",
+        "PROJECT NAME": "UTC HEALTH SCIENCES BUILDING"
     },
     {
         "SMART_ID": "66222-1.01-PRODUCTION",
@@ -267,7 +319,9 @@
         "EST END DATE": "06/19/2026",
         "EST DAYS": "2",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-83636-2",
+        "PROJECT NAME": "COOK CHILDREN'S 5N MAIN TOWER"
     },
     {
         "SMART_ID": "66322-1.01-PRODUCTION",
@@ -277,7 +331,9 @@
         "EST END DATE": "",
         "EST DAYS": "5",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-83094-8",
+        "PROJECT NAME": "AMTECK-MARS LIGHTING"
     },
     {
         "SMART_ID": "66331-1.01-PRODUCTION",
@@ -287,7 +343,9 @@
         "EST END DATE": "",
         "EST DAYS": "5",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-87596-2",
+        "PROJECT NAME": "COLUMBIA COUNTY PERFORMING ART"
     },
     {
         "SMART_ID": "66331-2.01-PRODUCTION",
@@ -297,7 +355,9 @@
         "EST END DATE": "",
         "EST DAYS": "5",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-87596-2",
+        "PROJECT NAME": "COLUMBIA COUNTY PERFORMING ART"
     },
     {
         "SMART_ID": "66331-3.01-PRODUCTION",
@@ -307,7 +367,9 @@
         "EST END DATE": "",
         "EST DAYS": "5",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-87596-2",
+        "PROJECT NAME": "COLUMBIA COUNTY PERFORMING ART"
     },
     {
         "SMART_ID": "66331-4.01-PRODUCTION",
@@ -317,7 +379,9 @@
         "EST END DATE": "",
         "EST DAYS": "5",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-87596-2",
+        "PROJECT NAME": "COLUMBIA COUNTY PERFORMING ART"
     },
     {
         "SMART_ID": "66331-5.01-PRODUCTION",
@@ -327,7 +391,9 @@
         "EST END DATE": "",
         "EST DAYS": "5",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-87596-2",
+        "PROJECT NAME": "COLUMBIA COUNTY PERFORMING ART"
     },
     {
         "SMART_ID": "66331-6.01-PRODUCTION",
@@ -337,6 +403,8 @@
         "EST END DATE": "",
         "EST DAYS": "5",
         "STATUS": "In Queue",
-        "REQUIREMENT": "Production"
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-87596-2",
+        "PROJECT NAME": "COLUMBIA COUNTY PERFORMING ART"
     }
 ]
