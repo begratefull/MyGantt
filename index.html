@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCL Custom Engineering Workload Portal</title>
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --surface: #ffffff;
+            --surface-hover: #f8fafc;
+            --text-main: #2d3748;
+            --text-muted: #718096;
+            --border: #e2e8f0;
+            --primary: #2b6cb0;
+            --timeline-bg: #edf2f7;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+
+            --dash-prod: #38a169;
+            --dash-sub: #ed8936;
+            --today-line: #e53e3e;
+
+            --health-good-bg: #e8f5e9;
+            --health-good-txt: #2e7d32;
+            --health-warn-bg: #ffebee;
+            --health-warn-txt: #c62828;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --surface: #1e1e1e;
+            --surface-hover: #2d2d30;
+            --text-main: #e2e8f0;
+            --text-muted: #a0aec0;
+            --border: #333333;
+            --primary: #4db8ff;
+            --timeline-bg: #2d3748;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+
+            --dash-prod: #48bb78;
+            --dash-sub: #ed8936;
+            --today-line: #fc8181;
+
+            --health-good-bg: #1b5e20;
+            --health-good-txt: #a5d6a7;
+            --health-warn-bg: #b71c1c;
+            --health-warn-txt: #ffcdd2;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 2px solid var(--border); padding-bottom: 15px; margin-bottom: 20px;
+        }
+
+        h1 { margin: 0; font-size: 22px; color: var(--text-main); }
+
+        .theme-toggle {
+            background: var(--surface); border: 1px solid var(--border); color: var(--text-main);
+            padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;
+        }
+
+        .controls {
+            display: flex; gap: 20px; background: var(--surface); padding: 15px 20px;
+            border-radius: 8px; box-shadow: var(--shadow); margin-bottom: 20px; align-items: center;
+        }
+
+        .control-group { display: flex; align-items: center; gap: 15px; }
+        label { font-weight: 600; font-size: 14px; color: var(--text-muted); }
+        select {
+            padding: 8px 12px; font-size: 14px; border: 1px solid var(--border); border-radius: 6px;
+            background-color: var(--surface); color: var(--text-main); min-width: 250px; font-weight: bold;
+        }
+
+        .dashboard-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px; margin-bottom: 25px;
+        }
+        .dash-card {
+            background: var(--surface); padding: 15px 20px; border-radius: 8px;
+            box-shadow: var(--shadow); border: 1px solid var(--border); border-top: 4px solid var(--primary);
+            display: flex; flex-direction: column; justify-content: center;
+        }
+        .dash-card.prod { border-top-color: var(--dash-prod); }
+        .dash-card.sub { border-top-color: var(--dash-sub); }
+
+        .dash-title { font-size: 12px; color: var(--text-muted); font-weight: bold; text-transform: uppercase; margin-bottom: 8px; }
+        .dash-metric { font-size: 32px; font-weight: 800; color: var(--text-main); display: flex; align-items: center;}
+
+        .health-indicator {
+            display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-left: 15px;
+        }
+        .health-good { background: var(--health-good-bg); color: var(--health-good-txt); }
+        .health-warn { background: var(--health-warn-bg); color: var(--health-warn-txt); }
+        .health-neutral { background: var(--surface-hover); border: 1px solid var(--border); }
+
+        .view-tabs { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid var(--border); }
+        .tab-btn {
+            background: transparent; border: none; padding: 10px 20px; font-size: 15px;
+            font-weight: bold; color: var(--text-muted); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px;
+        }
+        .tab-btn.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
+
+        .view-content { display: none; }
+        .view-content.active { display: block; }
+
+        .badge {
+            display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: 800; color: white;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .cat-prod { background-color: var(--dash-prod); }
+        .cat-sub { background-color: var(--dash-sub); }
+
+        table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 8px; overflow: hidden; box-shadow: var(--shadow); }
+        th, td { padding: 12px 15px; text-align: left; font-size: 13px; border-bottom: 1px solid var(--border); }
+        th { background-color: var(--surface-hover); color: var(--text-muted); font-weight: 700; text-transform: uppercase; font-size: 11px; }
+        tr:hover { background-color: var(--surface-hover); }
+
+        .timeline-container {
+            background: var(--surface); border-radius: 8px; box-shadow: var(--shadow); padding: 20px; position: relative; z-index: 0;
+        }
+
+        .timeline-header {
+            display: flex; border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 15px; position: relative;
+        }
+        .timeline-meta-header { width: 320px; flex-shrink: 0; font-size: 12px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; }
+        .timeline-track-header { flex-grow: 1; position: relative; height: 20px; }
+
+        .timeline-tick {
+            position: absolute; top: 0; bottom: 0;
+            border-left: 1px dashed var(--border); z-index: 0; pointer-events: none;
+        }
+        .timeline-tick span {
+            position: absolute; top: -5px; left: 6px; font-size: 11px; color: var(--text-muted); font-weight: bold; background: var(--surface); padding: 0 4px;
+        }
+
+        .today-marker {
+            position: absolute; top: 0; bottom: 0; border-left: 2px solid var(--today-line); z-index: 5; pointer-events: none;
+        }
+        .today-marker span {
+            position: absolute; top: -22px; left: -25px; background: var(--today-line); color: white; padding: 3px 8px;
+            border-radius: 4px; font-size: 10px; font-weight: 800; letter-spacing: 0.5px;
+        }
+
+        .timeline-rows-wrapper { position: relative; z-index: 1; overflow: hidden; }
+
+        .timeline-grid-lines {
+            position: absolute; top: 0; bottom: 0; left: 320px; right: 0; pointer-events: none; z-index: 0;
+        }
+        .grid-line {
+            position: absolute; top: 0; bottom: 0; border-left: 1px dashed var(--border);
+        }
+        .today-grid-line {
+            position: absolute; top: 0; bottom: 0; border-left: 2px solid var(--today-line); z-index: 5;
+        }
+
+        .timeline-row {
+            display: flex; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border); position: relative; z-index: 2;
+        }
+        .timeline-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+
+        .timeline-meta { width: 300px; flex-shrink: 0; padding-right: 20px; background: var(--surface); z-index: 3; padding-top: 2px;}
+        .meta-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+        .meta-title { font-size: 15px; font-weight: 800; color: var(--text-main); line-height: 1.3; margin-bottom: 4px;}
+        .meta-sub { font-size: 12px; font-weight: 600; color: var(--text-muted); line-height: 1.4;}
+
+        .timeline-track {
+            flex-grow: 1; position: relative; z-index: 3; min-height: 30px;
+        }
+
+        .timeline-bar {
+            position: absolute; height: 24px; border-radius: 4px;
+            display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: bold;
+            min-width: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 0 4px; overflow: hidden;
+            cursor: default; transition: opacity 0.2s;
+        }
+        .timeline-bar:hover { opacity: 0.85; z-index: 10; }
+
+        .no-data { text-align: center; padding: 40px; color: var(--text-muted); font-style: italic; background: var(--surface); border-radius: 8px;}
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>OCL Custom Engineering Workload Portal</h1>
+        <button class="theme-toggle" onclick="toggleTheme()">🌓 Toggle Dark Mode</button>
+    </header>
+
+    <div class="dashboard-grid">
+        <div class="dash-card">
+            <div class="dash-title">Total Active Lines</div>
+            <div class="dash-metric">
+                <span id="dash-total-lines">0</span>
+                <span class="health-indicator health-neutral">
+                    <span id="dash-total-prod-count" style="color: var(--dash-prod);">0 Prod</span>
+                    <span style="color: var(--text-muted); margin: 0 8px;">|</span>
+                    <span id="dash-total-sub-count" style="color: var(--dash-sub);">0 Sub</span>
+                </span>
+            </div>
+        </div>
+        <div class="dash-card prod">
+            <div class="dash-title">Production Backlog</div>
+            <div class="dash-metric"><span id="dash-prod-lines">0</span> <span id="dash-prod-health" class="health-indicator health-good">On Track</span></div>
+        </div>
+        <div class="dash-card sub">
+            <div class="dash-title">Submittal Backlog</div>
+            <div class="dash-metric"><span id="dash-sub-lines">0</span> <span id="dash-sub-health" class="health-indicator health-good">On Track</span></div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label for="engineer-filter">Filter Assignments:</label>
+            <select id="engineer-filter" onchange="filterSchedule()">
+                <option value="ALL">Entire Engineering Team</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="view-tabs">
+        <button class="tab-btn active" onclick="switchView(event, 'timeline')">Timeline View</button>
+        <button class="tab-btn" onclick="switchView(event, 'table')">List View</button>
+    </div>
+
+    <div id="timeline-view" class="view-content active">
+        <div class="timeline-container">
+            <div class="timeline-header">
+                <div class="timeline-meta-header">Project Groups</div>
+                <div class="timeline-track-header" id="timeline-grid-header"></div>
+            </div>
+            <div class="timeline-rows-wrapper" id="timeline-body"></div>
+        </div>
+    </div>
+
+    <div id="table-view" class="view-content">
+        <table>
+            <thead>
+                <tr>
+                    <th>Requirement</th>
+                    <th>Quote No</th>
+                    <th>Project Name</th>
+                    <th>Due Date</th>
+                    <th>Assigned To</th>
+                    <th>Duration</th>
+                </tr>
+            </thead>
+            <tbody id="schedule-table-body"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let scheduleData = [];
+    const dataUrl = 'data/schedule.json';
+
+    const prodRegex = /PROD/i;
+    const subRegex = /APP|SUB|QUOT|QUOTE|APPROVAL|SUBMITTAL/i;
+
+    /**
+     * Determines if a task is production or submittal based on requirement text.
+     * @param {string} req - The requirement string from the task.
+     * @returns {string} Category identifier ('sub' or 'prod').
+     */
+    function getCategory(req) {
+        return subRegex.test(req) ? 'sub' : 'prod';
+    }
+
+    /**
+     * Safely converts date strings into milliseconds, handling raw DB timestamps.
+     * @param {string} dateStr - Date string to parse.
+     * @returns {number} Milliseconds since epoch, or NaN.
+     */
+    function parseDateSafe(dateStr) {
+        if (!dateStr) return NaN;
+        let str = String(dateStr).trim();
+        if (!str || str.toUpperCase() === 'NAN' || str.toUpperCase() === 'N/A') return NaN;
+
+        if (str.includes(' ')) {
+            str = str.split(' ')[0];
+        }
+
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+            str += 'T00:00:00';
+        }
+
+        return new Date(str).getTime();
+    }
+
+    /**
+     * Formats a millisecond timestamp into standard MM/DD/YYYY representation.
+     * @param {number} ms - The timestamp in milliseconds.
+     * @returns {string} The formatted date string.
+     */
+    function formatDate(ms) {
+        if (isNaN(ms)) return 'N/A';
+        const d = new Date(Number(ms));
+        return `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
+    }
+
+    /**
+     * Displays error UI when JSON fetch or parsing completely fails.
+     */
+    function triggerErrorState() {
+        document.getElementById('timeline-body').innerHTML = '<div class="no-data">Schedule dataset not found. Please ensure Python app is syncing data.</div>';
+        document.getElementById('schedule-table-body').innerHTML = '<tr><td colspan="6" class="no-data">Schedule dataset not found.</td></tr>';
+    }
+
+    /**
+     * Initializes dark mode or light mode based on user's system preferences or cached override.
+     */
+    function initTheme() {
+        try {
+            const savedTheme = localStorage.getItem('myGanttTheme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        } catch (e) {
+            console.warn("Theme initialization failed:", e);
+        }
+    }
+
+    /**
+     * Toggles the UI theme between dark and light modes, saving preference to localStorage.
+     */
+    function toggleTheme() {
+        const current = document.documentElement.getAttribute('data-theme');
+        const newTheme = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('myGanttTheme', newTheme);
+    }
+
+    /**
+     * Switches the active view tab between List and Timeline.
+     * @param {Event} e - The click event from the tab button.
+     * @param {string} viewId - The ID of the view to activate ('timeline' or 'table').
+     */
+    function switchView(e, viewId) {
+        document.querySelectorAll('.view-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(viewId + '-view').classList.add('active');
+        e.currentTarget.classList.add('active');
+    }
+
+    /**
+     * Fetches the schedule JSON data from the repository, builds filters, and invokes render pipelines.
+     */
+    async function fetchSchedule() {
+        initTheme();
+        try {
+            const response = await fetch(dataUrl, { cache: "no-cache" });
+            if (!response.ok) {
+                triggerErrorState();
+                return;
+            }
+
+            scheduleData = await response.json();
+
+            const engineers = [...new Set(scheduleData.map(item => item['ASSIGNED TO']))]
+                .filter(name => name && String(name).toUpperCase() !== 'UNASSIGNED').sort();
+
+            const filterDropdown = document.getElementById('engineer-filter');
+            engineers.forEach(eng => {
+                const opt = document.createElement('option');
+                opt.value = String(eng);
+                opt.textContent = String(eng);
+                filterDropdown.appendChild(opt);
+            });
+
+            const savedEngineer = localStorage.getItem('myGanttUser');
+            if (savedEngineer && engineers.includes(savedEngineer)) {
+                filterDropdown.value = savedEngineer;
+            }
+
+            filterSchedule();
+        } catch (err) {
+            console.error("Critical failure fetching schedule data:", err);
+            triggerErrorState();
+        }
+    }
+
+    /**
+     * Renders the top health metrics dynamically against the filtered data array.
+     * @param {Array<Object>} data - The currently filtered active dataset.
+     */
+    function renderDashboard(data) {
+        try {
+            const todayMs = Number(new Date().setHours(0,0,0,0));
+
+            let prodCount = 0, prodOverdue = 0;
+            let subCount = 0, subOverdue = 0;
+
+            data.forEach(item => {
+                let endDateStr = String(item['EST END DATE'] || '').trim();
+                if (!endDateStr || endDateStr.toUpperCase() === 'N/A' || endDateStr.toUpperCase() === 'NAN') {
+                    endDateStr = String(item['ENG DUE DATE'] || '').trim();
+                }
+
+                const endMs = Number(parseDateSafe(endDateStr));
+                const isOverdue = !isNaN(endMs) && endMs < todayMs;
+
+                if (prodRegex.test(item['REQUIREMENT'])) {
+                    prodCount++;
+                    if (isOverdue) prodOverdue++;
+                } else {
+                    subCount++;
+                    if (isOverdue) subOverdue++;
+                }
+            });
+
+            document.getElementById('dash-total-lines').textContent = String(data.length);
+            document.getElementById('dash-total-prod-count').textContent = `${prodCount} Prod`;
+            document.getElementById('dash-total-sub-count').textContent = `${subCount} Sub`;
+
+            document.getElementById('dash-prod-lines').textContent = String(prodCount);
+            document.getElementById('dash-prod-health').className = 'health-indicator ' + (prodOverdue > 0 ? 'health-warn' : 'health-good');
+            document.getElementById('dash-prod-health').textContent = prodOverdue > 0 ? `${prodOverdue} Overdue` : 'On Track';
+
+            document.getElementById('dash-sub-lines').textContent = String(subCount);
+            document.getElementById('dash-sub-health').className = 'health-indicator ' + (subOverdue > 0 ? 'health-warn' : 'health-good');
+            document.getElementById('dash-sub-health').textContent = subOverdue > 0 ? `${subOverdue} Overdue` : 'On Track';
+        } catch (error) {
+            console.error("Error computing dashboard health metrics:", error);
+        }
+    }
+
+    /**
+     * Filters and sorts the data by assignee and updates ALL UI elements.
+     */
+    function filterSchedule() {
+        try {
+            const selected = String(document.getElementById('engineer-filter').value);
+            let filtered = scheduleData;
+            if (selected !== 'ALL') {
+                filtered = scheduleData.filter(item => String(item['ASSIGNED TO']) === selected);
+                localStorage.setItem('myGanttUser', selected);
+            } else {
+                localStorage.removeItem('myGanttUser');
+            }
+
+            filtered.sort((a, b) => {
+                let valA = Number(parseDateSafe(a['EST START DATE']));
+                if (isNaN(valA)) {
+                    let endA = String(a['EST END DATE'] || '').trim();
+                    if (!endA || endA.toUpperCase() === 'N/A' || endA.toUpperCase() === 'NAN') {
+                        endA = String(a['ENG DUE DATE'] || '').trim();
+                    }
+                    valA = Number(parseDateSafe(endA));
+                }
+                if (isNaN(valA)) valA = 9999999999999;
+
+                let valB = Number(parseDateSafe(b['EST START DATE']));
+                if (isNaN(valB)) {
+                    let endB = String(b['EST END DATE'] || '').trim();
+                    if (!endB || endB.toUpperCase() === 'N/A' || endB.toUpperCase() === 'NAN') {
+                        endB = String(b['ENG DUE DATE'] || '').trim();
+                    }
+                    valB = Number(parseDateSafe(endB));
+                }
+                if (isNaN(valB)) valB = 9999999999999;
+
+                return valA - valB;
+            });
+
+            renderDashboard(filtered);
+            renderTable(filtered);
+            renderTimeline(filtered);
+        } catch (error) {
+            console.error("Error filtering schedule:", error);
+        }
+    }
+
+    /**
+     * Generates and injects the raw tabular DOM layout for the List View.
+     * @param {Array<Object>} data - Active dataset to render.
+     */
+    function renderTable(data) {
+        const tbody = document.getElementById('schedule-table-body');
+        try {
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="no-data">No active lines assigned. Great job!</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.map(row => {
+                const req = String(row['REQUIREMENT'] || 'PROD');
+                const catClass = getCategory(req);
+                const quote = row['QUOTE NO'] ? String(row['QUOTE NO']) : 'N/A';
+                const projName = String(row['PROJECT NAME'] || row['PROJECT_ID'] || 'N/A');
+                const estDays = String(row['EST DAYS'] || '1');
+
+                let endDateStr = String(row['EST END DATE'] || '').trim();
+                if (!endDateStr || endDateStr.toUpperCase() === 'N/A' || endDateStr.toUpperCase() === 'NAN') {
+                    endDateStr = String(row['ENG DUE DATE'] || '').trim();
+                }
+
+                let endDate = 'N/A';
+                const parsedMs = parseDateSafe(endDateStr);
+                if (!isNaN(parsedMs)) {
+                    endDate = formatDate(parsedMs);
+                }
+
+                const assigned = String(row['ASSIGNED TO'] || 'Unassigned');
+
+                return `
+                <tr>
+                    <td><span class="badge cat-${catClass}">${req}</span></td>
+                    <td>${quote}</td>
+                    <td><strong>${projName}</strong></td>
+                    <td style="color: var(--primary); font-weight: bold;">${endDate}</td>
+                    <td>${assigned}</td>
+                    <td>${estDays} days</td>
+                </tr>`;
+            }).join('');
+        } catch (error) {
+            console.error("Error rendering List View:", error);
+            tbody.innerHTML = '<tr><td colspan="6" class="no-data" style="color: red;">Error displaying data. Check console.</td></tr>';
+        }
+    }
+
+    /**
+     * Builds the interactive Timeline visualization grid.
+     * @param {Array<Object>} data - Active dataset to render.
+     */
+    function renderTimeline(data) {
+        const container = document.getElementById('timeline-body');
+        const gridHeader = document.getElementById('timeline-grid-header');
+
+        try {
+            if (data.length === 0) {
+                gridHeader.innerHTML = '';
+                container.innerHTML = '<div class="no-data">No active lines assigned. Great job!</div>';
+                return;
+            }
+
+            let minTime = Infinity;
+            let maxTime = -Infinity;
+            const validTasks = [];
+
+            data.forEach(item => {
+                let s = Number(parseDateSafe(item['EST START DATE']));
+
+                let endDateStr = String(item['EST END DATE'] || '').trim();
+                if (!endDateStr || endDateStr.toUpperCase() === 'N/A' || endDateStr.toUpperCase() === 'NAN') {
+                    endDateStr = String(item['ENG DUE DATE'] || '').trim();
+                }
+                let e = Number(parseDateSafe(endDateStr));
+
+                const req = String(item['REQUIREMENT'] || 'PROD');
+                const isSub = subRegex.test(req);
+
+                if (isSub) {
+                    if (isNaN(s) && !isNaN(e)) s = e - 86400000;
+                    if (isNaN(e) && !isNaN(s)) e = s + 86400000;
+                }
+
+                if (!isNaN(s) && !isNaN(e)) {
+                    if (s < minTime) minTime = s;
+                    if (e > maxTime) maxTime = e;
+                    validTasks.push({...item, startMs: s, endMs: e, reqCategory: getCategory(req), reqName: req});
+                }
+            });
+
+            if (validTasks.length === 0) {
+                gridHeader.innerHTML = '';
+                container.innerHTML = '<div class="no-data">Scheduled backlog is clear or unassigned.</div>';
+                return;
+            }
+
+            const paddingDays = 2 * 24 * 60 * 60 * 1000;
+            minTime -= paddingDays;
+            maxTime += paddingDays;
+            const totalDuration = Number(maxTime - minTime);
+
+            let ticksHtml = '';
+            let gridLinesHtml = '';
+            const todayMs = Number(new Date().setHours(0,0,0,0));
+
+            if (todayMs >= minTime && todayMs <= maxTime) {
+                const todayPct = Number(((todayMs - minTime) / totalDuration) * 100);
+                ticksHtml += `
+                <div class="today-marker" style="left: ${Math.round(todayPct)}%;">
+                    <span>TODAY</span>
+                </div>`;
+                gridLinesHtml += `
+                <div class="today-grid-line" style="left: ${Math.round(todayPct)}%;"></div>`;
+            }
+
+            let tickDate = new Date(minTime);
+            let day = tickDate.getDay();
+            let diff = tickDate.getDate() - day + (day === 0 ? -6 : 1);
+            tickDate.setDate(diff);
+            tickDate.setHours(0,0,0,0);
+
+            while (tickDate.getTime() <= maxTime) {
+                let leftPct = Number(((tickDate.getTime() - minTime) / totalDuration) * 100);
+                if (leftPct >= 0 && leftPct <= 100) {
+                    ticksHtml += `
+                    <div class="timeline-tick" style="left: ${Math.round(leftPct)}%;">
+                        <span>${tickDate.getMonth()+1}/${tickDate.getDate()}</span>
+                    </div>`;
+                    gridLinesHtml += `
+                    <div class="grid-line" style="left: ${Math.round(leftPct)}%;"></div>`;
+                }
+                tickDate.setDate(tickDate.getDate() + 7);
+            }
+            gridHeader.innerHTML = ticksHtml;
+
+            const projects = {};
+            validTasks.forEach(task => {
+                const projName = String(task['PROJECT NAME'] || task['PROJECT_ID'] || 'Unnamed Project');
+                if (!projects[projName]) projects[projName] = [];
+                projects[projName].push(task);
+            });
+
+            const sortedProjects = Object.keys(projects).map(key => {
+                const tasks = projects[key];
+                const earliest = Math.min(...tasks.map(t => Number(t.startMs)));
+                return { name: key, tasks, earliest };
+            }).sort((a, b) => a.earliest - b.earliest);
+
+            const rowElementsHtml = sortedProjects.map(proj => {
+                const trackHeight = Number(Math.max(proj.tasks.length * 30, 30));
+
+                const uniqueReqs = [...new Set(proj.tasks.map(t => String(t.reqName)))];
+                const uniqueQuotes = [...new Set(proj.tasks.map(t => String(t['QUOTE NO'])).filter(q => q && q !== 'N/A' && q !== '--'))];
+                const quoteStr = uniqueQuotes.length > 0 ? `QT: ${uniqueQuotes.join(', ')}` : 'No Quote Number';
+                const maxDueMs = Number(Math.max(...proj.tasks.map(t => Number(t.endMs))));
+                const maxDueDate = formatDate(maxDueMs);
+
+                const badgesHtml = uniqueReqs.map(req => `<span class="badge cat-${getCategory(req)}">${req}</span>`).join('');
+
+                const barsHtml = proj.tasks.map((task, idx) => {
+                    const leftPct = Number(((task.startMs - minTime) / totalDuration) * 100);
+                    const widthPct = Number(Math.max(((task.endMs - task.startMs) / totalDuration) * 100, 1.0));
+
+                    const catClass = String(task.reqCategory);
+                    const req = String(task.reqName);
+                    const quoteTooltip = task['QUOTE NO'] ? `QT: ${task['QUOTE NO']} | ` : '';
+
+                    let tooltipDueDate = String(task['EST END DATE'] || '').trim();
+                    if (!tooltipDueDate || tooltipDueDate.toUpperCase() === 'N/A' || tooltipDueDate.toUpperCase() === 'NAN') {
+                        tooltipDueDate = String(task['ENG DUE DUE DATE'] || 'N/A').trim();
+                    }
+
+                    const tMs = parseDateSafe(tooltipDueDate);
+                    if (!isNaN(tMs)) {
+                        tooltipDueDate = formatDate(tMs);
+                    }
+
+                    const estDays = String(task['EST DAYS'] || '1');
+                    const yPos = Number(idx * 30);
+
+                    return `
+                    <div class="timeline-bar cat-${catClass}"
+                         style="left: ${Math.round(leftPct)}%; width: ${Math.round(widthPct)}%; top: ${Math.round(yPos)}px;"
+                         title="${req} | ${quoteTooltip}Due: ${tooltipDueDate} | ${estDays} days">
+                        ${estDays}d
+                    </div>`;
+                }).join('');
+
+                return `
+                <div class="timeline-row">
+                    <div class="timeline-meta">
+                        <div class="meta-badges">${badgesHtml}</div>
+                        <div class="meta-title">${proj.name}</div>
+                        <div class="meta-sub">
+                            <span style="display:block; margin-bottom: 2px;">${quoteStr}</span>
+                            <span style="color: var(--primary);">Due: ${maxDueDate}</span>
+                        </div>
+                    </div>
+                    <div class="timeline-track" style="height: ${Math.round(trackHeight)}px;">
+                        ${barsHtml}
+                    </div>
+                </div>`;
+            }).join('');
+
+            container.innerHTML = `
+                <div class="timeline-grid-lines">${gridLinesHtml}</div>
+                ${rowElementsHtml}
+            `;
+        } catch (error) {
+            console.error("Error rendering timeline visualization:", error);
+            container.innerHTML = '<div class="no-data" style="color: red;">Failed to generate timeline. Check console.</div>';
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', fetchSchedule);
+</script>
+
+</body>
+</html>
