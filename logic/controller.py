@@ -239,14 +239,26 @@ class AppController:
         if self.history.has_changes():
             self.model.commit_overrides(self.history.get_staged_edits())
             self.history.clear()
-            self.refresh_tables(maintain_state=True)
 
             # --- Trigger Automated Push to Web Portal ---
-            if hasattr(self, 'current_plan_df') and not self.current_plan_df.empty:
-                if hasattr(self, 'view') and hasattr(self.view, 'show_status'):
+            # 1. Grab fresh, unfiltered data directly from the model (ignoring UI dropdowns)
+            web_df = self.model.get_application_data()
+
+            if not web_df.empty:
+                # 2. Filter out completed tasks so the web view only gets the active backlog
+                web_df = web_df[web_df['STATUS'].str.strip().str.upper() != 'COMPLETE'].copy()
+
+                # 3. Apply Calendar/PTO Engine math to accurately project the end dates
+                assignee_series = web_df['ASSIGNED TO']
+                pto = getattr(self, 'pto_dict', None)
+                web_df['EST END DATE'] = CalendarEngine.calculate_end_dates_vectorized(
+                    web_df['EST START DATE'], web_df['EST DAYS'], assignee_series, pto
+                )
+
+                if hasattr(self.view, 'show_status'):
                     self.view.show_status("Saving locally and publishing to live web schedule...", 0)
 
-                success = WebPublisher.publish_schedule(self.current_plan_df, self.config_data)
+                success = WebPublisher.publish_schedule(web_df, self.config_data)
 
                 if success and hasattr(self.view, 'show_status'):
                     self.view.show_status("All changes saved locally and published live.", 4000)
@@ -255,6 +267,9 @@ class AppController:
             else:
                 if hasattr(self.view, 'show_status'):
                     self.view.show_status("All changes saved successfully.", 4000)
+
+            # 4. Fire off the async UI refresh
+            self.refresh_tables(maintain_state=True)
         else:
             if hasattr(self.view, 'show_status'):
                 self.view.show_status("No unsaved changes.", 3000)

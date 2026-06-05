@@ -4,6 +4,7 @@ import logging
 import requests
 import pandas as pd
 import os
+from logic.constants import AppConstants
 
 logger = logging.getLogger(__name__)
 
@@ -34,13 +35,21 @@ class WebPublisher:
         try:
             # 1. Minimize and Clean Data
             target_cols = ['SMART_ID', 'PROJECT_ID', 'ASSIGNED TO', 'EST START DATE', 'EST END DATE', 'EST DAYS',
-                           'STATUS', 'REQUIREMENT']
+                           'STATUS', 'REQUIREMENT', 'QUOTE NO', 'PROJECT NAME']
             available_cols = [c for c in target_cols if c in df.columns]
 
             # Filter and convert dates/strings cleanly
             publish_df = df[available_cols].copy()
             records = publish_df.to_dict(orient='records')
             json_payload = json.dumps(records, indent=4)
+
+            # --- NEW: Save Local Copy for PyCharm Testing ---
+            local_path = os.path.join(AppConstants.get_data_dir(), "schedule.json")
+            try:
+                with open(local_path, 'w', encoding='utf-8') as f:
+                    f.write(json_payload)
+            except Exception as e:
+                logger.warning(f"Could not save local schedule.json: {e}")
 
             # 2. Prepare GitHub REST API Details
             repo = gh_config.get("repo")

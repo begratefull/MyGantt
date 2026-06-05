@@ -5,3 +5,4 @@ app_config.json
 *.log
 __pycache__/
 .idea/
+/data/schedule.json
