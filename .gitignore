@@ -1,5 +1,6 @@
 /build/
 /dist/
+/dist/
 app_config.json
 *.db
 *.log
