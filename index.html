@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyGantt Engineering Portal</title>
+    <title>OCL Custom Engineering Workload Portal</title>
     <style>
         :root {
             --bg-color: #f4f6f9;
@@ -98,10 +98,11 @@
         .dash-metric { font-size: 32px; font-weight: 800; color: var(--text-main); display: flex; align-items: center;}
 
         .health-indicator {
-            display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-left: 15px;
+            display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-left: 15px;
         }
         .health-good { background: var(--health-good-bg); color: var(--health-good-txt); }
         .health-warn { background: var(--health-warn-bg); color: var(--health-warn-txt); }
+        .health-neutral { background: var(--surface-hover); border: 1px solid var(--border); }
 
         .view-tabs { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid var(--border); }
         .tab-btn {
@@ -126,7 +127,7 @@
         tr:hover { background-color: var(--surface-hover); }
 
         .timeline-container {
-            background: var(--surface); border-radius: 8px; box-shadow: var(--shadow); padding: 20px; position: relative;
+            background: var(--surface); border-radius: 8px; box-shadow: var(--shadow); padding: 20px; position: relative; z-index: 0;
         }
 
         .timeline-header {
@@ -136,7 +137,7 @@
         .timeline-track-header { flex-grow: 1; position: relative; height: 20px; }
 
         .timeline-tick {
-            position: absolute; top: 0; bottom: -5000px;
+            position: absolute; top: 0; bottom: 0;
             border-left: 1px dashed var(--border); z-index: 0; pointer-events: none;
         }
         .timeline-tick span {
@@ -144,7 +145,7 @@
         }
 
         .today-marker {
-            position: absolute; top: 0; bottom: -5000px; border-left: 2px solid var(--today-line); z-index: 5; pointer-events: none;
+            position: absolute; top: 0; bottom: 0; border-left: 2px solid var(--today-line); z-index: 5; pointer-events: none;
         }
         .today-marker span {
             position: absolute; top: -22px; left: -25px; background: var(--today-line); color: white; padding: 3px 8px;
@@ -153,18 +154,28 @@
 
         .timeline-rows-wrapper { position: relative; z-index: 1; overflow: hidden; }
 
+        .timeline-grid-lines {
+            position: absolute; top: 0; bottom: 0; left: 320px; right: 0; pointer-events: none; z-index: 0;
+        }
+        .grid-line {
+            position: absolute; top: 0; bottom: 0; border-left: 1px dashed var(--border);
+        }
+        .today-grid-line {
+            position: absolute; top: 0; bottom: 0; border-left: 2px solid var(--today-line); z-index: 5;
+        }
+
         .timeline-row {
-            display: flex; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border); position: relative;
+            display: flex; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border); position: relative; z-index: 2;
         }
         .timeline-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
 
-        .timeline-meta { width: 300px; flex-shrink: 0; padding-right: 20px; background: var(--surface); z-index: 2; padding-top: 2px;}
+        .timeline-meta { width: 300px; flex-shrink: 0; padding-right: 20px; background: var(--surface); z-index: 3; padding-top: 2px;}
         .meta-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
         .meta-title { font-size: 15px; font-weight: 800; color: var(--text-main); line-height: 1.3; margin-bottom: 4px;}
         .meta-sub { font-size: 12px; font-weight: 600; color: var(--text-muted); line-height: 1.4;}
 
         .timeline-track {
-            flex-grow: 1; position: relative; z-index: 1; min-height: 30px;
+            flex-grow: 1; position: relative; z-index: 3; min-height: 30px;
         }
 
         .timeline-bar {
@@ -182,14 +193,21 @@
 
 <div class="container">
     <header>
-        <h1>Engineering Workload Portal</h1>
+        <h1>OCL Custom Engineering Workload Portal</h1>
         <button class="theme-toggle" onclick="toggleTheme()">🌓 Toggle Dark Mode</button>
     </header>
 
     <div class="dashboard-grid">
         <div class="dash-card">
             <div class="dash-title">Total Active Lines</div>
-            <div class="dash-metric" id="dash-total-lines">0</div>
+            <div class="dash-metric">
+                <span id="dash-total-lines">0</span>
+                <span class="health-indicator health-neutral">
+                    <span id="dash-total-prod-count" style="color: var(--dash-prod);">0 Prod</span>
+                    <span style="color: var(--text-muted); margin: 0 8px;">|</span>
+                    <span id="dash-total-sub-count" style="color: var(--dash-sub);">0 Sub</span>
+                </span>
+            </div>
         </div>
         <div class="dash-card prod">
             <div class="dash-title">Production Backlog</div>
@@ -249,37 +267,73 @@
     const prodRegex = /PROD/i;
     const subRegex = /APP|SUB|QUOT|QUOTE|APPROVAL|SUBMITTAL/i;
 
+    /**
+     * Determines if a task is production or submittal based on requirement text.
+     * @param {string} req - The requirement string from the task.
+     * @returns {string} Category identifier ('sub' or 'prod').
+     */
     function getCategory(req) {
         return subRegex.test(req) ? 'sub' : 'prod';
     }
 
+    /**
+     * Safely converts date strings into milliseconds, handling raw DB timestamps.
+     * @param {string} dateStr - Date string to parse.
+     * @returns {number} Milliseconds since epoch, or NaN.
+     */
     function parseDateSafe(dateStr) {
         if (!dateStr) return NaN;
-        let str = String(dateStr);
-        if (str.indexOf('T') === -1) {
+        let str = String(dateStr).trim();
+        if (!str || str.toUpperCase() === 'NAN' || str.toUpperCase() === 'N/A') return NaN;
+
+        if (str.includes(' ')) {
+            str = str.split(' ')[0];
+        }
+
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
             str += 'T00:00:00';
         }
+
         return new Date(str).getTime();
     }
 
+    /**
+     * Formats a millisecond timestamp into standard MM/DD/YYYY representation.
+     * @param {number} ms - The timestamp in milliseconds.
+     * @returns {string} The formatted date string.
+     */
     function formatDate(ms) {
+        if (isNaN(ms)) return 'N/A';
         const d = new Date(Number(ms));
         return `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
     }
 
+    /**
+     * Displays error UI when JSON fetch or parsing completely fails.
+     */
     function triggerErrorState() {
         document.getElementById('timeline-body').innerHTML = '<div class="no-data">Schedule dataset not found. Please ensure Python app is syncing data.</div>';
         document.getElementById('schedule-table-body').innerHTML = '<tr><td colspan="6" class="no-data">Schedule dataset not found.</td></tr>';
     }
 
+    /**
+     * Initializes dark mode or light mode based on user's system preferences or cached override.
+     */
     function initTheme() {
-        const savedTheme = localStorage.getItem('myGanttTheme');
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-            document.documentElement.setAttribute('data-theme', 'dark');
+        try {
+            const savedTheme = localStorage.getItem('myGanttTheme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        } catch (e) {
+            console.warn("Theme initialization failed:", e);
         }
     }
 
+    /**
+     * Toggles the UI theme between dark and light modes, saving preference to localStorage.
+     */
     function toggleTheme() {
         const current = document.documentElement.getAttribute('data-theme');
         const newTheme = current === 'dark' ? 'light' : 'dark';
@@ -287,6 +341,11 @@
         localStorage.setItem('myGanttTheme', newTheme);
     }
 
+    /**
+     * Switches the active view tab between List and Timeline.
+     * @param {Event} e - The click event from the tab button.
+     * @param {string} viewId - The ID of the view to activate ('timeline' or 'table').
+     */
     function switchView(e, viewId) {
         document.querySelectorAll('.view-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -294,6 +353,9 @@
         e.currentTarget.classList.add('active');
     }
 
+    /**
+     * Fetches the schedule JSON data from the repository, builds filters, and invokes render pipelines.
+     */
     async function fetchSchedule() {
         initTheme();
         try {
@@ -321,226 +383,317 @@
                 filterDropdown.value = savedEngineer;
             }
 
-            renderDashboard();
             filterSchedule();
         } catch (err) {
+            console.error("Critical failure fetching schedule data:", err);
             triggerErrorState();
         }
     }
 
-    function renderDashboard() {
-        const todayMs = Number(new Date().setHours(0,0,0,0));
+    /**
+     * Renders the top health metrics dynamically against the filtered data array.
+     * @param {Array<Object>} data - The currently filtered active dataset.
+     */
+    function renderDashboard(data) {
+        try {
+            const todayMs = Number(new Date().setHours(0,0,0,0));
 
-        let prodCount = 0, prodOverdue = 0;
-        let subCount = 0, subOverdue = 0;
+            let prodCount = 0, prodOverdue = 0;
+            let subCount = 0, subOverdue = 0;
 
-        scheduleData.forEach(item => {
-            const endMs = Number(parseDateSafe(item['EST END DATE']));
-            const isOverdue = !isNaN(endMs) && endMs < todayMs;
+            data.forEach(item => {
+                let endDateStr = String(item['EST END DATE'] || '').trim();
+                if (!endDateStr || endDateStr.toUpperCase() === 'N/A' || endDateStr.toUpperCase() === 'NAN') {
+                    endDateStr = String(item['ENG DUE DATE'] || '').trim();
+                }
 
-            if (prodRegex.test(item['REQUIREMENT'])) {
-                prodCount++;
-                if (isOverdue) prodOverdue++;
-            } else {
-                subCount++;
-                if (isOverdue) subOverdue++;
-            }
-        });
+                const endMs = Number(parseDateSafe(endDateStr));
+                const isOverdue = !isNaN(endMs) && endMs < todayMs;
 
-        document.getElementById('dash-total-lines').textContent = String(scheduleData.length);
+                if (prodRegex.test(item['REQUIREMENT'])) {
+                    prodCount++;
+                    if (isOverdue) prodOverdue++;
+                } else {
+                    subCount++;
+                    if (isOverdue) subOverdue++;
+                }
+            });
 
-        document.getElementById('dash-prod-lines').textContent = String(prodCount);
-        document.getElementById('dash-prod-health').className = 'health-indicator ' + (prodOverdue > 0 ? 'health-warn' : 'health-good');
-        document.getElementById('dash-prod-health').textContent = prodOverdue > 0 ? `${prodOverdue} Overdue` : 'On Track';
+            document.getElementById('dash-total-lines').textContent = String(data.length);
+            document.getElementById('dash-total-prod-count').textContent = `${prodCount} Prod`;
+            document.getElementById('dash-total-sub-count').textContent = `${subCount} Sub`;
 
-        document.getElementById('dash-sub-lines').textContent = String(subCount);
-        document.getElementById('dash-sub-health').className = 'health-indicator ' + (subOverdue > 0 ? 'health-warn' : 'health-good');
-        document.getElementById('dash-sub-health').textContent = subOverdue > 0 ? `${subOverdue} Overdue` : 'On Track';
-    }
+            document.getElementById('dash-prod-lines').textContent = String(prodCount);
+            document.getElementById('dash-prod-health').className = 'health-indicator ' + (prodOverdue > 0 ? 'health-warn' : 'health-good');
+            document.getElementById('dash-prod-health').textContent = prodOverdue > 0 ? `${prodOverdue} Overdue` : 'On Track';
 
-    function filterSchedule() {
-        const selected = String(document.getElementById('engineer-filter').value);
-        let filtered = scheduleData;
-        if (selected !== 'ALL') {
-            filtered = scheduleData.filter(item => String(item['ASSIGNED TO']) === selected);
-            localStorage.setItem('myGanttUser', selected);
-        } else {
-            localStorage.removeItem('myGanttUser');
+            document.getElementById('dash-sub-lines').textContent = String(subCount);
+            document.getElementById('dash-sub-health').className = 'health-indicator ' + (subOverdue > 0 ? 'health-warn' : 'health-good');
+            document.getElementById('dash-sub-health').textContent = subOverdue > 0 ? `${subOverdue} Overdue` : 'On Track';
+        } catch (error) {
+            console.error("Error computing dashboard health metrics:", error);
         }
-
-        filtered.sort((a, b) => {
-            let valA = Number(parseDateSafe(a['EST START DATE']));
-            if (isNaN(valA)) valA = Number(parseDateSafe(a['EST END DATE']));
-            if (isNaN(valA)) valA = 9999999999999;
-
-            let valB = Number(parseDateSafe(b['EST START DATE']));
-            if (isNaN(valB)) valB = Number(parseDateSafe(b['EST END DATE']));
-            if (isNaN(valB)) valB = 9999999999999;
-
-            return valA - valB;
-        });
-
-        renderTable(filtered);
-        renderTimeline(filtered);
     }
 
+    /**
+     * Filters and sorts the data by assignee and updates ALL UI elements.
+     */
+    function filterSchedule() {
+        try {
+            const selected = String(document.getElementById('engineer-filter').value);
+            let filtered = scheduleData;
+            if (selected !== 'ALL') {
+                filtered = scheduleData.filter(item => String(item['ASSIGNED TO']) === selected);
+                localStorage.setItem('myGanttUser', selected);
+            } else {
+                localStorage.removeItem('myGanttUser');
+            }
+
+            filtered.sort((a, b) => {
+                let valA = Number(parseDateSafe(a['EST START DATE']));
+                if (isNaN(valA)) {
+                    let endA = String(a['EST END DATE'] || '').trim();
+                    if (!endA || endA.toUpperCase() === 'N/A' || endA.toUpperCase() === 'NAN') {
+                        endA = String(a['ENG DUE DATE'] || '').trim();
+                    }
+                    valA = Number(parseDateSafe(endA));
+                }
+                if (isNaN(valA)) valA = 9999999999999;
+
+                let valB = Number(parseDateSafe(b['EST START DATE']));
+                if (isNaN(valB)) {
+                    let endB = String(b['EST END DATE'] || '').trim();
+                    if (!endB || endB.toUpperCase() === 'N/A' || endB.toUpperCase() === 'NAN') {
+                        endB = String(b['ENG DUE DATE'] || '').trim();
+                    }
+                    valB = Number(parseDateSafe(endB));
+                }
+                if (isNaN(valB)) valB = 9999999999999;
+
+                return valA - valB;
+            });
+
+            renderDashboard(filtered);
+            renderTable(filtered);
+            renderTimeline(filtered);
+        } catch (error) {
+            console.error("Error filtering schedule:", error);
+        }
+    }
+
+    /**
+     * Generates and injects the raw tabular DOM layout for the List View.
+     * @param {Array<Object>} data - Active dataset to render.
+     */
     function renderTable(data) {
         const tbody = document.getElementById('schedule-table-body');
-        if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="no-data">No active lines assigned. Great job!</td></tr>';
-            return;
+        try {
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="no-data">No active lines assigned. Great job!</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.map(row => {
+                const req = String(row['REQUIREMENT'] || 'PROD');
+                const catClass = getCategory(req);
+                const quote = row['QUOTE NO'] ? String(row['QUOTE NO']) : 'N/A';
+                const projName = String(row['PROJECT NAME'] || row['PROJECT_ID'] || 'N/A');
+                const estDays = String(row['EST DAYS'] || '1');
+
+                let endDateStr = String(row['EST END DATE'] || '').trim();
+                if (!endDateStr || endDateStr.toUpperCase() === 'N/A' || endDateStr.toUpperCase() === 'NAN') {
+                    endDateStr = String(row['ENG DUE DATE'] || '').trim();
+                }
+
+                let endDate = 'N/A';
+                const parsedMs = parseDateSafe(endDateStr);
+                if (!isNaN(parsedMs)) {
+                    endDate = formatDate(parsedMs);
+                }
+
+                const assigned = String(row['ASSIGNED TO'] || 'Unassigned');
+
+                return `
+                <tr>
+                    <td><span class="badge cat-${catClass}">${req}</span></td>
+                    <td>${quote}</td>
+                    <td><strong>${projName}</strong></td>
+                    <td style="color: var(--primary); font-weight: bold;">${endDate}</td>
+                    <td>${assigned}</td>
+                    <td>${estDays} days</td>
+                </tr>`;
+            }).join('');
+        } catch (error) {
+            console.error("Error rendering List View:", error);
+            tbody.innerHTML = '<tr><td colspan="6" class="no-data" style="color: red;">Error displaying data. Check console.</td></tr>';
         }
-
-        tbody.innerHTML = data.map(row => {
-            const req = String(row['REQUIREMENT'] || 'PROD');
-            const catClass = getCategory(req);
-            const quote = row['QUOTE NO'] ? String(row['QUOTE NO']) : 'N/A';
-            const projName = String(row['PROJECT NAME'] || row['PROJECT_ID'] || 'N/A');
-            const estDays = String(row['EST DAYS'] || '1');
-            const endDate = String(row['EST END DATE'] || 'N/A');
-            const assigned = String(row['ASSIGNED TO'] || 'Unassigned');
-
-            return `
-            <tr>
-                <td><span class="badge cat-${catClass}">${req}</span></td>
-                <td>${quote}</td>
-                <td><strong>${projName}</strong></td>
-                <td style="color: var(--primary); font-weight: bold;">${endDate}</td>
-                <td>${assigned}</td>
-                <td>${estDays} days</td>
-            </tr>`;
-        }).join('');
     }
 
+    /**
+     * Builds the interactive Timeline visualization grid.
+     * @param {Array<Object>} data - Active dataset to render.
+     */
     function renderTimeline(data) {
         const container = document.getElementById('timeline-body');
         const gridHeader = document.getElementById('timeline-grid-header');
 
-        if (data.length === 0) {
-            gridHeader.innerHTML = '';
-            container.innerHTML = '<div class="no-data">No active lines assigned. Great job!</div>';
-            return;
-        }
-
-        let minTime = Infinity;
-        let maxTime = -Infinity;
-        const validTasks = [];
-
-        data.forEach(item => {
-            let s = Number(parseDateSafe(item['EST START DATE']));
-            let e = Number(parseDateSafe(item['EST END DATE']));
-            const req = String(item['REQUIREMENT'] || 'PROD');
-            const isSub = subRegex.test(req);
-
-            if (isSub) {
-                if (isNaN(s) && !isNaN(e)) s = e - 86400000;
-                if (isNaN(e) && !isNaN(s)) e = s + 86400000;
+        try {
+            if (data.length === 0) {
+                gridHeader.innerHTML = '';
+                container.innerHTML = '<div class="no-data">No active lines assigned. Great job!</div>';
+                return;
             }
 
-            if (!isNaN(s) && !isNaN(e)) {
-                if (s < minTime) minTime = s;
-                if (e > maxTime) maxTime = e;
-                validTasks.push({...item, startMs: s, endMs: e, reqCategory: getCategory(req), reqName: req});
+            let minTime = Infinity;
+            let maxTime = -Infinity;
+            const validTasks = [];
+
+            data.forEach(item => {
+                let s = Number(parseDateSafe(item['EST START DATE']));
+
+                let endDateStr = String(item['EST END DATE'] || '').trim();
+                if (!endDateStr || endDateStr.toUpperCase() === 'N/A' || endDateStr.toUpperCase() === 'NAN') {
+                    endDateStr = String(item['ENG DUE DATE'] || '').trim();
+                }
+                let e = Number(parseDateSafe(endDateStr));
+
+                const req = String(item['REQUIREMENT'] || 'PROD');
+                const isSub = subRegex.test(req);
+
+                if (isSub) {
+                    if (isNaN(s) && !isNaN(e)) s = e - 86400000;
+                    if (isNaN(e) && !isNaN(s)) e = s + 86400000;
+                }
+
+                if (!isNaN(s) && !isNaN(e)) {
+                    if (s < minTime) minTime = s;
+                    if (e > maxTime) maxTime = e;
+                    validTasks.push({...item, startMs: s, endMs: e, reqCategory: getCategory(req), reqName: req});
+                }
+            });
+
+            if (validTasks.length === 0) {
+                gridHeader.innerHTML = '';
+                container.innerHTML = '<div class="no-data">Scheduled backlog is clear or unassigned.</div>';
+                return;
             }
-        });
 
-        if (validTasks.length === 0) {
-            gridHeader.innerHTML = '';
-            container.innerHTML = '<div class="no-data">Scheduled backlog is clear or unassigned.</div>';
-            return;
-        }
+            const paddingDays = 2 * 24 * 60 * 60 * 1000;
+            minTime -= paddingDays;
+            maxTime += paddingDays;
+            const totalDuration = Number(maxTime - minTime);
 
-        const paddingDays = 2 * 24 * 60 * 60 * 1000;
-        minTime -= paddingDays;
-        maxTime += paddingDays;
-        const totalDuration = Number(maxTime - minTime);
+            let ticksHtml = '';
+            let gridLinesHtml = '';
+            const todayMs = Number(new Date().setHours(0,0,0,0));
 
-        let ticksHtml = '';
-        const todayMs = Number(new Date().setHours(0,0,0,0));
-
-        if (todayMs >= minTime && todayMs <= maxTime) {
-            const todayPct = Number(((todayMs - minTime) / totalDuration) * 100);
-            ticksHtml += `
-            <div class="today-marker" style="left: ${Math.round(todayPct)}%;">
-                <span>TODAY</span>
-            </div>`;
-        }
-
-        let tickDate = new Date(minTime);
-        let day = tickDate.getDay();
-        let diff = tickDate.getDate() - day + (day === 0 ? -6 : 1);
-        tickDate.setDate(diff);
-        tickDate.setHours(0,0,0,0);
-
-        while (tickDate.getTime() <= maxTime) {
-            let leftPct = Number(((tickDate.getTime() - minTime) / totalDuration) * 100);
-            if (leftPct >= 0 && leftPct <= 100) {
+            if (todayMs >= minTime && todayMs <= maxTime) {
+                const todayPct = Number(((todayMs - minTime) / totalDuration) * 100);
                 ticksHtml += `
-                <div class="timeline-tick" style="left: ${Math.round(leftPct)}%;">
-                    <span>${tickDate.getMonth()+1}/${tickDate.getDate()}</span>
+                <div class="today-marker" style="left: ${Math.round(todayPct)}%;">
+                    <span>TODAY</span>
                 </div>`;
+                gridLinesHtml += `
+                <div class="today-grid-line" style="left: ${Math.round(todayPct)}%;"></div>`;
             }
-            tickDate.setDate(tickDate.getDate() + 7);
-        }
-        gridHeader.innerHTML = ticksHtml;
 
-        const projects = {};
-        validTasks.forEach(task => {
-            const projName = String(task['PROJECT NAME'] || task['PROJECT_ID'] || 'Unnamed Project');
-            if (!projects[projName]) projects[projName] = [];
-            projects[projName].push(task);
-        });
+            let tickDate = new Date(minTime);
+            let day = tickDate.getDay();
+            let diff = tickDate.getDate() - day + (day === 0 ? -6 : 1);
+            tickDate.setDate(diff);
+            tickDate.setHours(0,0,0,0);
 
-        const sortedProjects = Object.keys(projects).map(key => {
-            const tasks = projects[key];
-            const earliest = Math.min(...tasks.map(t => Number(t.startMs)));
-            return { name: key, tasks, earliest };
-        }).sort((a, b) => a.earliest - b.earliest);
+            while (tickDate.getTime() <= maxTime) {
+                let leftPct = Number(((tickDate.getTime() - minTime) / totalDuration) * 100);
+                if (leftPct >= 0 && leftPct <= 100) {
+                    ticksHtml += `
+                    <div class="timeline-tick" style="left: ${Math.round(leftPct)}%;">
+                        <span>${tickDate.getMonth()+1}/${tickDate.getDate()}</span>
+                    </div>`;
+                    gridLinesHtml += `
+                    <div class="grid-line" style="left: ${Math.round(leftPct)}%;"></div>`;
+                }
+                tickDate.setDate(tickDate.getDate() + 7);
+            }
+            gridHeader.innerHTML = ticksHtml;
 
-        container.innerHTML = sortedProjects.map(proj => {
-            const trackHeight = Number(Math.max(proj.tasks.length * 30, 30));
+            const projects = {};
+            validTasks.forEach(task => {
+                const projName = String(task['PROJECT NAME'] || task['PROJECT_ID'] || 'Unnamed Project');
+                if (!projects[projName]) projects[projName] = [];
+                projects[projName].push(task);
+            });
 
-            const uniqueReqs = [...new Set(proj.tasks.map(t => String(t.reqName)))];
-            const uniqueQuotes = [...new Set(proj.tasks.map(t => String(t['QUOTE NO'])).filter(q => q && q !== 'N/A' && q !== '--'))];
-            const quoteStr = uniqueQuotes.length > 0 ? `QT: ${uniqueQuotes.join(', ')}` : 'No Quote Number';
-            const maxDueMs = Number(Math.max(...proj.tasks.map(t => Number(t.endMs))));
-            const maxDueDate = formatDate(maxDueMs);
+            const sortedProjects = Object.keys(projects).map(key => {
+                const tasks = projects[key];
+                const earliest = Math.min(...tasks.map(t => Number(t.startMs)));
+                return { name: key, tasks, earliest };
+            }).sort((a, b) => a.earliest - b.earliest);
 
-            const badgesHtml = uniqueReqs.map(req => `<span class="badge cat-${getCategory(req)}">${req}</span>`).join('');
+            const rowElementsHtml = sortedProjects.map(proj => {
+                const trackHeight = Number(Math.max(proj.tasks.length * 30, 30));
 
-            const barsHtml = proj.tasks.map((task, idx) => {
-                const leftPct = Number(((task.startMs - minTime) / totalDuration) * 100);
-                const widthPct = Number(Math.max(((task.endMs - task.startMs) / totalDuration) * 100, 1.0));
+                const uniqueReqs = [...new Set(proj.tasks.map(t => String(t.reqName)))];
+                const uniqueQuotes = [...new Set(proj.tasks.map(t => String(t['QUOTE NO'])).filter(q => q && q !== 'N/A' && q !== '--'))];
+                const quoteStr = uniqueQuotes.length > 0 ? `QT: ${uniqueQuotes.join(', ')}` : 'No Quote Number';
+                const maxDueMs = Number(Math.max(...proj.tasks.map(t => Number(t.endMs))));
+                const maxDueDate = formatDate(maxDueMs);
 
-                const catClass = String(task.reqCategory);
-                const req = String(task.reqName);
-                const quoteTooltip = task['QUOTE NO'] ? `QT: ${task['QUOTE NO']} | ` : '';
-                const estDays = String(task['EST DAYS'] || '1');
-                const yPos = Number(idx * 30);
+                const badgesHtml = uniqueReqs.map(req => `<span class="badge cat-${getCategory(req)}">${req}</span>`).join('');
+
+                const barsHtml = proj.tasks.map((task, idx) => {
+                    const leftPct = Number(((task.startMs - minTime) / totalDuration) * 100);
+                    const widthPct = Number(Math.max(((task.endMs - task.startMs) / totalDuration) * 100, 1.0));
+
+                    const catClass = String(task.reqCategory);
+                    const req = String(task.reqName);
+                    const quoteTooltip = task['QUOTE NO'] ? `QT: ${task['QUOTE NO']} | ` : '';
+
+                    let tooltipDueDate = String(task['EST END DATE'] || '').trim();
+                    if (!tooltipDueDate || tooltipDueDate.toUpperCase() === 'N/A' || tooltipDueDate.toUpperCase() === 'NAN') {
+                        tooltipDueDate = String(task['ENG DUE DUE DATE'] || 'N/A').trim();
+                    }
+
+                    const tMs = parseDateSafe(tooltipDueDate);
+                    if (!isNaN(tMs)) {
+                        tooltipDueDate = formatDate(tMs);
+                    }
+
+                    const estDays = String(task['EST DAYS'] || '1');
+                    const yPos = Number(idx * 30);
+
+                    return `
+                    <div class="timeline-bar cat-${catClass}"
+                         style="left: ${Math.round(leftPct)}%; width: ${Math.round(widthPct)}%; top: ${Math.round(yPos)}px;"
+                         title="${req} | ${quoteTooltip}Due: ${tooltipDueDate} | ${estDays} days">
+                        ${estDays}d
+                    </div>`;
+                }).join('');
 
                 return `
-                <div class="timeline-bar cat-${catClass}"
-                     style="left: ${Math.round(leftPct)}%; width: ${Math.round(widthPct)}%; top: ${Math.round(yPos)}px;"
-                     title="${req} | ${quoteTooltip}Due: ${task['EST END DATE']} | ${estDays} days">
-                    ${estDays}d
+                <div class="timeline-row">
+                    <div class="timeline-meta">
+                        <div class="meta-badges">${badgesHtml}</div>
+                        <div class="meta-title">${proj.name}</div>
+                        <div class="meta-sub">
+                            <span style="display:block; margin-bottom: 2px;">${quoteStr}</span>
+                            <span style="color: var(--primary);">Due: ${maxDueDate}</span>
+                        </div>
+                    </div>
+                    <div class="timeline-track" style="height: ${Math.round(trackHeight)}px;">
+                        ${barsHtml}
+                    </div>
                 </div>`;
             }).join('');
 
-            return `
-            <div class="timeline-row">
-                <div class="timeline-meta">
-                    <div class="meta-badges">${badgesHtml}</div>
-                    <div class="meta-title">${proj.name}</div>
-                    <div class="meta-sub">
-                        <span style="display:block; margin-bottom: 2px;">${quoteStr}</span>
-                        <span style="color: var(--primary);">Due: ${maxDueDate}</span>
-                    </div>
-                </div>
-                <div class="timeline-track" style="height: ${Math.round(trackHeight)}px;">
-                    ${barsHtml}
-                </div>
-            </div>`;
-        }).join('');
+            container.innerHTML = `
+                <div class="timeline-grid-lines">${gridLinesHtml}</div>
+                ${rowElementsHtml}
+            `;
+        } catch (error) {
+            console.error("Error rendering timeline visualization:", error);
+            container.innerHTML = '<div class="no-data" style="color: red;">Failed to generate timeline. Check console.</div>';
+        }
     }
 
     window.addEventListener('DOMContentLoaded', fetchSchedule);
