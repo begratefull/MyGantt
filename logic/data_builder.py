@@ -39,7 +39,7 @@ class GanttDataBuilder:
                 valid_idx = est_starts.index
                 est_days = pd.to_numeric(group.loc[valid_idx, 'EST DAYS'], errors='coerce').fillna(AppConstants.DEFAULT_EST_DAYS).astype(int)
 
-                # --- Routed through Central Engine ---
+                # — Routed through Central Engine —
                 assignee_series = group.loc[valid_idx, 'ASSIGNED TO']
                 end_strings = CalendarEngine.calculate_end_dates_vectorized(
                     est_starts, est_days, assignee_series, pto_dict
@@ -125,7 +125,9 @@ class GanttDataBuilder:
 
             if project_id in expanded_projects:
                 for idx, row in group.iterrows():
-                    child_row = row.to_dict()
+                    # FIX: Explicitly cast row keys to strings to satisfy Pyright/Pylance's Hashable warning
+                    child_row: Dict[str, Any] = {str(k): v for k, v in row.items()}
+
                     child_row['IS_PARENT'] = False
                     child_row['REQUIREMENT'] = GanttDataBuilder.clean_requirement_text(child_row.get('REQUIREMENT', ''))
 
@@ -144,6 +146,24 @@ class GanttDataBuilder:
                         child_color = "#555555"
                     else:
                         child_color = color_map.get(child_assignee, "#555555")
+
+                    # — NEW GHOSTING LOGIC FOR COMPLETED TASKS —
+                    if str(child_row.get('STATUS', '')).strip().upper() == 'COMPLETE':
+                        child_row['REQUIREMENT'] = f"✓ {child_row['REQUIREMENT']}"
+
+                        # Dynamically blend the engineer's assigned color with the dark background (30% opacity)
+                        if child_color.startswith("#") and len(child_color) == 7:
+                            try:
+                                r, g, b = int(child_color[1:3], 16), int(child_color[3:5], 16), int(child_color[5:7], 16)
+                                bg_r, bg_g, bg_b = 0x1E, 0x1E, 0x1E # App Background Color
+                                alpha = 0.3
+
+                                r = int(r * alpha + bg_r * (1 - alpha))
+                                g = int(g * alpha + bg_g * (1 - alpha))
+                                b = int(b * alpha + bg_b * (1 - alpha))
+                                child_color = f"#{r:02X}{g:02X}{b:02X}"
+                            except ValueError:
+                                pass
 
                     child_row['HEX_COLOR'] = child_color
                     child_row['ALL_ASSIGNEES'] = [child_assignee] if child_assignee else []

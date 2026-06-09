@@ -35,7 +35,7 @@ class WebPublisher:
         token = os.environ.get("MYGANTT_GITHUB_TOKEN") or gh_config.get("token")
         repo = gh_config.get("repo")
         path = gh_config.get("data_path", "data/schedule.json")
-        branch = gh_config.get("branch", "main")
+        branch = gh_config.get("branch", "master")
 
         if not token or not repo:
             logger.warning("Web publishing skipped: GitHub credentials or target repository mapping missing.")

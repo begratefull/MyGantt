@@ -19,6 +19,7 @@
             --dash-prod: #38a169;
             --dash-sub: #ed8936;
             --today-line: #e53e3e;
+            --due-date-color: #805ad5;
 
             --health-good-bg: #e8f5e9;
             --health-good-txt: #2e7d32;
@@ -40,6 +41,7 @@
             --dash-prod: #48bb78;
             --dash-sub: #ed8936;
             --today-line: #fc8181;
+            --due-date-color: #b794f4;
 
             --health-good-bg: #1b5e20;
             --health-good-txt: #a5d6a7;
@@ -137,8 +139,7 @@
         .timeline-track-header { flex-grow: 1; position: relative; height: 20px; }
 
         .timeline-tick {
-            position: absolute; top: 0; bottom: 0;
-            border-left: 1px dashed var(--border); z-index: 0; pointer-events: none;
+            position: absolute; top: 0; bottom: 0; z-index: 0; pointer-events: none;
         }
         .timeline-tick span {
             position: absolute; top: -5px; left: 6px; font-size: 11px; color: var(--text-muted); font-weight: bold; background: var(--surface); padding: 0 4px;
@@ -157,9 +158,20 @@
         .timeline-grid-lines {
             position: absolute; top: 0; bottom: 0; left: 320px; right: 0; pointer-events: none; z-index: 0;
         }
+
+        /** Daily Line Styling */
         .grid-line {
-            position: absolute; top: 0; bottom: 0; border-left: 1px dashed var(--border);
+            position: absolute; top: 0; bottom: 0;
         }
+        .grid-line.week-start {
+            border-left: 2px solid var(--text-muted);
+            opacity: 0.4;
+        }
+        .grid-line.day {
+            border-left: 1px dashed var(--border);
+            opacity: 0.6;
+        }
+
         .today-grid-line {
             position: absolute; top: 0; bottom: 0; border-left: 2px solid var(--today-line); z-index: 5;
         }
@@ -185,6 +197,20 @@
             cursor: default; transition: opacity 0.2s;
         }
         .timeline-bar:hover { opacity: 0.85; z-index: 10; }
+
+        /** Engineering Due Date Indicator Overlays */
+        .due-date-container {
+            position: absolute; z-index: 6; pointer-events: none;
+        }
+
+        /** * Downward pointing triangle.
+         * Half the height of the 24px timeline bar (12px).
+         * Rest directly on top of the task bar (top: -12px relative to the container).
+         */
+        .due-date-flag {
+            position: absolute; top: -12px; left: -6px; width: 0; height: 0;
+            border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 12px solid var(--due-date-color);
+        }
 
         .no-data { text-align: center; padding: 40px; color: var(--text-muted); font-style: italic; background: var(--surface); border-radius: 8px;}
     </style>
@@ -268,39 +294,26 @@
     const subRegex = /APP|SUB|QUOT|QUOTE|APPROVAL|SUBMITTAL/i;
 
     /**
-     * Determines if a task is production or submittal based on requirement text.
-     * @param {string} req - The requirement string from the task.
-     * @returns {string} Category identifier ('sub' or 'prod').
+     * Determines if a task is production or submittal.
      */
     function getCategory(req) {
         return subRegex.test(req) ? 'sub' : 'prod';
     }
 
     /**
-     * Safely converts date strings into milliseconds, handling raw DB timestamps.
-     * @param {string} dateStr - Date string to parse.
-     * @returns {number} Milliseconds since epoch, or NaN.
+     * Safely converts date strings into milliseconds.
      */
     function parseDateSafe(dateStr) {
         if (!dateStr) return NaN;
         let str = String(dateStr).trim();
         if (!str || str.toUpperCase() === 'NAN' || str.toUpperCase() === 'N/A') return NaN;
-
-        if (str.includes(' ')) {
-            str = str.split(' ')[0];
-        }
-
-        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-            str += 'T00:00:00';
-        }
-
+        if (str.includes(' ')) str = str.split(' ')[0];
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) str += 'T00:00:00';
         return new Date(str).getTime();
     }
 
     /**
-     * Formats a millisecond timestamp into standard MM/DD/YYYY representation.
-     * @param {number} ms - The timestamp in milliseconds.
-     * @returns {string} The formatted date string.
+     * Formats a millisecond timestamp into standard MM/DD/YYYY.
      */
     function formatDate(ms) {
         if (isNaN(ms)) return 'N/A';
@@ -309,16 +322,35 @@
     }
 
     /**
-     * Displays error UI when JSON fetch or parsing completely fails.
+     * Calculates the exact number of working days (Mon-Fri) between two dates.
+     * @param {number} startMs - Epoch timestamp for start date.
+     * @param {number} endMs - Epoch timestamp for end date.
+     * @returns {number} Count of working days.
+     */
+    function getWorkingDaysBetween(startMs, endMs) {
+        if (startMs > endMs) return 0;
+        let count = 0;
+        let cur = new Date(startMs);
+        cur.setHours(0,0,0,0);
+        let end = new Date(endMs);
+        end.setHours(0,0,0,0);
+
+        while(cur < end) {
+            let day = cur.getDay();
+            if(day !== 0 && day !== 6) count++;
+            cur.setDate(cur.getDate() + 1);
+        }
+        return count;
+    }
+
+    /**
+     * Displays error UI when data fails to load.
      */
     function triggerErrorState() {
         document.getElementById('timeline-body').innerHTML = '<div class="no-data">Schedule dataset not found. Please ensure Python app is syncing data.</div>';
         document.getElementById('schedule-table-body').innerHTML = '<tr><td colspan="6" class="no-data">Schedule dataset not found.</td></tr>';
     }
 
-    /**
-     * Initializes dark mode or light mode based on user's system preferences or cached override.
-     */
     function initTheme() {
         try {
             const savedTheme = localStorage.getItem('myGanttTheme');
@@ -331,9 +363,6 @@
         }
     }
 
-    /**
-     * Toggles the UI theme between dark and light modes, saving preference to localStorage.
-     */
     function toggleTheme() {
         const current = document.documentElement.getAttribute('data-theme');
         const newTheme = current === 'dark' ? 'light' : 'dark';
@@ -341,11 +370,6 @@
         localStorage.setItem('myGanttTheme', newTheme);
     }
 
-    /**
-     * Switches the active view tab between List and Timeline.
-     * @param {Event} e - The click event from the tab button.
-     * @param {string} viewId - The ID of the view to activate ('timeline' or 'table').
-     */
     function switchView(e, viewId) {
         document.querySelectorAll('.view-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -353,9 +377,6 @@
         e.currentTarget.classList.add('active');
     }
 
-    /**
-     * Fetches the schedule JSON data from the repository, builds filters, and invokes render pipelines.
-     */
     async function fetchSchedule() {
         initTheme();
         try {
@@ -366,7 +387,6 @@
             }
 
             scheduleData = await response.json();
-
             const engineers = [...new Set(scheduleData.map(item => item['ASSIGNED TO']))]
                 .filter(name => name && String(name).toUpperCase() !== 'UNASSIGNED').sort();
 
@@ -390,14 +410,9 @@
         }
     }
 
-    /**
-     * Renders the top health metrics dynamically against the filtered data array.
-     * @param {Array<Object>} data - The currently filtered active dataset.
-     */
     function renderDashboard(data) {
         try {
             const todayMs = Number(new Date().setHours(0,0,0,0));
-
             let prodCount = 0, prodOverdue = 0;
             let subCount = 0, subOverdue = 0;
 
@@ -435,9 +450,6 @@
         }
     }
 
-    /**
-     * Filters and sorts the data by assignee and updates ALL UI elements.
-     */
     function filterSchedule() {
         try {
             const selected = String(document.getElementById('engineer-filter').value);
@@ -481,10 +493,6 @@
         }
     }
 
-    /**
-     * Generates and injects the raw tabular DOM layout for the List View.
-     * @param {Array<Object>} data - Active dataset to render.
-     */
     function renderTable(data) {
         const tbody = document.getElementById('schedule-table-body');
         try {
@@ -529,10 +537,6 @@
         }
     }
 
-    /**
-     * Builds the interactive Timeline visualization grid.
-     * @param {Array<Object>} data - Active dataset to render.
-     */
     function renderTimeline(data) {
         const container = document.getElementById('timeline-body');
         const gridHeader = document.getElementById('timeline-grid-header');
@@ -557,6 +561,8 @@
                 }
                 let e = Number(parseDateSafe(endDateStr));
 
+                let engDue = Number(parseDateSafe(item['ENG DUE DATE']));
+
                 const req = String(item['REQUIREMENT'] || 'PROD');
                 const isSub = subRegex.test(req);
 
@@ -568,7 +574,7 @@
                 if (!isNaN(s) && !isNaN(e)) {
                     if (s < minTime) minTime = s;
                     if (e > maxTime) maxTime = e;
-                    validTasks.push({...item, startMs: s, endMs: e, reqCategory: getCategory(req), reqName: req});
+                    validTasks.push({...item, startMs: s, endMs: e, engDueMs: engDue, reqCategory: getCategory(req), reqName: req});
                 }
             });
 
@@ -578,43 +584,70 @@
                 return;
             }
 
-            const paddingDays = 2 * 24 * 60 * 60 * 1000;
-            minTime -= paddingDays;
+            // Adjust minTime to start cleanly on the preceding Monday
+            let startDate = new Date(minTime);
+            let day = startDate.getDay();
+            let diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
+            startDate.setDate(diff);
+            startDate.setHours(0,0,0,0);
+            minTime = startDate.getTime();
+
+            // Pad the end time by an extra week to ensure enough visual space
+            const paddingDays = 7 * 24 * 60 * 60 * 1000;
             maxTime += paddingDays;
-            const totalDuration = Number(maxTime - minTime);
+
+            const totalWorkingDays = getWorkingDaysBetween(minTime, maxTime);
+
+            /**
+             * Helper function to convert a date coordinate to a visual percentage based on working days
+             */
+            function getWorkingPct(targetMs) {
+                if (targetMs < minTime) return 0;
+                if (targetMs > maxTime) return 100;
+                let wd = getWorkingDaysBetween(minTime, targetMs);
+                return Number((wd / totalWorkingDays) * 100);
+            }
 
             let ticksHtml = '';
             let gridLinesHtml = '';
             const todayMs = Number(new Date().setHours(0,0,0,0));
 
+            // Render the daily grid lines (skipping weekends automatically due to working day logic)
+            let tickDate = new Date(minTime);
+            while (tickDate.getTime() <= maxTime) {
+                let currentDayOfWeek = tickDate.getDay();
+                let isWeekend = (currentDayOfWeek === 0 || currentDayOfWeek === 6);
+
+                if (!isWeekend) {
+                    let leftPct = getWorkingPct(tickDate.getTime());
+                    let isMonday = (currentDayOfWeek === 1);
+
+                    if (isMonday) {
+                        ticksHtml += `
+                        <div class="timeline-tick" style="left: ${leftPct}%;">
+                            <span>${tickDate.getMonth()+1}/${tickDate.getDate()}</span>
+                        </div>`;
+                        gridLinesHtml += `
+                        <div class="grid-line week-start" style="left: ${leftPct}%;"></div>`;
+                    } else {
+                        gridLinesHtml += `
+                        <div class="grid-line day" style="left: ${leftPct}%;"></div>`;
+                    }
+                }
+                tickDate.setDate(tickDate.getDate() + 1);
+            }
+
+            // Render "Today" line
             if (todayMs >= minTime && todayMs <= maxTime) {
-                const todayPct = Number(((todayMs - minTime) / totalDuration) * 100);
+                const todayPct = getWorkingPct(todayMs);
                 ticksHtml += `
-                <div class="today-marker" style="left: ${Math.round(todayPct)}%;">
+                <div class="today-marker" style="left: ${todayPct}%;">
                     <span>TODAY</span>
                 </div>`;
                 gridLinesHtml += `
-                <div class="today-grid-line" style="left: ${Math.round(todayPct)}%;"></div>`;
+                <div class="today-grid-line" style="left: ${todayPct}%;"></div>`;
             }
 
-            let tickDate = new Date(minTime);
-            let day = tickDate.getDay();
-            let diff = tickDate.getDate() - day + (day === 0 ? -6 : 1);
-            tickDate.setDate(diff);
-            tickDate.setHours(0,0,0,0);
-
-            while (tickDate.getTime() <= maxTime) {
-                let leftPct = Number(((tickDate.getTime() - minTime) / totalDuration) * 100);
-                if (leftPct >= 0 && leftPct <= 100) {
-                    ticksHtml += `
-                    <div class="timeline-tick" style="left: ${Math.round(leftPct)}%;">
-                        <span>${tickDate.getMonth()+1}/${tickDate.getDate()}</span>
-                    </div>`;
-                    gridLinesHtml += `
-                    <div class="grid-line" style="left: ${Math.round(leftPct)}%;"></div>`;
-                }
-                tickDate.setDate(tickDate.getDate() + 7);
-            }
             gridHeader.innerHTML = ticksHtml;
 
             const projects = {};
@@ -642,8 +675,11 @@
                 const badgesHtml = uniqueReqs.map(req => `<span class="badge cat-${getCategory(req)}">${req}</span>`).join('');
 
                 const barsHtml = proj.tasks.map((task, idx) => {
-                    const leftPct = Number(((task.startMs - minTime) / totalDuration) * 100);
-                    const widthPct = Number(Math.max(((task.endMs - task.startMs) / totalDuration) * 100, 1.0));
+                    const leftPct = getWorkingPct(task.startMs);
+                    const rightPct = getWorkingPct(task.endMs);
+
+                    // Enforce a minimum width of 1 working day if start and end are identical
+                    const widthPct = Math.max(rightPct - leftPct, (1 / totalWorkingDays) * 100);
 
                     const catClass = String(task.reqCategory);
                     const req = String(task.reqName);
@@ -662,12 +698,24 @@
                     const estDays = String(task['EST DAYS'] || '1');
                     const yPos = Number(idx * 30);
 
+                    let flagHtml = '';
+                    if (!isNaN(task.engDueMs)) {
+                        let duePct = getWorkingPct(task.engDueMs);
+
+                        // Align container explicitly to the top of the bar using yPos
+                        flagHtml = `
+                        <div class="due-date-container" style="left: ${duePct}%; top: ${yPos}px;" title="ENG DUE DATE: ${formatDate(task.engDueMs)}">
+                            <div class="due-date-flag"></div>
+                        </div>`;
+                    }
+
                     return `
                     <div class="timeline-bar cat-${catClass}"
-                         style="left: ${Math.round(leftPct)}%; width: ${Math.round(widthPct)}%; top: ${Math.round(yPos)}px;"
-                         title="${req} | ${quoteTooltip}Due: ${tooltipDueDate} | ${estDays} days">
+                         style="left: ${leftPct}%; width: ${widthPct}%; top: ${yPos}px;"
+                         title="${req} | ${quoteTooltip}Est End: ${tooltipDueDate} | ${estDays} days">
                         ${estDays}d
-                    </div>`;
+                    </div>
+                    ${flagHtml}`;
                 }).join('');
 
                 return `
@@ -677,10 +725,10 @@
                         <div class="meta-title">${proj.name}</div>
                         <div class="meta-sub">
                             <span style="display:block; margin-bottom: 2px;">${quoteStr}</span>
-                            <span style="color: var(--primary);">Due: ${maxDueDate}</span>
+                            <span style="color: var(--primary);">Est Due: ${maxDueDate}</span>
                         </div>
                     </div>
-                    <div class="timeline-track" style="height: ${Math.round(trackHeight)}px;">
+                    <div class="timeline-track" style="height: ${trackHeight}px;">
                         ${barsHtml}
                     </div>
                 </div>`;

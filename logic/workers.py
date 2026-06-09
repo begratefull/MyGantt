@@ -88,10 +88,23 @@ class DataRefreshWorker(QThread):
             if self.req_filter != "All Reqs":
                 plan_df = plan_df[plan_df['REQUIREMENT'].str.contains(self.req_filter, case=False, na=False)]
 
+            # --- UPDATED: Project-Aware Status Filtering ---
             if self.status_filter == "Active":
-                plan_df = plan_df[plan_df['STATUS'].str.strip().str.upper() != 'COMPLETE']
+                # Find all projects that have at least one active (non-complete) line
+                active_mask = plan_df['STATUS'].str.strip().str.upper() != 'COMPLETE'
+                active_projects = plan_df[active_mask]['PROJECT_ID'].unique()
+
+                # Keep ALL rows (including completed ones) that belong to these active projects
+                plan_df = plan_df[plan_df['PROJECT_ID'].isin(active_projects)]
+
             elif self.status_filter == "Complete":
-                plan_df = plan_df[plan_df['STATUS'].str.strip().str.upper() == 'COMPLETE']
+                # Find all projects that have at least one active line
+                active_mask = plan_df['STATUS'].str.strip().str.upper() != 'COMPLETE'
+                active_projects = plan_df[active_mask]['PROJECT_ID'].unique()
+
+                # Keep ONLY rows belonging to projects that are 100% complete
+                plan_df = plan_df[~plan_df['PROJECT_ID'].isin(active_projects)]
+            # -----------------------------------------------
 
             if self.maintain_ids is not None:
                 current_ids = self.maintain_ids

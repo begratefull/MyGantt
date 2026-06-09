@@ -3,49 +3,64 @@ Centralized configuration for business logic and "magic strings".
 Update these values when company processes, line types, or tracking rules change.
 """
 import datetime
-import sys
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 class AppConstants:
     # --- App Metadata ---
     APP_VERSION = 'v1.0.0'
 
-    # --- Smart Pathing ---
+    # --- Smart Pathing (Single Source of Truth) ---
     @staticmethod
     def get_data_dir() -> str:
         """
-        If running as a compiled .exe, returns the sibling 'MyGantt_Data' folder.
-        If running as a Python script, returns the local 'data' folder.
-        :return: data_dir as String
+        Returns the single source-of-truth data directory located on OneDrive.
+        Aggressively checks for Business/Commercial OneDrive environments first.
         """
-        if getattr(sys, 'frozen', False):
-            # Running as an .exe inside OneDrive/Engineering Workload_Data/MyGantt_App
-            exe_dir = os.path.dirname(sys.executable)
-            parent_dir = os.path.dirname(exe_dir)
+        try:
+            # Priority 1: Business/Commercial OneDrive (Standard for enterprise Microsoft 365)
+            onedrive_path = os.environ.get('OneDriveCommercial')
 
-            data_dir = os.path.join(parent_dir, 'MyGantt_Data')
-            os.makedirs(data_dir, exist_ok=True)
-            return data_dir
-        else:
-            # Running locally in PyCharm (C:\dev\MyGantt)
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            project_root = os.path.dirname(current_dir)
+            # Priority 2: Standard/Personal OneDrive
+            if not onedrive_path:
+                onedrive_path = os.environ.get('ONEDRIVE')
 
-            data_dir = os.path.join(project_root, 'data')
+            # Priority 3: Hard Fallback if PyCharm strips environment variables
+            if not onedrive_path:
+                logger.warning("OneDrive environment variables missing (PyCharm might be hiding them). Using manual fallback.")
+                onedrive_path = os.path.expanduser(os.path.join('~', 'OneDrive'))
+
+            # Construct the specific path for the app's data folder
+            # FIXED: Pointing to the 'Development' folder instead of 'Engineering Workload_Data'
+            data_dir = os.path.join(onedrive_path, 'Development', 'MyGantt_Data')
+
+            # Ensure the directory exists
             os.makedirs(data_dir, exist_ok=True)
+
+            logger.info(f"SUCCESS: Resolving data directory to -> {data_dir}")
+
             return data_dir
+
+        except Exception as e:
+            logger.error(f"Failed to resolve or create OneDrive data directory: {e}")
+            local_fallback = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data_fallback')
+            os.makedirs(local_fallback, exist_ok=True)
+            return local_fallback
 
     @staticmethod
     def get_config_path() -> str:
-        """Keeps app_config.json in the root locally, but in MyGantt_Data when compiled."""
-        if getattr(sys, 'frozen', False):
-            # Compiled: Look in the sibling data folder
+        """
+        Returns the absolute path to the app_config.json file, utilizing the
+        single-source OneDrive directory.
+        """
+        try:
             return os.path.join(AppConstants.get_data_dir(), 'app_config.json')
-        else:
-            # Local: Look in the root project folder
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            project_root = os.path.dirname(current_dir)
-            return os.path.join(project_root, 'app_config.json')
+        except Exception as e:
+            logger.error(f"Failed to resolve config path: {e}")
+            # Absolute worst-case fallback to prevent a total crash
+            return 'app_config.json'
 
     # --- Company Holidays ---
     # Automatically populated when app runs or data is synced
