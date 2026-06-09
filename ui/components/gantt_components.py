@@ -1,9 +1,10 @@
 """
 Contains custom QGraphicsItems used for rendering the interactive Gantt chart.
 These components handle their own mathematical drawing via QPainter, hover states,
-and complex drag-and-drop timeline interactions.
+and complex drag-and-drop timeline interactions supporting multi-selection.
 """
 
+import logging
 from typing import Dict, Any, List, Optional
 
 from PySide6.QtWidgets import (
@@ -14,34 +15,47 @@ from PySide6.QtGui import (
 )
 from PySide6.QtCore import Qt, QRectF, Signal, QTimer, QPointF
 
+logger = logging.getLogger(__name__)
+
 
 class DueDateMarker(QGraphicsItem):
     """Draws a small yellow triangle to indicate a project's target due date."""
     def __init__(self, x: float, y: float, _height: float) -> None:
+        """Initializes the marker at the specified X and Y coordinates."""
         super().__init__()
         self.setPos(x, y)
         self.rect: QRectF = QRectF(-10, -5, 20, 20)
         self.setZValue(5)
 
     def boundingRect(self) -> QRectF:
+        """Defines the clickable and drawable bounds of the marker."""
         return self.rect
 
     def paint(self, painter: QPainter, option: Any, widget: Optional[QWidget] = None) -> None:
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setBrush(QBrush(QColor("#FFD54F")))
-        painter.setPen(QPen(QColor("#252526"), 1))
+        """Paints the yellow warning triangle."""
+        try:
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            painter.setBrush(QBrush(QColor("#FFD54F")))
+            painter.setPen(QPen(QColor("#252526"), 1))
 
-        triangle = QPolygonF([
-            QPointF(-6, 0),
-            QPointF(6, 0),
-            QPointF(0, 12)
-        ])
-        painter.drawPolygon(triangle)
+            triangle = QPolygonF([
+                QPointF(-6, 0),
+                QPointF(6, 0),
+                QPointF(0, 12)
+            ])
+            painter.drawPolygon(triangle)
+        except Exception as e:
+            logger.error(f"Error painting DueDateMarker: {e}")
 
 
 class GanttBlock(QGraphicsObject):
-    block_dropped = Signal(str, float, float, bool, float, float) # type: ignore
-    assignee_changed = Signal(str, str) # type: ignore
+    """
+    A custom QGraphicsObject representing a task or project parent on the Gantt grid.
+    Handles rendering, drag-to-move, drag-to-resize, and robust bulk operations
+    by preserving multi-selection states and bypassing C++ deletion limits during scene redraws.
+    """
+    block_dropped = Signal(str, float, float, bool, float, float)  # type: ignore
+    assignee_changed = Signal(str, str)  # type: ignore
 
     def __init__(self, project_data: Dict[str, Any], x: float, y: float, width: float,
                  height: float, day_width: float, dynamic_engineers: Optional[List[str]] = None,
@@ -69,6 +83,8 @@ class GanttBlock(QGraphicsObject):
         self.start_scene_pos: QPointF = QPointF()
         self.start_rect: QRectF = QRectF()
 
+        self._selection_state: Dict['GanttBlock', Dict[str, float]] = {}
+
         self.can_move: bool = True
         self.can_resize: bool = True
         self.is_started: bool = False
@@ -79,119 +95,124 @@ class GanttBlock(QGraphicsObject):
         self.refresh_visuals()
 
     @property
-    def data(self) -> Dict[str, Any]: # type: ignore # noqa
-        """Allows controller.py to access the payload via item.data without breaking Qt's native C++ methods."""
+    def data(self) -> Dict[str, Any]:  # type: ignore # noqa
+        """Allows controller.py to access the payload via item.data natively."""
         return self.block_data
 
     def refresh_visuals(self) -> None:
-        assignee = str(self.block_data.get('ASSIGNED TO', '')).strip().upper()
-        status = str(self.block_data.get('STATUS', '')).strip().upper()
-        raw_start = str(self.block_data.get('ENG START DATE', '')).strip()
-        est_start = str(self.block_data.get('EST START DATE', '')).strip()
-        est_days = str(self.block_data.get('EST DAYS', '')).strip()
-        req = str(self.block_data.get('REQUIREMENT', '')).strip().upper()
+        try:
+            assignee = str(self.block_data.get('ASSIGNED TO', '')).strip().upper()
+            status = str(self.block_data.get('STATUS', '')).strip().upper()
+            raw_start = str(self.block_data.get('ENG START DATE', '')).strip()
+            est_start = str(self.block_data.get('EST START DATE', '')).strip()
+            est_days = str(self.block_data.get('EST DAYS', '')).strip()
+            req = str(self.block_data.get('REQUIREMENT', '')).strip().upper()
 
-        self.is_started = bool(raw_start)
-        hex_color = str(self.block_data.get('HEX_COLOR', '#007ACC')).strip()
+            self.is_started = bool(raw_start)
+            hex_color = str(self.block_data.get('HEX_COLOR', '#007ACC')).strip()
 
-        self.base_color = QColor(hex_color)
-        self.text_color = QColor("#FFFFFF")
+            self.base_color = QColor(hex_color)
+            self.text_color = QColor("#FFFFFF")
 
-        actual_color = QColor(self.base_color)
-        planned_color = QColor(self.base_color)
-        ghost_color = QColor(self.base_color)
+            actual_color = QColor(self.base_color)
+            planned_color = QColor(self.base_color)
+            ghost_color = QColor(self.base_color)
 
-        is_prod = 'PROD' in req
+            is_prod = 'PROD' in req
 
-        if not is_prod:
-            actual_color.setAlpha(90)
-            planned_color.setAlpha(50)
-            ghost_color.setAlpha(40)
-            self.text_color = QColor("#AAAAAA")
-        else:
-            actual_color.setAlpha(180)
-            planned_color.setAlpha(120)
-            ghost_color.setAlpha(120)
-
-        if self.is_parent:
-            self.text_color = QColor("#E0E0E0") if is_prod else QColor("#888888")
-
-            if assignee == "MULTIPLE":
-                self.brush = QBrush(Qt.BrushStyle.NoBrush)
-            elif assignee and assignee != "UNASSIGNED":
-                self.brush = QBrush(actual_color)
+            if not is_prod:
+                actual_color.setAlpha(90)
+                planned_color.setAlpha(50)
+                ghost_color.setAlpha(40)
+                self.text_color = QColor("#AAAAAA")
             else:
-                self.brush = QBrush(QColor("#454548"))
-        elif status in ('RELEASED FOR PRODUCTION', 'COMPLETE'):
-            self.brush = QBrush(actual_color)
-        elif raw_start:
-            self.brush = QBrush(actual_color)
-        elif est_start and est_days:
-            self.brush = QBrush(planned_color)
-        else:
-            self.brush = QBrush(ghost_color)
+                actual_color.setAlpha(180)
+                planned_color.setAlpha(120)
+                ghost_color.setAlpha(120)
 
-        self.can_move = True
-        self.can_resize = not self.is_parent
+            if self.is_parent:
+                self.text_color = QColor("#E0E0E0") if is_prod else QColor("#888888")
 
-        if status in ('RELEASED FOR PRODUCTION', 'COMPLETE'):
-            self.can_move = False
-            self.can_resize = False
-        elif self.is_started:
-            self.can_move = False
+                if assignee == "MULTIPLE":
+                    self.brush = QBrush(Qt.BrushStyle.NoBrush)
+                elif assignee and assignee != "UNASSIGNED":
+                    self.brush = QBrush(actual_color)
+                else:
+                    self.brush = QBrush(QColor("#454548"))
+            elif status in ('RELEASED FOR PRODUCTION', 'COMPLETE'):
+                self.brush = QBrush(actual_color)
+            elif raw_start:
+                self.brush = QBrush(actual_color)
+            elif est_start and est_days:
+                self.brush = QBrush(planned_color)
+            else:
+                self.brush = QBrush(ghost_color)
 
-        self.update()
+            self.can_move = True
+            self.can_resize = not self.is_parent
+
+            if status in ('RELEASED FOR PRODUCTION', 'COMPLETE'):
+                self.can_move = False
+                self.can_resize = False
+            elif self.is_started:
+                self.can_move = False
+
+            self.update()
+        except Exception as e:
+            logger.error(f"Error refreshing GanttBlock visuals: {e}")
 
     def boundingRect(self) -> QRectF:
         return self.rect.adjusted(-2, -2, 2, 2)
 
     def paint(self, painter: QPainter, option: Any, widget: Optional[QWidget] = None) -> None:
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        try:
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        # Let _draw_shape handle both the fill and the background clipping
-        painter.setBrush(self.brush)
-        if self.isSelected():
-            painter.setPen(QPen(QColor("#FFFFFF"), 2))
-        else:
-            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(self.brush)
+            if self.isSelected():
+                painter.setPen(QPen(QColor("#FFFFFF"), 2))
+            else:
+                painter.setPen(Qt.PenStyle.NoPen)
 
-        self._draw_shape(painter)
+            self._draw_shape(painter)
 
-        if self.is_started:
-            painter.setPen(QPen(QColor("#A0A0A0"), 4, Qt.PenStyle.SolidLine, Qt.PenCapStyle.FlatCap))
-            y_offset = 2 if not self.is_parent else 0
-            painter.drawLine(
-                QPointF(self.rect.x() + 2, self.rect.y() + y_offset),
-                QPointF(self.rect.x() + 2, self.rect.y() + self.rect.height() - y_offset)
-            )
+            if self.is_started:
+                painter.setPen(QPen(QColor("#A0A0A0"), 4, Qt.PenStyle.SolidLine, Qt.PenCapStyle.FlatCap))
+                y_offset = 2 if not self.is_parent else 0
+                painter.drawLine(
+                    QPointF(self.rect.x() + 2, self.rect.y() + y_offset),
+                    QPointF(self.rect.x() + 2, self.rect.y() + self.rect.height() - y_offset)
+                )
 
-        if self.is_parent:
-            label_text = str(self.block_data.get('PROJECT NAME', 'Unknown Project')).strip()
-        else:
-            label_text = str(self.block_data.get('ASSIGNED TO', '')).strip()
+            if self.is_parent:
+                label_text = str(self.block_data.get('PROJECT NAME', 'Unknown Project')).strip()
+            else:
+                label_text = str(self.block_data.get('ASSIGNED TO', '')).strip()
 
-        if label_text:
-            painter.setPen(QPen(self.text_color))
-            font = painter.font()
-            font.setFamily("Segoe UI")
-            font.setPointSize(8)
-            font.setBold(True if self.is_parent else False)
-            painter.setFont(font)
+            if label_text:
+                painter.setPen(QPen(self.text_color))
+                font = painter.font()
+                font.setFamily("Segoe UI")
+                font.setPointSize(8)
+                font.setBold(True if self.is_parent else False)
+                painter.setFont(font)
 
-            metrics = QFontMetrics(font)
-            text_x_offset = 8 if self.is_started else 4
-            elided_text = metrics.elidedText(label_text, Qt.TextElideMode.ElideRight, int(self.rect.width() - text_x_offset - 4))
+                metrics = QFontMetrics(font)
+                text_x_offset = 8 if self.is_started else 4
+                elided_text = metrics.elidedText(label_text, Qt.TextElideMode.ElideRight,
+                                                 int(self.rect.width() - text_x_offset - 4))
 
-            text_rect = QRectF(
-                self.rect.x() + text_x_offset,
-                self.rect.y(),
-                self.rect.width() - text_x_offset - 4,
-                self.rect.height() if not self.is_parent else self.rect.height() - 8
-            )
-            painter.drawText(text_rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, elided_text)
+                text_rect = QRectF(
+                    self.rect.x() + text_x_offset,
+                    self.rect.y(),
+                    self.rect.width() - text_x_offset - 4,
+                    self.rect.height() if not self.is_parent else self.rect.height() - 8
+                )
+                painter.drawText(text_rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, elided_text)
+        except Exception as e:
+            logger.error(f"Error painting GanttBlock: {e}")
 
     def _draw_shape(self, painter: QPainter) -> None:
-        # 1. Define the outline shape of the block
         path = QPainterPath()
         if self.is_parent:
             poly = QPolygonF([
@@ -210,7 +231,6 @@ class GanttBlock(QGraphicsObject):
         all_colors = self.block_data.get('ALL_COLORS', [])
 
         if self.is_parent and assignee == "MULTIPLE" and len(all_colors) > 1:
-            # 2. Save state and clip to the parent's chamfered outline
             painter.save()
             painter.setClipPath(path)
 
@@ -227,7 +247,6 @@ class GanttBlock(QGraphicsObject):
                 qc.setAlpha(alpha)
                 painter.setBrush(QBrush(qc))
 
-                # 3. Draw solid 45-degree slanted blocks!
                 slice_poly = QPolygonF([
                     QPointF(i * step, 0),
                     QPointF((i + 1) * step, 0),
@@ -238,7 +257,6 @@ class GanttBlock(QGraphicsObject):
 
             painter.restore()
 
-            # 4. Redraw the border cleanly over the clipped slices
             if self.isSelected():
                 painter.setPen(QPen(QColor("#FFFFFF"), 2))
             else:
@@ -246,103 +264,147 @@ class GanttBlock(QGraphicsObject):
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawPath(path)
         else:
-            # Normal single-color fill
             painter.drawPath(path)
 
-    def contextMenuEvent(self, event: Any) -> None:
-        menu = QMenu()
-        assign_menu = menu.addMenu("Assign To...")
+    def _get_app_signal(self, signal_name: str) -> Any:
+        try:
+            if not self.scene(): return None
+            views = self.scene().views()
+            if not views: return None
 
-        for eng in self.dynamic_engineers:
-            action = assign_menu.addAction(eng)
-            action.triggered.connect(lambda checked=False, e=eng: self.change_assignee(e)) # type: ignore
-
-        menu.exec(event.screenPos())
-
-    def change_assignee(self, eng_name: str) -> None:
-        target_id = str(self.block_data.get('PROJECT_ID', '')) if self.is_parent else str(self.block_data.get('SMART_ID', ''))
-        if target_id:
-            val = "" if eng_name == "Unassigned" else eng_name
-            def safe_emit() -> None:
-                try:
-                    self.assignee_changed.emit(target_id, val)
-                except RuntimeError:
-                    pass
-            QTimer.singleShot(0, safe_emit)
+            parent = views[0].parentWidget()
+            while parent:
+                if hasattr(parent, signal_name):
+                    return getattr(parent, signal_name)
+                parent = parent.parentWidget()
+        except Exception as e:
+            logger.error(f"Error finding app signal {signal_name}: {e}")
+        return None
 
     def hoverMoveEvent(self, event: Any) -> None:
-        if not self.can_resize and not self.can_move:
-            self.setCursor(Qt.CursorShape.ArrowCursor)
-            return
+        try:
+            if not self.can_resize and not self.can_move:
+                self.setCursor(Qt.CursorShape.ArrowCursor)
+                return
 
-        if self.can_resize and event.pos().x() >= self.rect.width() - 15:
-            self.setCursor(Qt.CursorShape.SizeHorCursor)
-            self.is_resizing_hover = True
-        else:
-            self.setCursor(Qt.CursorShape.OpenHandCursor if self.can_move else Qt.CursorShape.ArrowCursor)
-            self.is_resizing_hover = False
+            if self.can_resize and event.pos().x() >= self.rect.width() - 15:
+                self.setCursor(Qt.CursorShape.SizeHorCursor)
+                self.is_resizing_hover = True
+            else:
+                self.setCursor(Qt.CursorShape.OpenHandCursor if self.can_move else Qt.CursorShape.ArrowCursor)
+                self.is_resizing_hover = False
+        except Exception as e:
+            logger.error(f"Error handling hover move event: {e}")
 
     def mousePressEvent(self, event: Any) -> None:
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.start_pos = event.scenePos()
-            self.start_rect = QRectF(self.rect)
-            self.start_scene_pos = self.scenePos()
+        try:
+            is_multi = self.isSelected() and self.scene() and len(self.scene().selectedItems()) > 1
 
-            if self.is_resizing_hover:
-                self.is_resizing = True
-                self.is_moving = False
-                event.accept()
-            elif self.can_move:
-                self.setCursor(Qt.CursorShape.ClosedHandCursor)
-                self.is_moving = True
-                self.is_resizing = False
-                event.accept()
+            if is_multi and event.button() == Qt.MouseButton.LeftButton:
+                event.accept()  # Bypasses Qt's default clear selection
+            else:
+                super().mousePressEvent(event)
 
-        super().mousePressEvent(event)
+            if event.button() == Qt.MouseButton.LeftButton:
+                self.start_pos = event.scenePos()
+                self.start_scene_pos = self.scenePos()
+                self.start_rect = QRectF(self.rect)
+
+                self._selection_state.clear()
+                items_to_track = [self]
+                if self.isSelected() and self.scene():
+                    items_to_track = [item for item in self.scene().selectedItems() if isinstance(item, GanttBlock)]
+
+                for item in items_to_track:
+                    self._selection_state[item] = {
+                        "start_x": item.scenePos().x(),
+                        "start_y": item.scenePos().y(),
+                        "start_width": item.rect.width()
+                    }
+
+                if self.is_resizing_hover:
+                    self.is_resizing = True
+                    self.is_moving = False
+                    event.accept()
+                elif self.can_move:
+                    self.setCursor(Qt.CursorShape.ClosedHandCursor)
+                    self.is_moving = True
+                    self.is_resizing = False
+                    event.accept()
+
+        except Exception as e:
+            logger.error(f"Error handling mouse press event in GanttBlock: {e}")
 
     def mouseMoveEvent(self, event: Any) -> None:
-        if self.is_resizing:
-            delta = event.scenePos().x() - self.start_pos.x()
-            snapped_delta = round(delta / self.day_width) * self.day_width
-            new_width = max(self.day_width, self.start_rect.width() + snapped_delta)
+        try:
+            if self.is_resizing:
+                delta = event.scenePos().x() - self.start_pos.x()
+                snapped_delta = round(delta / self.day_width) * self.day_width
 
-            self.prepareGeometryChange()
-            self.rect.setWidth(new_width)
-            self.update()
+                for item, state in self._selection_state.items():
+                    if item.can_resize:
+                        new_width = max(item.day_width, state["start_width"] + snapped_delta)
+                        item.prepareGeometryChange()
+                        item.rect.setWidth(new_width)
+                        item.update()
 
-        elif self.is_moving:
-            delta = event.scenePos().x() - self.start_pos.x()
-            snapped_delta = round(delta / self.day_width) * self.day_width
-            new_x = max(0.0, self.start_scene_pos.x() + snapped_delta)
+            elif self.is_moving:
+                delta = event.scenePos().x() - self.start_pos.x()
+                snapped_delta = round(delta / self.day_width) * self.day_width
 
-            self.setPos(new_x, self.start_scene_pos.y())
-        else:
-            super().mouseMoveEvent(event)
+                for item, state in self._selection_state.items():
+                    if item.can_move:
+                        new_x = max(0.0, state["start_x"] + snapped_delta)
+                        item.setPos(new_x, state["start_y"])
+            else:
+                super().mouseMoveEvent(event)
+        except Exception as e:
+            logger.error(f"Error handling mouse move event in GanttBlock: {e}")
 
     def mouseReleaseEvent(self, event: Any) -> None:
-        self.setCursor(Qt.CursorShape.OpenHandCursor if self.can_move else Qt.CursorShape.ArrowCursor)
+        try:
+            self.setCursor(Qt.CursorShape.OpenHandCursor if self.can_move else Qt.CursorShape.ArrowCursor)
 
-        was_resizing = self.is_resizing
-        was_moving = self.is_moving
+            was_resizing = self.is_resizing
+            was_moving = self.is_moving
 
-        self.is_resizing = False
-        self.is_moving = False
+            self.is_resizing = False
+            self.is_moving = False
 
-        super().mouseReleaseEvent(event)
+            super().mouseReleaseEvent(event)
 
-        if was_resizing or was_moving:
-            target_id = str(self.block_data.get('PROJECT_ID', '')) if self.is_parent else str(self.block_data.get('SMART_ID', ''))
+            if was_resizing or was_moving:
+                global_sig = self._get_app_signal('block_dropped_signal')
 
-            if target_id:
-                cx = self.x()
-                cw = self.rect.width()
-                ip = self.is_parent
-                delta_x = cx - self.start_scene_pos.x()
-                delta_w = cw - self.start_rect.width()
+                # MUST extract all payloads before emitting to prevent C++ Pointer deletion on scene clear
+                drop_payloads = []
+                for item, state in self._selection_state.items():
+                    cx = item.x()
+                    cw = item.rect.width()
+                    ip = item.is_parent
+                    delta_x = cx - state["start_x"]
+                    delta_w = cw - state["start_width"]
 
-                def safe_emit() -> None:
-                    try:
-                        self.block_dropped.emit(target_id, cx, cw, ip, delta_x, delta_w)
-                    except RuntimeError:
-                        pass
-                QTimer.singleShot(0, safe_emit)
+                    if delta_x != 0 or delta_w != 0:
+                        tid = str(item.block_data.get('PROJECT_ID', '')) if ip else str(
+                            item.block_data.get('SMART_ID', ''))
+                        if tid and tid.lower() != 'nan':
+                            drop_payloads.append((tid, cx, cw, ip, delta_x, delta_w))
+
+                self._selection_state.clear()
+
+                for payload in drop_payloads:
+                    tid, cx, cw, ip, dx, dw = payload
+                    if global_sig:
+                        global_sig.emit(tid, cx, cw, ip, dx, dw)
+                    else:
+                        def safe_emit(t=tid, c_x=cx, c_w=cw, is_p=ip, d_x=dx, d_w=dw):
+                            try:
+                                self.block_dropped.emit(t, c_x, c_w, is_p, d_x, d_w)
+                            except RuntimeError:
+                                pass
+
+                        QTimer.singleShot(0, safe_emit)
+
+        except Exception as e:
+            logger.error(f"Error handling mouse release event in GanttBlock: {e}")

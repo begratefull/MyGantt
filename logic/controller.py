@@ -5,24 +5,23 @@ routing background signals, and managing application state.
 """
 
 import json
-import os
 import logging
+import os
 from typing import Any, Optional, List, Set
 
 import pandas as pd
-
 from PySide6.QtGui import QShortcut, QKeySequence
 from PySide6.QtWidgets import QFileDialog
 
+from logic.calendar_engine import CalendarEngine
 from logic.constants import AppConstants
 from logic.dashboard_service import DashboardService
-from logic.history import HistoryManager
-from logic.workers import SyncWorker, DataRefreshWorker
 from logic.data_builder import GanttDataBuilder
-from logic.calendar_engine import CalendarEngine
+from logic.history import HistoryManager
 from logic.pto_parser import PTOParser
-from ui.components.gantt_components import GanttBlock
 from logic.web_publisher import WebPublisher
+from logic.workers import SyncWorker, DataRefreshWorker
+from ui.components.gantt_components import GanttBlock
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +38,9 @@ class AppController:
         self.shortcut_undo: Optional[QShortcut] = None
         self.shortcut_redo: Optional[QShortcut] = None
         self.shortcut_save: Optional[QShortcut] = None
-        self.selected_id_to_restore: Optional[str] = None
+
+        # Upgraded to List for multi-select state restoration
+        self.selected_ids_to_restore: List[str] = []
         self.is_maintaining_state: bool = False
         self.sync_worker: Optional[SyncWorker] = None
 
@@ -85,16 +86,15 @@ class AppController:
         self.view.filter_status.currentTextChanged.connect(lambda text: self.on_gantt_filter_changed())
         self.view.gantt_screen.sort_by.currentTextChanged.connect(lambda text: self.on_gantt_filter_changed())
 
+        # Cross-component Selection Syncing Signals
         self.view.gantt_scene.selectionChanged.connect(self.handle_block_selection)
         self.view.info_table.itemSelectionChanged.connect(self.handle_table_selection)
         self.view.gantt_view.empty_clicked.connect(self.clear_all_selections)
         self.view.info_table.cellDoubleClicked.connect(self.handle_table_double_click)
 
-        self.view.inp_est_days.editingFinished.connect(self.handle_stage_edit)
-        self.view.inp_assignee.activated.connect(self.handle_stage_edit)
-
+        # Threaded Bulk Dispatch Signal from View -> Controller
+        self.view.gantt_screen.bulk_kpi_update_signal.connect(self.handle_bulk_kpi_update)
         self.view.gantt_screen.block_dropped_signal.connect(self.handle_block_dropped)
-        self.view.gantt_screen.assignee_changed_signal.connect(self.handle_right_click_assign)
 
         self.inject_startup_defaults()
 
@@ -240,15 +240,11 @@ class AppController:
             self.model.commit_overrides(self.history.get_staged_edits())
             self.history.clear()
 
-            # --- Trigger Automated Push to Web Portal ---
-            # 1. Grab fresh, unfiltered data directly from the model (ignoring UI dropdowns)
             web_df = self.model.get_application_data()
 
             if not web_df.empty:
-                # 2. Filter out completed tasks so the web view only gets the active backlog
                 web_df = web_df[web_df['STATUS'].str.strip().str.upper() != 'COMPLETE'].copy()
 
-                # 3. Apply Calendar/PTO Engine math to accurately project the end dates
                 assignee_series = web_df['ASSIGNED TO']
                 pto = getattr(self, 'pto_dict', None)
                 web_df['EST END DATE'] = CalendarEngine.calculate_end_dates_vectorized(
@@ -268,14 +264,22 @@ class AppController:
                 if hasattr(self.view, 'show_status'):
                     self.view.show_status("All changes saved successfully.", 4000)
 
-            # 4. Fire off the async UI refresh
             self.refresh_tables(maintain_state=True)
         else:
             if hasattr(self.view, 'show_status'):
                 self.view.show_status("No unsaved changes.", 3000)
 
     def refresh_tables(self, maintain_state: bool = False) -> None:
-        self.selected_id_to_restore = self.view.inp_smart_id.text() if maintain_state and not self.view.kpi_panel.isHidden() else None
+        """Kicks off the threaded worker. Dynamically captures all selected item IDs to restore state upon finish."""
+        if maintain_state and not self.view.kpi_panel.isHidden():
+            self.selected_ids_to_restore = []
+            for item in self.view.gantt_scene.selectedItems():
+                if isinstance(item, GanttBlock):
+                    tid = item.data.get('PROJECT_ID') if item.is_parent else item.data.get('SMART_ID')
+                    if tid: self.selected_ids_to_restore.append(tid)
+        else:
+            self.selected_ids_to_restore = []
+
         self.is_maintaining_state = maintain_state
 
         gantt_team_filter = self.view.filter_team.currentText() if hasattr(self.view, 'filter_team') else "All Teams"
@@ -305,7 +309,6 @@ class AppController:
         color_map = {}
 
         if not eng_df.empty:
-            # Explicitly type the list for the linter before sorting
             team_names: List[str] = [str(x) for x in eng_df['team_name'].unique() if str(x).strip()]
             unique_teams += sorted(team_names)
 
@@ -358,12 +361,11 @@ class AppController:
                 return True
         return False
 
-    def _rebuild_and_render_canvas(self, target_id_to_restore: Optional[str]) -> None:
+    def _rebuild_and_render_canvas(self, target_ids_to_restore: Optional[List[str]] = None) -> None:
         """Forces a pure recalculation of the visual hierarchy to prevent UI feedback loops."""
         eng_df = self.model.db.get_engineers_df()
         color_map = {str(k).strip().upper(): str(v).strip().upper() for k, v in
                      zip(eng_df['name'], eng_df['hex_color'])} if not eng_df.empty else {}
-
 
         self.current_visual_rows = GanttDataBuilder.build_visual_hierarchy(
             self.current_plan_df, self.expanded_projects, color_map, self.pto_dict
@@ -376,7 +378,7 @@ class AppController:
             self.current_visual_rows, dynamic_engineers, self.expanded_projects, color_map, self.pto_dict
         )
 
-        self.restore_selection(target_id_to_restore)
+        self.restore_selection(target_ids_to_restore)
 
     def on_data_refreshed(self, raw_df: pd.DataFrame, plan_df: pd.DataFrame, actual_df: pd.DataFrame, full_plan_df: pd.DataFrame) -> None:
         if hasattr(self.view, 'display_dataframe') and hasattr(self.view, 'raw_table'):
@@ -392,13 +394,13 @@ class AppController:
         if plan_df.empty: return
         self.current_plan_df = plan_df
 
-        target = self.selected_id_to_restore if self.is_maintaining_state else None
-        self._rebuild_and_render_canvas(target)
+        targets = self.selected_ids_to_restore if self.is_maintaining_state else None
+        self._rebuild_and_render_canvas(targets)
 
         if hasattr(self.view, 'dash_screen'):
             self.view.dash_screen.update_dashboard(actual_df, full_plan_df)
 
-        if not (self.is_maintaining_state and self.selected_id_to_restore):
+        if not (self.is_maintaining_state and self.selected_ids_to_restore):
             self.view.kpi_panel.hide()
 
     def handle_table_double_click(self, row: int, _col: int) -> None:
@@ -413,36 +415,46 @@ class AppController:
                     self.expanded_projects.add(project_id)
 
                 if not self.current_plan_df.empty:
-                    self._rebuild_and_render_canvas(None)
+                    self._rebuild_and_render_canvas(self.selected_ids_to_restore)
 
-    def restore_selection(self, target_id: Optional[str]) -> None:
-        if not target_id: return
+    def restore_selection(self, target_ids: Optional[List[str]]) -> None:
+        """Iterates through all known selected IDs and reapplies highlight to Table and Canvas without infinite loops."""
+        if not target_ids: return
 
         try:
-            row_idx = next(i for i, r in enumerate(self.current_visual_rows) if
-                           r.get('SMART_ID') == target_id or r.get('PROJECT_ID') == target_id)
             self.view.info_table.blockSignals(True)
-            self.view.info_table.selectRow(row_idx)
-            self.view.info_table.blockSignals(False)
-        except StopIteration:
-            pass
-
-        try:
-            if not self.view.isVisible(): return
             self.view.gantt_scene.blockSignals(True)
-            for item in self.view.gantt_scene.items():
-                if isinstance(item, GanttBlock):
-                    if (item.is_parent and item.data.get('PROJECT_ID') == target_id) or \
-                            (not item.is_parent and item.data.get('SMART_ID') == target_id):
-                        item.setSelected(True)
-                        self.view.gantt_screen.populate_kpi_inspector(item.data)
-                        break
+
+            selected_data = []
+
+            # 1. Restore Table Highlights
+            for row_idx, r in enumerate(self.current_visual_rows):
+                tid = r.get('SMART_ID') if not r.get('IS_PARENT') else r.get('PROJECT_ID')
+                if tid in target_ids:
+                    self.view.info_table.selectRow(row_idx)
+
+            # 2. Restore Canvas Highlights
+            if self.view.isVisible():
+                for item in self.view.gantt_scene.items():
+                    if isinstance(item, GanttBlock):
+                        item_tid = item.data.get('PROJECT_ID') if item.is_parent else item.data.get('SMART_ID')
+                        if item_tid in target_ids:
+                            item.setSelected(True)
+                            selected_data.append(item.data)
+
+            self.view.info_table.blockSignals(False)
             self.view.gantt_scene.blockSignals(False)
-            self.view.kpi_panel.show()
+
+            # 3. Restore KPI Panel Data Context
+            if selected_data:
+                self.view.gantt_screen.populate_kpi_inspector(selected_data)
+                self.view.kpi_panel.show()
+
         except RuntimeError:
             pass
 
     def clear_all_selections(self) -> None:
+        """Safely clears highlights from both the table and the canvas."""
         try:
             if not self.view.isVisible(): return
             self.view.info_table.blockSignals(True)
@@ -454,45 +466,133 @@ class AppController:
             self.view.gantt_scene.blockSignals(False)
 
             self.view.kpi_panel.hide()
+            self.selected_ids_to_restore = []
         except RuntimeError:
              pass
 
     def handle_block_selection(self) -> None:
+        """Triggers when the canvas is dragged. Programmatically selects the matching table rows."""
         try:
             if not self.view.isVisible(): return
-            selected = self.view.gantt_scene.selectedItems()
-            if not selected:
-                self.view.kpi_panel.hide()
-                return
+            selected_items = self.view.gantt_scene.selectedItems()
 
             self.view.info_table.blockSignals(True)
             self.view.info_table.clearSelection()
+
+            if not selected_items:
+                self.view.info_table.blockSignals(False)
+                self.view.kpi_panel.hide()
+                return
+
+            selected_data = []
+            for item in selected_items:
+                if hasattr(item, 'data'):
+                    data = item.data
+                    selected_data.append(data)
+
+                    tid = data.get('SMART_ID') if not data.get('IS_PARENT') else data.get('PROJECT_ID')
+                    for row_idx, r in enumerate(self.current_visual_rows):
+                        r_tid = r.get('SMART_ID') if not r.get('IS_PARENT') else r.get('PROJECT_ID')
+                        if r_tid == tid:
+                            self.view.info_table.selectRow(row_idx)
+                            break
+
             self.view.info_table.blockSignals(False)
 
-            if hasattr(selected[0], 'data'):
-                self.view.gantt_screen.populate_kpi_inspector(selected[0].data)
+            if selected_data:
+                self.view.gantt_screen.populate_kpi_inspector(selected_data)
                 self.view.kpi_panel.show()
         except RuntimeError:
             pass
 
     def handle_table_selection(self) -> None:
+        """Triggers when the table is dragged. Programmatically selects the matching canvas blocks."""
         try:
             if not self.view.isVisible(): return
-            selected = self.view.info_table.selectionModel().selectedRows()
-            if not selected or not self.current_visual_rows:
-                self.view.kpi_panel.hide()
-                return
+            selected_rows = self.view.info_table.selectionModel().selectedRows()
 
             self.view.gantt_scene.blockSignals(True)
             self.view.gantt_scene.clearSelection()
+
+            if not selected_rows or not self.current_visual_rows:
+                self.view.gantt_scene.blockSignals(False)
+                self.view.kpi_panel.hide()
+                return
+
+            selected_data = []
+            for model_index in selected_rows:
+                row_idx = model_index.row()
+                if row_idx < len(self.current_visual_rows):
+                    data = self.current_visual_rows[row_idx]
+                    selected_data.append(data)
+
+                    tid = data.get('SMART_ID') if not data.get('IS_PARENT') else data.get('PROJECT_ID')
+
+                    for item in self.view.gantt_scene.items():
+                        if isinstance(item, GanttBlock):
+                            item_tid = item.data.get('SMART_ID') if not item.is_parent else item.data.get('PROJECT_ID')
+                            if item_tid == tid:
+                                item.setSelected(True)
+                                break
+
             self.view.gantt_scene.blockSignals(False)
 
-            row_idx = selected[0].row()
-            if row_idx < len(self.current_visual_rows):
-                self.view.gantt_screen.populate_kpi_inspector(self.current_visual_rows[row_idx])
+            if selected_data:
+                self.view.gantt_screen.populate_kpi_inspector(selected_data)
                 self.view.kpi_panel.show()
         except RuntimeError:
             pass
+
+    def handle_bulk_kpi_update(self, target_ids: List[str], field_name: str, new_value: Any) -> None:
+        """Dispatches data changes, applies local vectorized math safely, and redraws UI."""
+        try:
+            bulk_edits = {}
+            history_key = 'MAN_EST_DAYS' if field_name == 'EST DAYS' else 'MAN_ASSIGNED'
+
+            for tid in target_ids:
+                if self.is_target_parent(tid):
+                    mask = self.current_plan_df['PROJECT_ID'] == tid
+                    for child_id in self.current_plan_df[mask]['SMART_ID'].tolist():
+                        bulk_edits[child_id] = {history_key: new_value}
+                        c_mask = self.current_plan_df['SMART_ID'] == child_id
+                        self.current_plan_df.loc[c_mask, field_name] = new_value
+                else:
+                    bulk_edits[tid] = {history_key: new_value}
+                    mask = self.current_plan_df['SMART_ID'] == tid
+                    self.current_plan_df.loc[mask, field_name] = new_value
+
+            if bulk_edits:
+                self.history.stage_bulk_edits(bulk_edits)
+
+            # FAST PATH: Vectorized Math in memory
+            if field_name == 'EST DAYS' or field_name == 'ASSIGNED TO':
+                affected_mask = self.current_plan_df['SMART_ID'].isin(bulk_edits.keys())
+
+                valid_starts = pd.to_datetime(self.current_plan_df.loc[affected_mask, 'EST START DATE'],
+                                              errors='coerce')
+                valid_mask = affected_mask & valid_starts.notna()
+
+                if valid_mask.any():
+                    assignee_series = self.current_plan_df.loc[valid_mask, 'ASSIGNED TO']
+                    pto = getattr(self, 'pto_dict', None)
+
+                    self.current_plan_df.loc[
+                        valid_mask, 'EST END DATE'] = CalendarEngine.calculate_end_dates_vectorized(
+                        self.current_plan_df.loc[valid_mask, 'EST START DATE'],
+                        self.current_plan_df.loc[valid_mask, 'EST DAYS'],
+                        assignee_series,
+                        pto
+                    )
+
+            # FIX: Pass the target_ids list directly to maintain selection instead of reading the empty fallback variable
+            self._rebuild_and_render_canvas(target_ids)
+
+            if hasattr(self.view, 'show_status'):
+                self.view.show_status(f"Unsaved Bulk Edit ({len(target_ids)} items). Press Ctrl+S to Calculate & Save.",
+                                      5000)
+
+        except Exception as e:
+            logger.error(f"Error handling bulk KPI update: {e}")
 
     def handle_sync(self) -> None:
         if not self.excel_path or not os.path.exists(self.excel_path):
@@ -540,14 +640,12 @@ class AppController:
 
             raw_df = self.model.get_raw_df()
             if not raw_df.empty and 'RAW_ASSIGNED' in raw_df.columns:
-                # Explicitly tell the linter these are Sets of strings
                 raw_names: Set[str] = {str(x).strip().upper() for x in raw_df['RAW_ASSIGNED'].unique() if
                                        str(x).strip().upper() not in ('', 'UNASSIGNED', 'NAN')}
 
                 configured_names: Set[str] = {str(x).strip().upper() for x in
                                               eng_df['name'].unique()} if not eng_df.empty else set()
 
-                # Explicitly tell the linter these are Lists of strings before sorting
                 unconfigured: List[str] = sorted(list(raw_names - configured_names))
                 configured_list: List[str] = sorted(list(configured_names))
 
@@ -592,7 +690,7 @@ class AppController:
         days = int(est_days_str) if est_days_str.isdigit() else 5
 
         adjusted_days = days - 1 if days > 0 else days
-        end_date = CalendarEngine.shift_date(start_date_raw, adjusted_days, pto_dates) # <-- PASS PTO
+        end_date = CalendarEngine.shift_date(start_date_raw, adjusted_days, pto_dates)
 
         if end_date is None:
             return
@@ -617,24 +715,36 @@ class AppController:
         if not day_zero: return
         day_width = self.view.gantt_screen.day_width
 
-        # --- NEW: Grab the Assignee's PTO dates to fuel the drag math ---
+        # --- FIX: Capture the multi-selection from the scene to prevent dropping it on redraw ---
+        restore_ids = [target_id]
+        try:
+            if self.view.gantt_scene:
+                scene_selected = [
+                    item.data.get('PROJECT_ID') if item.is_parent else item.data.get('SMART_ID')
+                    for item in self.view.gantt_scene.selectedItems() if isinstance(item, GanttBlock)
+                ]
+                scene_selected = [tid for tid in scene_selected if tid and str(tid).lower() != 'nan']
+                if scene_selected:
+                    restore_ids = list(set(scene_selected + [target_id]))
+        except Exception:
+            pass
+        # ----------------------------------------------------------------------------------------
+
         mask = self.current_plan_df['SMART_ID'] == target_id
         assignee = self.current_plan_df.loc[mask, 'ASSIGNED TO'].values[0] if not is_parent else ""
         safe_assignee = str(assignee).strip().title()
         pto_dates = self.pto_dict.get(safe_assignee, []) if hasattr(self, 'pto_dict') and self.pto_dict else []
-        # ----------------------------------------------------------------
 
         if not is_parent:
-            # 1. Map visual drop location to a physical date via the Engine
             new_date_raw = day_zero + pd.tseries.offsets.BusinessDay(round(new_x / day_width))
-            new_start_pd = CalendarEngine.shift_date(new_date_raw, 0, pto_dates)  # <-- PASS PTO
+            new_start_pd = CalendarEngine.shift_date(new_date_raw, 0, pto_dates)
 
             if new_start_pd is None:
+                self._rebuild_and_render_canvas(restore_ids)
                 return
 
             start_date_str = f"{new_start_pd.month}/{new_start_pd.day}/{new_start_pd.year}"
 
-            # 2. INSTANT CACHE UPDATE
             self.current_plan_df.loc[mask, 'EST START DATE'] = start_date_str
             self.history.stage_edit(target_id, {'MAN_START_DATE': start_date_str})
 
@@ -648,14 +758,11 @@ class AppController:
                 self.current_plan_df.loc[
                     mask, 'EST END DATE'] = f"{new_end_pd.month}/{new_end_pd.day}/{new_end_pd.year}"
 
-            # 3. Handle Resizing
             if abs(delta_w) > 0.1:
                 visual_days = max(1, round(new_width / day_width))
                 end_date_raw = new_date_raw + pd.tseries.offsets.BusinessDay(visual_days - 1)
 
-                # Use Engine's exact inclusive duration math!
-                raw_work_days = CalendarEngine.get_working_days_duration(new_start_pd, end_date_raw,
-                                                                         pto_dates)
+                raw_work_days = CalendarEngine.get_working_days_duration(new_start_pd, end_date_raw, pto_dates)
                 new_days_str = str(max(1, raw_work_days))
 
                 self.current_plan_df.loc[mask, 'EST DAYS'] = new_days_str
@@ -665,9 +772,8 @@ class AppController:
                     self.update_kpi_variances_locally(new_x, new_days_str, pto_dates)
 
         else:
-            # 4. GHOST PARENT DRAGGING
             if abs(delta_x) < 0.1:
-                self._rebuild_and_render_canvas(target_id)
+                self._rebuild_and_render_canvas(restore_ids)
                 return
 
             mask = self.current_plan_df['PROJECT_ID'] == target_id
@@ -677,25 +783,23 @@ class AppController:
 
             parent_starts = pd.to_datetime(children['EST START DATE'], errors='coerce').dropna()
             if parent_starts.empty:
-                self._rebuild_and_render_canvas(target_id)
+                self._rebuild_and_render_canvas(restore_ids)
                 return
 
             old_parent_start = parent_starts.min()
 
-            # Find exact shift working days using the Engine
             new_parent_start_safe = CalendarEngine.shift_date(old_parent_start, delta_days_visual)
 
             if new_parent_start_safe is None:
-                self._rebuild_and_render_canvas(target_id)
+                self._rebuild_and_render_canvas(restore_ids)
                 return
 
             shift_working_days = CalendarEngine.get_working_days_variance(old_parent_start, new_parent_start_safe)
 
             if shift_working_days == 0:
-                self._rebuild_and_render_canvas(target_id)
+                self._rebuild_and_render_canvas(restore_ids)
                 return
 
-            # Shift every un-started child instantly
             bulk_edits = {}
             for _, child in children.iterrows():
                 child_smart_id = child['SMART_ID']
@@ -717,59 +821,11 @@ class AppController:
                 c_mask = self.current_plan_df['SMART_ID'] == child_smart_id
                 self.current_plan_df.loc[c_mask, 'EST START DATE'] = start_date_str
 
-            # ---> Apply the perfect bulk-edit fix here! <---
             if bulk_edits:
                 self.history.stage_bulk_edits(bulk_edits)
 
-        # 5. INSTANT UI REDRAW
-        self._rebuild_and_render_canvas(target_id)
+        # Restore the group selection after the math calculates
+        self._rebuild_and_render_canvas(restore_ids)
 
         if hasattr(self.view, 'show_status'):
             self.view.show_status("Unsaved Schedule edit. Press Ctrl+S to Calculate & Save.", 5000)
-
-    def handle_right_click_assign(self, target_id: str, new_assignee: str) -> None:
-        if self.is_target_parent(target_id):
-            mask = self.current_plan_df['PROJECT_ID'] == target_id
-            bulk_edits = {}
-            for child_id in self.current_plan_df[mask]['SMART_ID'].tolist():
-                bulk_edits[child_id] = {'MAN_ASSIGNED': new_assignee}
-                c_mask = self.current_plan_df['SMART_ID'] == child_id
-                self.current_plan_df.loc[c_mask, 'ASSIGNED TO'] = new_assignee
-
-            self.history.stage_bulk_edits(bulk_edits)
-        else:
-            self.history.stage_edit(target_id, {'MAN_ASSIGNED': new_assignee})
-            mask = self.current_plan_df['SMART_ID'] == target_id
-            self.current_plan_df.loc[mask, 'ASSIGNED TO'] = new_assignee
-
-        self._rebuild_and_render_canvas(target_id)
-
-        if hasattr(self.view, 'show_status'):
-            self.view.show_status("Unsaved Assignee edit. Press Ctrl+S to Calculate & Save.", 5000)
-
-    def handle_stage_edit(self) -> None:
-        smart_id = self.view.inp_smart_id.text()
-        assignee = self.view.inp_assignee.currentText()
-        est_days_str = self.view.inp_est_days.text()
-
-        if not est_days_str.isdigit(): est_days_str = "5"
-
-        if self.is_target_parent(smart_id):
-            mask = self.current_plan_df['PROJECT_ID'] == smart_id
-            bulk_edits = {}
-            for child_id in self.current_plan_df[mask]['SMART_ID'].tolist():
-                bulk_edits[child_id] = {'MAN_ASSIGNED': assignee}
-                c_mask = self.current_plan_df['SMART_ID'] == child_id
-                self.current_plan_df.loc[c_mask, 'ASSIGNED TO'] = assignee
-
-            self.history.stage_bulk_edits(bulk_edits)
-        else:
-            self.history.stage_edit(smart_id, {'MAN_ASSIGNED': assignee, 'MAN_EST_DAYS': est_days_str})
-            mask = self.current_plan_df['SMART_ID'] == smart_id
-            self.current_plan_df.loc[mask, 'ASSIGNED TO'] = assignee
-            self.current_plan_df.loc[mask, 'EST DAYS'] = est_days_str
-
-        self._rebuild_and_render_canvas(smart_id)
-
-        if hasattr(self.view, 'show_status'):
-            self.view.show_status("Unsaved Edit. Press Ctrl+S to Calculate & Save.", 5000)

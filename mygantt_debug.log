@@ -1288,3 +1288,2977 @@ ValueError: Non-business day date in busday_offset
 08:34:48 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
 08:34:48 - [INFO] - Displaying Main Window...
 08:34:48 - [INFO] - Launch sequence complete!
+09:05:34 - [INFO] - =========================================
+09:05:34 - [INFO] - Starting MyGantt Application...
+09:05:34 - [INFO] - Initializing Data Model...
+09:05:34 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+09:05:34 - [INFO] - Database schemas initialized successfully.
+09:05:34 - [INFO] - Initializing Application Controller...
+09:05:34 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+09:05:35 - [INFO] - Displaying Main Window...
+09:05:35 - [INFO] - Launch sequence complete!
+09:43:03 - [INFO] - =========================================
+09:43:03 - [INFO] - Starting MyGantt Application...
+09:43:03 - [INFO] - Initializing Data Model...
+09:43:03 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+09:43:03 - [INFO] - Database schemas initialized successfully.
+09:43:03 - [INFO] - Initializing Application Controller...
+09:43:03 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+09:43:04 - [INFO] - Displaying Main Window...
+09:43:04 - [INFO] - Launch sequence complete!
+09:43:05 - [DEBUG] - --- Debugging Project: 66036 ---
+09:43:05 - [DEBUG] - Real Starts: ['2026-06-02']
+09:43:05 - [DEBUG] - Est Starts:  ['2026-06-02']
+09:43:05 - [DEBUG] - Real Ends:   [nan]
+09:43:05 - [DEBUG] - Est Ends:    ['2026-06-04']
+09:43:05 - [DEBUG] - Effective Starts: ['2026-06-02']
+09:43:05 - [DEBUG] - Effective Ends:   ['2026-06-04']
+09:43:05 - [DEBUG] - ---------------------------------------
+09:43:05 - [DEBUG] - --- Debugging Project: 65924 ---
+09:43:05 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+09:43:05 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-05-25', '2026-05-25', nan]
+09:43:05 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+09:43:05 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-09', nan]
+09:43:05 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+09:43:05 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-09', nan]
+09:43:05 - [DEBUG] - ---------------------------------------
+09:43:05 - [DEBUG] - --- Debugging Project: 66107 ---
+09:43:05 - [DEBUG] - Real Starts: [nan]
+09:43:05 - [DEBUG] - Est Starts:  ['2026-06-08']
+09:43:05 - [DEBUG] - Real Ends:   [nan]
+09:43:05 - [DEBUG] - Est Ends:    ['2026-06-09']
+09:43:05 - [DEBUG] - Effective Starts: ['2026-06-08']
+09:43:05 - [DEBUG] - Effective Ends:   ['2026-06-09']
+09:43:05 - [DEBUG] - ---------------------------------------
+09:43:05 - [DEBUG] - --- Debugging Project: 66101 ---
+09:43:05 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:43:05 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+09:43:05 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:43:05 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+09:43:05 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:43:05 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+09:43:05 - [DEBUG] - ---------------------------------------
+09:43:05 - [DEBUG] - --- Debugging Project: 66172 ---
+09:43:05 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+09:43:05 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:43:05 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+09:43:05 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:43:05 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:43:05 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:43:05 - [DEBUG] - ---------------------------------------
+09:43:05 - [DEBUG] - --- Debugging Project: 66224 ---
+09:43:05 - [DEBUG] - Real Starts: [nan]
+09:43:05 - [DEBUG] - Est Starts:  ['2026-06-15']
+09:43:05 - [DEBUG] - Real Ends:   [nan]
+09:43:05 - [DEBUG] - Est Ends:    ['2026-06-16']
+09:43:05 - [DEBUG] - Effective Starts: ['2026-06-15']
+09:43:05 - [DEBUG] - Effective Ends:   ['2026-06-16']
+09:43:05 - [DEBUG] - ---------------------------------------
+09:43:05 - [DEBUG] - --- Debugging Project: 66170 ---
+09:43:05 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:43:05 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+09:43:05 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:43:05 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+09:43:05 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+09:43:05 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+09:43:05 - [DEBUG] - ---------------------------------------
+09:43:05 - [DEBUG] - --- Debugging Project: 66285 ---
+09:43:05 - [DEBUG] - Real Starts: [nan]
+09:43:05 - [DEBUG] - Est Starts:  ['2026-06-10']
+09:43:05 - [DEBUG] - Real Ends:   [nan]
+09:43:05 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:43:05 - [DEBUG] - Effective Starts: ['2026-06-10']
+09:43:05 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:43:05 - [DEBUG] - ---------------------------------------
+09:43:05 - [DEBUG] - --- Debugging Project: 66257 ---
+09:43:05 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+09:43:05 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:43:05 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+09:43:05 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:43:05 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:43:05 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:43:05 - [DEBUG] - ---------------------------------------
+09:43:05 - [DEBUG] - --- Debugging Project: 66222 ---
+09:43:05 - [DEBUG] - Real Starts: [nan]
+09:43:05 - [DEBUG] - Est Starts:  ['2026-06-18']
+09:43:05 - [DEBUG] - Real Ends:   [nan]
+09:43:05 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:43:05 - [DEBUG] - Effective Starts: ['2026-06-18']
+09:43:05 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:43:05 - [DEBUG] - ---------------------------------------
+09:43:05 - [DEBUG] - --- Debugging Project: 66331 ---
+09:43:05 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+09:43:05 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:43:05 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+09:43:05 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:43:05 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:43:05 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:43:05 - [DEBUG] - ---------------------------------------
+09:43:05 - [DEBUG] - --- Debugging Project: 66322 ---
+09:43:05 - [DEBUG] - Real Starts: [nan]
+09:43:05 - [DEBUG] - Est Starts:  ['2026-06-22']
+09:43:05 - [DEBUG] - Real Ends:   [nan]
+09:43:05 - [DEBUG] - Est Ends:    ['2026-06-23']
+09:43:05 - [DEBUG] - Effective Starts: ['2026-06-22']
+09:43:05 - [DEBUG] - Effective Ends:   ['2026-06-23']
+09:43:05 - [DEBUG] - ---------------------------------------
+09:43:05 - [DEBUG] - --- Debugging Project: 66374 ---
+09:43:05 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:43:05 - [DEBUG] - Est Starts:  [nan, nan, nan]
+09:43:05 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:43:05 - [DEBUG] - Est Ends:    [nan, nan, nan]
+09:43:05 - [DEBUG] - Effective Starts: [nan, nan, nan]
+09:43:05 - [DEBUG] - Effective Ends:   [nan, nan, nan]
+09:43:05 - [DEBUG] - ---------------------------------------
+09:43:05 - [DEBUG] - --- Debugging Project: 66370 ---
+09:43:05 - [DEBUG] - Real Starts: [nan]
+09:43:05 - [DEBUG] - Est Starts:  [nan]
+09:43:05 - [DEBUG] - Real Ends:   [nan]
+09:43:05 - [DEBUG] - Est Ends:    [nan]
+09:43:05 - [DEBUG] - Effective Starts: [nan]
+09:43:05 - [DEBUG] - Effective Ends:   [nan]
+09:43:05 - [DEBUG] - ---------------------------------------
+09:47:53 - [DEBUG] - --- Debugging Project: 66036 ---
+09:47:53 - [DEBUG] - Real Starts: ['2026-06-02']
+09:47:53 - [DEBUG] - Est Starts:  ['2026-06-02']
+09:47:53 - [DEBUG] - Real Ends:   [nan]
+09:47:53 - [DEBUG] - Est Ends:    ['2026-06-04']
+09:47:53 - [DEBUG] - Effective Starts: ['2026-06-02']
+09:47:53 - [DEBUG] - Effective Ends:   ['2026-06-04']
+09:47:53 - [DEBUG] - ---------------------------------------
+09:47:53 - [DEBUG] - --- Debugging Project: 65924 ---
+09:47:53 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+09:47:53 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-05-25', '2026-05-25', nan]
+09:47:53 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+09:47:53 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-09', nan]
+09:47:53 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+09:47:53 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-09', nan]
+09:47:53 - [DEBUG] - ---------------------------------------
+09:47:53 - [DEBUG] - --- Debugging Project: 66107 ---
+09:47:53 - [DEBUG] - Real Starts: [nan]
+09:47:53 - [DEBUG] - Est Starts:  ['2026-06-08']
+09:47:53 - [DEBUG] - Real Ends:   [nan]
+09:47:53 - [DEBUG] - Est Ends:    ['2026-06-09']
+09:47:53 - [DEBUG] - Effective Starts: ['2026-06-08']
+09:47:53 - [DEBUG] - Effective Ends:   ['2026-06-09']
+09:47:53 - [DEBUG] - ---------------------------------------
+09:47:53 - [DEBUG] - --- Debugging Project: 66101 ---
+09:47:53 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:47:53 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+09:47:53 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:47:53 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+09:47:53 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:47:53 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+09:47:53 - [DEBUG] - ---------------------------------------
+09:47:53 - [DEBUG] - --- Debugging Project: 66172 ---
+09:47:53 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+09:47:53 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:47:53 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+09:47:53 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:47:53 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:47:53 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:47:53 - [DEBUG] - ---------------------------------------
+09:47:53 - [DEBUG] - --- Debugging Project: 66224 ---
+09:47:53 - [DEBUG] - Real Starts: [nan]
+09:47:53 - [DEBUG] - Est Starts:  ['2026-06-15']
+09:47:53 - [DEBUG] - Real Ends:   [nan]
+09:47:53 - [DEBUG] - Est Ends:    ['2026-06-16']
+09:47:53 - [DEBUG] - Effective Starts: ['2026-06-15']
+09:47:53 - [DEBUG] - Effective Ends:   ['2026-06-16']
+09:47:53 - [DEBUG] - ---------------------------------------
+09:47:53 - [DEBUG] - --- Debugging Project: 66170 ---
+09:47:53 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:47:53 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+09:47:53 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:47:53 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+09:47:53 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+09:47:53 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+09:47:53 - [DEBUG] - ---------------------------------------
+09:47:53 - [DEBUG] - --- Debugging Project: 66285 ---
+09:47:53 - [DEBUG] - Real Starts: [nan]
+09:47:53 - [DEBUG] - Est Starts:  ['2026-06-10']
+09:47:53 - [DEBUG] - Real Ends:   [nan]
+09:47:53 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:47:53 - [DEBUG] - Effective Starts: ['2026-06-10']
+09:47:53 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:47:53 - [DEBUG] - ---------------------------------------
+09:47:53 - [DEBUG] - --- Debugging Project: 66257 ---
+09:47:53 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+09:47:53 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:47:53 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+09:47:53 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:47:53 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:47:53 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:47:53 - [DEBUG] - ---------------------------------------
+09:47:53 - [DEBUG] - --- Debugging Project: 66222 ---
+09:47:53 - [DEBUG] - Real Starts: [nan]
+09:47:53 - [DEBUG] - Est Starts:  ['2026-06-18']
+09:47:53 - [DEBUG] - Real Ends:   [nan]
+09:47:53 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:47:53 - [DEBUG] - Effective Starts: ['2026-06-18']
+09:47:53 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:47:53 - [DEBUG] - ---------------------------------------
+09:47:53 - [DEBUG] - --- Debugging Project: 66331 ---
+09:47:53 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+09:47:53 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:47:53 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+09:47:53 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:47:53 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:47:53 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:47:53 - [DEBUG] - ---------------------------------------
+09:47:53 - [DEBUG] - --- Debugging Project: 66322 ---
+09:47:53 - [DEBUG] - Real Starts: [nan]
+09:47:53 - [DEBUG] - Est Starts:  ['2026-06-22']
+09:47:53 - [DEBUG] - Real Ends:   [nan]
+09:47:53 - [DEBUG] - Est Ends:    ['2026-06-23']
+09:47:53 - [DEBUG] - Effective Starts: ['2026-06-22']
+09:47:53 - [DEBUG] - Effective Ends:   ['2026-06-23']
+09:47:53 - [DEBUG] - ---------------------------------------
+09:47:53 - [DEBUG] - --- Debugging Project: 66374 ---
+09:47:53 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:47:53 - [DEBUG] - Est Starts:  [nan, nan, nan]
+09:47:53 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:47:53 - [DEBUG] - Est Ends:    [nan, nan, nan]
+09:47:53 - [DEBUG] - Effective Starts: [nan, nan, nan]
+09:47:53 - [DEBUG] - Effective Ends:   [nan, nan, nan]
+09:47:53 - [DEBUG] - ---------------------------------------
+09:47:53 - [DEBUG] - --- Debugging Project: 66370 ---
+09:47:53 - [DEBUG] - Real Starts: [nan]
+09:47:53 - [DEBUG] - Est Starts:  [nan]
+09:47:53 - [DEBUG] - Real Ends:   [nan]
+09:47:53 - [DEBUG] - Est Ends:    [nan]
+09:47:53 - [DEBUG] - Effective Starts: [nan]
+09:47:53 - [DEBUG] - Effective Ends:   [nan]
+09:47:53 - [DEBUG] - ---------------------------------------
+09:48:06 - [DEBUG] - --- Debugging Project: 66036 ---
+09:48:06 - [DEBUG] - Real Starts: ['2026-06-02']
+09:48:06 - [DEBUG] - Est Starts:  ['2026-06-02']
+09:48:06 - [DEBUG] - Real Ends:   [nan]
+09:48:06 - [DEBUG] - Est Ends:    ['2026-06-04']
+09:48:06 - [DEBUG] - Effective Starts: ['2026-06-02']
+09:48:06 - [DEBUG] - Effective Ends:   ['2026-06-04']
+09:48:06 - [DEBUG] - ---------------------------------------
+09:48:06 - [DEBUG] - --- Debugging Project: 65924 ---
+09:48:06 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+09:48:06 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-05-25', '2026-05-25', '2026-06-05']
+09:48:06 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+09:48:06 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-12']
+09:48:06 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+09:48:06 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-12']
+09:48:06 - [DEBUG] - ---------------------------------------
+09:48:06 - [DEBUG] - --- Debugging Project: 66107 ---
+09:48:06 - [DEBUG] - Real Starts: [nan]
+09:48:06 - [DEBUG] - Est Starts:  ['2026-06-08']
+09:48:06 - [DEBUG] - Real Ends:   [nan]
+09:48:06 - [DEBUG] - Est Ends:    ['2026-06-09']
+09:48:06 - [DEBUG] - Effective Starts: ['2026-06-08']
+09:48:06 - [DEBUG] - Effective Ends:   ['2026-06-09']
+09:48:06 - [DEBUG] - ---------------------------------------
+09:48:06 - [DEBUG] - --- Debugging Project: 66101 ---
+09:48:06 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:48:06 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+09:48:06 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:48:06 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+09:48:06 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:48:06 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+09:48:06 - [DEBUG] - ---------------------------------------
+09:48:06 - [DEBUG] - --- Debugging Project: 66172 ---
+09:48:06 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+09:48:06 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:48:06 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+09:48:06 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:48:06 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:48:06 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:48:06 - [DEBUG] - ---------------------------------------
+09:48:06 - [DEBUG] - --- Debugging Project: 66224 ---
+09:48:06 - [DEBUG] - Real Starts: [nan]
+09:48:06 - [DEBUG] - Est Starts:  ['2026-06-15']
+09:48:06 - [DEBUG] - Real Ends:   [nan]
+09:48:06 - [DEBUG] - Est Ends:    ['2026-06-16']
+09:48:06 - [DEBUG] - Effective Starts: ['2026-06-15']
+09:48:06 - [DEBUG] - Effective Ends:   ['2026-06-16']
+09:48:06 - [DEBUG] - ---------------------------------------
+09:48:06 - [DEBUG] - --- Debugging Project: 66170 ---
+09:48:06 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:48:06 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+09:48:06 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:48:06 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+09:48:06 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+09:48:06 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+09:48:06 - [DEBUG] - ---------------------------------------
+09:48:06 - [DEBUG] - --- Debugging Project: 66285 ---
+09:48:06 - [DEBUG] - Real Starts: [nan]
+09:48:06 - [DEBUG] - Est Starts:  ['2026-06-10']
+09:48:06 - [DEBUG] - Real Ends:   [nan]
+09:48:06 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:48:06 - [DEBUG] - Effective Starts: ['2026-06-10']
+09:48:06 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:48:06 - [DEBUG] - ---------------------------------------
+09:48:06 - [DEBUG] - --- Debugging Project: 66257 ---
+09:48:06 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+09:48:06 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:48:06 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+09:48:06 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:48:06 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:48:06 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:48:06 - [DEBUG] - ---------------------------------------
+09:48:06 - [DEBUG] - --- Debugging Project: 66222 ---
+09:48:06 - [DEBUG] - Real Starts: [nan]
+09:48:06 - [DEBUG] - Est Starts:  ['2026-06-18']
+09:48:06 - [DEBUG] - Real Ends:   [nan]
+09:48:06 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:48:06 - [DEBUG] - Effective Starts: ['2026-06-18']
+09:48:06 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:48:06 - [DEBUG] - ---------------------------------------
+09:48:06 - [DEBUG] - --- Debugging Project: 66331 ---
+09:48:06 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+09:48:06 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:48:06 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+09:48:06 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:48:06 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:48:06 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:48:06 - [DEBUG] - ---------------------------------------
+09:48:07 - [DEBUG] - --- Debugging Project: 66322 ---
+09:48:07 - [DEBUG] - Real Starts: [nan]
+09:48:07 - [DEBUG] - Est Starts:  ['2026-06-22']
+09:48:07 - [DEBUG] - Real Ends:   [nan]
+09:48:07 - [DEBUG] - Est Ends:    ['2026-06-23']
+09:48:07 - [DEBUG] - Effective Starts: ['2026-06-22']
+09:48:07 - [DEBUG] - Effective Ends:   ['2026-06-23']
+09:48:07 - [DEBUG] - ---------------------------------------
+09:48:07 - [DEBUG] - --- Debugging Project: 66374 ---
+09:48:07 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:48:07 - [DEBUG] - Est Starts:  [nan, nan, nan]
+09:48:07 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:48:07 - [DEBUG] - Est Ends:    [nan, nan, nan]
+09:48:07 - [DEBUG] - Effective Starts: [nan, nan, nan]
+09:48:07 - [DEBUG] - Effective Ends:   [nan, nan, nan]
+09:48:07 - [DEBUG] - ---------------------------------------
+09:48:07 - [DEBUG] - --- Debugging Project: 66370 ---
+09:48:07 - [DEBUG] - Real Starts: [nan]
+09:48:07 - [DEBUG] - Est Starts:  [nan]
+09:48:07 - [DEBUG] - Real Ends:   [nan]
+09:48:07 - [DEBUG] - Est Ends:    [nan]
+09:48:07 - [DEBUG] - Effective Starts: [nan]
+09:48:07 - [DEBUG] - Effective Ends:   [nan]
+09:48:07 - [DEBUG] - ---------------------------------------
+09:48:10 - [INFO] - Successfully saved 1 edits to the database.
+09:48:11 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+09:48:11 - [DEBUG] - Starting new HTTPS connection (1): api.github.com:443
+09:48:12 - [DEBUG] - https://api.github.com:443 "GET /repos/begratefull/MyGantt/contents/data/schedule.json?ref=master HTTP/1.1" 200 28100
+09:48:12 - [DEBUG] - Starting new HTTPS connection (1): api.github.com:443
+09:48:14 - [DEBUG] - https://api.github.com:443 "PUT /repos/begratefull/MyGantt/contents/data/schedule.json HTTP/1.1" 200 None
+09:48:14 - [INFO] - Successfully pushed Custom Team schedule to GitHub web interface.
+09:48:16 - [DEBUG] - --- Debugging Project: 66036 ---
+09:48:16 - [DEBUG] - Real Starts: ['2026-06-02']
+09:48:16 - [DEBUG] - Est Starts:  ['2026-06-02']
+09:48:16 - [DEBUG] - Real Ends:   [nan]
+09:48:16 - [DEBUG] - Est Ends:    ['2026-06-04']
+09:48:16 - [DEBUG] - Effective Starts: ['2026-06-02']
+09:48:16 - [DEBUG] - Effective Ends:   ['2026-06-04']
+09:48:16 - [DEBUG] - ---------------------------------------
+09:48:16 - [DEBUG] - --- Debugging Project: 65924 ---
+09:48:16 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+09:48:16 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-05-25', '2026-05-25', '2026-06-05']
+09:48:16 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+09:48:16 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-12']
+09:48:16 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+09:48:16 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-12']
+09:48:16 - [DEBUG] - ---------------------------------------
+09:48:16 - [DEBUG] - --- Debugging Project: 66107 ---
+09:48:16 - [DEBUG] - Real Starts: [nan]
+09:48:16 - [DEBUG] - Est Starts:  ['2026-06-08']
+09:48:16 - [DEBUG] - Real Ends:   [nan]
+09:48:16 - [DEBUG] - Est Ends:    ['2026-06-09']
+09:48:16 - [DEBUG] - Effective Starts: ['2026-06-08']
+09:48:16 - [DEBUG] - Effective Ends:   ['2026-06-09']
+09:48:16 - [DEBUG] - ---------------------------------------
+09:48:16 - [DEBUG] - --- Debugging Project: 66101 ---
+09:48:16 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:48:16 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+09:48:16 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:48:16 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+09:48:16 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:48:16 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+09:48:16 - [DEBUG] - ---------------------------------------
+09:48:16 - [DEBUG] - --- Debugging Project: 66172 ---
+09:48:16 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+09:48:16 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:48:16 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+09:48:16 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:48:16 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:48:16 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:48:16 - [DEBUG] - ---------------------------------------
+09:48:16 - [DEBUG] - --- Debugging Project: 66224 ---
+09:48:16 - [DEBUG] - Real Starts: [nan]
+09:48:16 - [DEBUG] - Est Starts:  ['2026-06-15']
+09:48:16 - [DEBUG] - Real Ends:   [nan]
+09:48:16 - [DEBUG] - Est Ends:    ['2026-06-16']
+09:48:16 - [DEBUG] - Effective Starts: ['2026-06-15']
+09:48:16 - [DEBUG] - Effective Ends:   ['2026-06-16']
+09:48:16 - [DEBUG] - ---------------------------------------
+09:48:16 - [DEBUG] - --- Debugging Project: 66170 ---
+09:48:16 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:48:16 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+09:48:16 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:48:16 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+09:48:16 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+09:48:16 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+09:48:16 - [DEBUG] - ---------------------------------------
+09:48:17 - [DEBUG] - --- Debugging Project: 66285 ---
+09:48:17 - [DEBUG] - Real Starts: [nan]
+09:48:17 - [DEBUG] - Est Starts:  ['2026-06-10']
+09:48:17 - [DEBUG] - Real Ends:   [nan]
+09:48:17 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:48:17 - [DEBUG] - Effective Starts: ['2026-06-10']
+09:48:17 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:48:17 - [DEBUG] - ---------------------------------------
+09:48:17 - [DEBUG] - --- Debugging Project: 66257 ---
+09:48:17 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+09:48:17 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:48:17 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+09:48:17 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:48:17 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:48:17 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:48:17 - [DEBUG] - ---------------------------------------
+09:48:17 - [DEBUG] - --- Debugging Project: 66222 ---
+09:48:17 - [DEBUG] - Real Starts: [nan]
+09:48:17 - [DEBUG] - Est Starts:  ['2026-06-18']
+09:48:17 - [DEBUG] - Real Ends:   [nan]
+09:48:17 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:48:17 - [DEBUG] - Effective Starts: ['2026-06-18']
+09:48:17 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:48:17 - [DEBUG] - ---------------------------------------
+09:48:17 - [DEBUG] - --- Debugging Project: 66331 ---
+09:48:17 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+09:48:17 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:48:17 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+09:48:17 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:48:17 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:48:17 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:48:17 - [DEBUG] - ---------------------------------------
+09:48:17 - [DEBUG] - --- Debugging Project: 66322 ---
+09:48:17 - [DEBUG] - Real Starts: [nan]
+09:48:17 - [DEBUG] - Est Starts:  ['2026-06-22']
+09:48:17 - [DEBUG] - Real Ends:   [nan]
+09:48:17 - [DEBUG] - Est Ends:    ['2026-06-23']
+09:48:17 - [DEBUG] - Effective Starts: ['2026-06-22']
+09:48:17 - [DEBUG] - Effective Ends:   ['2026-06-23']
+09:48:17 - [DEBUG] - ---------------------------------------
+09:48:17 - [DEBUG] - --- Debugging Project: 66374 ---
+09:48:17 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:48:17 - [DEBUG] - Est Starts:  [nan, nan, nan]
+09:48:17 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:48:17 - [DEBUG] - Est Ends:    [nan, nan, nan]
+09:48:17 - [DEBUG] - Effective Starts: [nan, nan, nan]
+09:48:17 - [DEBUG] - Effective Ends:   [nan, nan, nan]
+09:48:17 - [DEBUG] - ---------------------------------------
+09:48:17 - [DEBUG] - --- Debugging Project: 66370 ---
+09:48:17 - [DEBUG] - Real Starts: [nan]
+09:48:17 - [DEBUG] - Est Starts:  [nan]
+09:48:17 - [DEBUG] - Real Ends:   [nan]
+09:48:17 - [DEBUG] - Est Ends:    [nan]
+09:48:17 - [DEBUG] - Effective Starts: [nan]
+09:48:17 - [DEBUG] - Effective Ends:   [nan]
+09:48:17 - [DEBUG] - ---------------------------------------
+09:56:52 - [INFO] - =========================================
+09:56:52 - [INFO] - Starting MyGantt Application...
+09:56:52 - [INFO] - Initializing Data Model...
+09:56:52 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+09:56:52 - [INFO] - Database schemas initialized successfully.
+09:56:52 - [INFO] - Initializing Application Controller...
+09:56:52 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+09:56:52 - [INFO] - Displaying Main Window...
+09:56:52 - [INFO] - Launch sequence complete!
+09:56:54 - [DEBUG] - --- Debugging Project: 66036 ---
+09:56:54 - [DEBUG] - Real Starts: ['2026-06-02']
+09:56:54 - [DEBUG] - Est Starts:  ['2026-06-02']
+09:56:54 - [DEBUG] - Real Ends:   [nan]
+09:56:54 - [DEBUG] - Est Ends:    ['2026-06-04']
+09:56:54 - [DEBUG] - Effective Starts: ['2026-06-02']
+09:56:54 - [DEBUG] - Effective Ends:   ['2026-06-04']
+09:56:54 - [DEBUG] - ---------------------------------------
+09:56:54 - [DEBUG] - --- Debugging Project: 65924 ---
+09:56:54 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+09:56:54 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-05-25', '2026-05-25', '2026-06-05']
+09:56:54 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+09:56:54 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-12']
+09:56:54 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+09:56:54 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-12']
+09:56:54 - [DEBUG] - ---------------------------------------
+09:56:54 - [DEBUG] - --- Debugging Project: 66107 ---
+09:56:54 - [DEBUG] - Real Starts: [nan]
+09:56:54 - [DEBUG] - Est Starts:  ['2026-06-08']
+09:56:54 - [DEBUG] - Real Ends:   [nan]
+09:56:54 - [DEBUG] - Est Ends:    ['2026-06-09']
+09:56:54 - [DEBUG] - Effective Starts: ['2026-06-08']
+09:56:54 - [DEBUG] - Effective Ends:   ['2026-06-09']
+09:56:54 - [DEBUG] - ---------------------------------------
+09:56:54 - [DEBUG] - --- Debugging Project: 66101 ---
+09:56:54 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:56:54 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+09:56:54 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:56:54 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+09:56:54 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:56:54 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+09:56:54 - [DEBUG] - ---------------------------------------
+09:56:54 - [DEBUG] - --- Debugging Project: 66172 ---
+09:56:54 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+09:56:54 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:56:54 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+09:56:54 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:56:54 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:56:54 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:56:54 - [DEBUG] - ---------------------------------------
+09:56:54 - [DEBUG] - --- Debugging Project: 66224 ---
+09:56:54 - [DEBUG] - Real Starts: [nan]
+09:56:54 - [DEBUG] - Est Starts:  ['2026-06-15']
+09:56:54 - [DEBUG] - Real Ends:   [nan]
+09:56:54 - [DEBUG] - Est Ends:    ['2026-06-16']
+09:56:54 - [DEBUG] - Effective Starts: ['2026-06-15']
+09:56:54 - [DEBUG] - Effective Ends:   ['2026-06-16']
+09:56:54 - [DEBUG] - ---------------------------------------
+09:56:54 - [DEBUG] - --- Debugging Project: 66170 ---
+09:56:54 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:56:54 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+09:56:54 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:56:54 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+09:56:54 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+09:56:54 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+09:56:54 - [DEBUG] - ---------------------------------------
+09:56:54 - [DEBUG] - --- Debugging Project: 66285 ---
+09:56:54 - [DEBUG] - Real Starts: [nan]
+09:56:54 - [DEBUG] - Est Starts:  ['2026-06-10']
+09:56:54 - [DEBUG] - Real Ends:   [nan]
+09:56:54 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:56:54 - [DEBUG] - Effective Starts: ['2026-06-10']
+09:56:54 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:56:54 - [DEBUG] - ---------------------------------------
+09:56:54 - [DEBUG] - --- Debugging Project: 66257 ---
+09:56:54 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+09:56:54 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:56:54 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+09:56:54 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:56:54 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:56:54 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:56:54 - [DEBUG] - ---------------------------------------
+09:56:54 - [DEBUG] - --- Debugging Project: 66222 ---
+09:56:54 - [DEBUG] - Real Starts: [nan]
+09:56:54 - [DEBUG] - Est Starts:  ['2026-06-18']
+09:56:54 - [DEBUG] - Real Ends:   [nan]
+09:56:54 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:56:54 - [DEBUG] - Effective Starts: ['2026-06-18']
+09:56:54 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:56:54 - [DEBUG] - ---------------------------------------
+09:56:54 - [DEBUG] - --- Debugging Project: 66331 ---
+09:56:54 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+09:56:54 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:56:54 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+09:56:54 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:56:54 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:56:54 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:56:54 - [DEBUG] - ---------------------------------------
+09:56:54 - [DEBUG] - --- Debugging Project: 66322 ---
+09:56:54 - [DEBUG] - Real Starts: [nan]
+09:56:54 - [DEBUG] - Est Starts:  ['2026-06-22']
+09:56:54 - [DEBUG] - Real Ends:   [nan]
+09:56:54 - [DEBUG] - Est Ends:    ['2026-06-23']
+09:56:54 - [DEBUG] - Effective Starts: ['2026-06-22']
+09:56:54 - [DEBUG] - Effective Ends:   ['2026-06-23']
+09:56:54 - [DEBUG] - ---------------------------------------
+09:56:54 - [DEBUG] - --- Debugging Project: 66374 ---
+09:56:54 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:56:54 - [DEBUG] - Est Starts:  [nan, nan, nan]
+09:56:54 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:56:54 - [DEBUG] - Est Ends:    [nan, nan, nan]
+09:56:54 - [DEBUG] - Effective Starts: [nan, nan, nan]
+09:56:54 - [DEBUG] - Effective Ends:   [nan, nan, nan]
+09:56:54 - [DEBUG] - ---------------------------------------
+09:56:54 - [DEBUG] - --- Debugging Project: 66370 ---
+09:56:54 - [DEBUG] - Real Starts: [nan]
+09:56:54 - [DEBUG] - Est Starts:  [nan]
+09:56:54 - [DEBUG] - Real Ends:   [nan]
+09:56:54 - [DEBUG] - Est Ends:    [nan]
+09:56:54 - [DEBUG] - Effective Starts: [nan]
+09:56:54 - [DEBUG] - Effective Ends:   [nan]
+09:56:54 - [DEBUG] - ---------------------------------------
+09:56:57 - [DEBUG] - --- Debugging Project: 66036 ---
+09:56:57 - [DEBUG] - Real Starts: ['2026-06-02']
+09:56:57 - [DEBUG] - Est Starts:  ['2026-06-02']
+09:56:57 - [DEBUG] - Real Ends:   [nan]
+09:56:57 - [DEBUG] - Est Ends:    ['2026-06-04']
+09:56:57 - [DEBUG] - Effective Starts: ['2026-06-02']
+09:56:57 - [DEBUG] - Effective Ends:   ['2026-06-04']
+09:56:57 - [DEBUG] - ---------------------------------------
+09:56:57 - [DEBUG] - --- Debugging Project: 65924 ---
+09:56:57 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+09:56:57 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-05-25', '2026-05-25', '2026-06-05']
+09:56:57 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+09:56:57 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-12']
+09:56:57 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+09:56:57 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-12']
+09:56:57 - [DEBUG] - ---------------------------------------
+09:56:57 - [DEBUG] - --- Debugging Project: 66107 ---
+09:56:57 - [DEBUG] - Real Starts: [nan]
+09:56:57 - [DEBUG] - Est Starts:  ['2026-06-08']
+09:56:57 - [DEBUG] - Real Ends:   [nan]
+09:56:57 - [DEBUG] - Est Ends:    ['2026-06-09']
+09:56:57 - [DEBUG] - Effective Starts: ['2026-06-08']
+09:56:57 - [DEBUG] - Effective Ends:   ['2026-06-09']
+09:56:57 - [DEBUG] - ---------------------------------------
+09:56:57 - [DEBUG] - --- Debugging Project: 66101 ---
+09:56:57 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:56:57 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+09:56:57 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:56:57 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+09:56:57 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:56:57 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+09:56:57 - [DEBUG] - ---------------------------------------
+09:56:57 - [DEBUG] - --- Debugging Project: 66172 ---
+09:56:57 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+09:56:57 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:56:57 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+09:56:57 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:56:57 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:56:57 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:56:57 - [DEBUG] - ---------------------------------------
+09:56:57 - [DEBUG] - --- Debugging Project: 66224 ---
+09:56:57 - [DEBUG] - Real Starts: [nan]
+09:56:57 - [DEBUG] - Est Starts:  ['2026-06-15']
+09:56:57 - [DEBUG] - Real Ends:   [nan]
+09:56:57 - [DEBUG] - Est Ends:    ['2026-06-16']
+09:56:57 - [DEBUG] - Effective Starts: ['2026-06-15']
+09:56:57 - [DEBUG] - Effective Ends:   ['2026-06-16']
+09:56:57 - [DEBUG] - ---------------------------------------
+09:56:57 - [DEBUG] - --- Debugging Project: 66170 ---
+09:56:57 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:56:57 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+09:56:57 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:56:57 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+09:56:57 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+09:56:57 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+09:56:57 - [DEBUG] - ---------------------------------------
+09:56:57 - [DEBUG] - --- Debugging Project: 66285 ---
+09:56:57 - [DEBUG] - Real Starts: [nan]
+09:56:57 - [DEBUG] - Est Starts:  ['2026-06-10']
+09:56:57 - [DEBUG] - Real Ends:   [nan]
+09:56:57 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:56:57 - [DEBUG] - Effective Starts: ['2026-06-10']
+09:56:57 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:56:57 - [DEBUG] - ---------------------------------------
+09:56:57 - [DEBUG] - --- Debugging Project: 66257 ---
+09:56:57 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+09:56:57 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:56:57 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+09:56:57 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:56:57 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:56:57 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:56:57 - [DEBUG] - ---------------------------------------
+09:56:57 - [DEBUG] - --- Debugging Project: 66222 ---
+09:56:57 - [DEBUG] - Real Starts: [nan]
+09:56:57 - [DEBUG] - Est Starts:  ['2026-06-18']
+09:56:57 - [DEBUG] - Real Ends:   [nan]
+09:56:57 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:56:57 - [DEBUG] - Effective Starts: ['2026-06-18']
+09:56:57 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:56:57 - [DEBUG] - ---------------------------------------
+09:56:57 - [DEBUG] - --- Debugging Project: 66331 ---
+09:56:57 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+09:56:57 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:56:57 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+09:56:57 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:56:57 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:56:57 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:56:57 - [DEBUG] - ---------------------------------------
+09:56:57 - [DEBUG] - --- Debugging Project: 66322 ---
+09:56:57 - [DEBUG] - Real Starts: [nan]
+09:56:57 - [DEBUG] - Est Starts:  ['2026-06-22']
+09:56:57 - [DEBUG] - Real Ends:   [nan]
+09:56:57 - [DEBUG] - Est Ends:    ['2026-06-23']
+09:56:57 - [DEBUG] - Effective Starts: ['2026-06-22']
+09:56:57 - [DEBUG] - Effective Ends:   ['2026-06-23']
+09:56:57 - [DEBUG] - ---------------------------------------
+09:56:57 - [DEBUG] - --- Debugging Project: 66374 ---
+09:56:57 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:56:57 - [DEBUG] - Est Starts:  [nan, nan, nan]
+09:56:57 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:56:57 - [DEBUG] - Est Ends:    [nan, nan, nan]
+09:56:57 - [DEBUG] - Effective Starts: [nan, nan, nan]
+09:56:57 - [DEBUG] - Effective Ends:   [nan, nan, nan]
+09:56:57 - [DEBUG] - ---------------------------------------
+09:56:57 - [DEBUG] - --- Debugging Project: 66370 ---
+09:56:57 - [DEBUG] - Real Starts: [nan]
+09:56:57 - [DEBUG] - Est Starts:  [nan]
+09:56:57 - [DEBUG] - Real Ends:   [nan]
+09:56:57 - [DEBUG] - Est Ends:    [nan]
+09:56:57 - [DEBUG] - Effective Starts: [nan]
+09:56:57 - [DEBUG] - Effective Ends:   [nan]
+09:56:57 - [DEBUG] - ---------------------------------------
+09:57:21 - [DEBUG] - --- Debugging Project: 66036 ---
+09:57:21 - [DEBUG] - Real Starts: ['2026-06-02']
+09:57:21 - [DEBUG] - Est Starts:  ['2026-06-02']
+09:57:21 - [DEBUG] - Real Ends:   [nan]
+09:57:21 - [DEBUG] - Est Ends:    ['2026-06-04']
+09:57:21 - [DEBUG] - Effective Starts: ['2026-06-02']
+09:57:21 - [DEBUG] - Effective Ends:   ['2026-06-04']
+09:57:21 - [DEBUG] - ---------------------------------------
+09:57:21 - [DEBUG] - --- Debugging Project: 65924 ---
+09:57:21 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+09:57:21 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-05-25', '2026-05-25', '2026-06-05']
+09:57:21 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+09:57:21 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-12']
+09:57:21 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+09:57:21 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-12']
+09:57:21 - [DEBUG] - ---------------------------------------
+09:57:21 - [DEBUG] - --- Debugging Project: 66107 ---
+09:57:21 - [DEBUG] - Real Starts: [nan]
+09:57:21 - [DEBUG] - Est Starts:  ['2026-06-08']
+09:57:21 - [DEBUG] - Real Ends:   [nan]
+09:57:21 - [DEBUG] - Est Ends:    ['2026-06-09']
+09:57:21 - [DEBUG] - Effective Starts: ['2026-06-08']
+09:57:21 - [DEBUG] - Effective Ends:   ['2026-06-09']
+09:57:21 - [DEBUG] - ---------------------------------------
+09:57:21 - [DEBUG] - --- Debugging Project: 66101 ---
+09:57:21 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:21 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:21 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:21 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+09:57:21 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:21 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+09:57:21 - [DEBUG] - ---------------------------------------
+09:57:21 - [DEBUG] - --- Debugging Project: 66172 ---
+09:57:21 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+09:57:21 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:57:21 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+09:57:21 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:21 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:57:21 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:21 - [DEBUG] - ---------------------------------------
+09:57:21 - [DEBUG] - --- Debugging Project: 66224 ---
+09:57:21 - [DEBUG] - Real Starts: [nan]
+09:57:21 - [DEBUG] - Est Starts:  ['2026-06-15']
+09:57:21 - [DEBUG] - Real Ends:   [nan]
+09:57:21 - [DEBUG] - Est Ends:    ['2026-06-16']
+09:57:21 - [DEBUG] - Effective Starts: ['2026-06-15']
+09:57:21 - [DEBUG] - Effective Ends:   ['2026-06-16']
+09:57:21 - [DEBUG] - ---------------------------------------
+09:57:21 - [DEBUG] - --- Debugging Project: 66170 ---
+09:57:21 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:57:21 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+09:57:21 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:21 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+09:57:21 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+09:57:21 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+09:57:21 - [DEBUG] - ---------------------------------------
+09:57:21 - [DEBUG] - --- Debugging Project: 66285 ---
+09:57:21 - [DEBUG] - Real Starts: [nan]
+09:57:21 - [DEBUG] - Est Starts:  ['2026-06-10']
+09:57:21 - [DEBUG] - Real Ends:   [nan]
+09:57:21 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:57:21 - [DEBUG] - Effective Starts: ['2026-06-10']
+09:57:21 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:57:21 - [DEBUG] - ---------------------------------------
+09:57:21 - [DEBUG] - --- Debugging Project: 66257 ---
+09:57:21 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+09:57:21 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:57:21 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+09:57:21 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:57:21 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:57:21 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:57:21 - [DEBUG] - ---------------------------------------
+09:57:21 - [DEBUG] - --- Debugging Project: 66222 ---
+09:57:21 - [DEBUG] - Real Starts: [nan]
+09:57:21 - [DEBUG] - Est Starts:  ['2026-06-18']
+09:57:21 - [DEBUG] - Real Ends:   [nan]
+09:57:21 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:57:21 - [DEBUG] - Effective Starts: ['2026-06-18']
+09:57:21 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:57:21 - [DEBUG] - ---------------------------------------
+09:57:21 - [DEBUG] - --- Debugging Project: 66331 ---
+09:57:21 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+09:57:21 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:21 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+09:57:21 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:57:21 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:21 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:57:21 - [DEBUG] - ---------------------------------------
+09:57:21 - [DEBUG] - --- Debugging Project: 66322 ---
+09:57:21 - [DEBUG] - Real Starts: [nan]
+09:57:21 - [DEBUG] - Est Starts:  ['2026-06-22']
+09:57:21 - [DEBUG] - Real Ends:   [nan]
+09:57:21 - [DEBUG] - Est Ends:    ['2026-06-23']
+09:57:21 - [DEBUG] - Effective Starts: ['2026-06-22']
+09:57:21 - [DEBUG] - Effective Ends:   ['2026-06-23']
+09:57:21 - [DEBUG] - ---------------------------------------
+09:57:21 - [DEBUG] - --- Debugging Project: 66374 ---
+09:57:21 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:57:21 - [DEBUG] - Est Starts:  [nan, nan, nan]
+09:57:21 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:21 - [DEBUG] - Est Ends:    [nan, nan, nan]
+09:57:21 - [DEBUG] - Effective Starts: [nan, nan, nan]
+09:57:21 - [DEBUG] - Effective Ends:   [nan, nan, nan]
+09:57:21 - [DEBUG] - ---------------------------------------
+09:57:21 - [DEBUG] - --- Debugging Project: 66370 ---
+09:57:21 - [DEBUG] - Real Starts: [nan]
+09:57:21 - [DEBUG] - Est Starts:  [nan]
+09:57:21 - [DEBUG] - Real Ends:   [nan]
+09:57:21 - [DEBUG] - Est Ends:    [nan]
+09:57:21 - [DEBUG] - Effective Starts: [nan]
+09:57:21 - [DEBUG] - Effective Ends:   [nan]
+09:57:21 - [DEBUG] - ---------------------------------------
+09:57:33 - [DEBUG] - --- Debugging Project: 66036 ---
+09:57:33 - [DEBUG] - Real Starts: ['2026-06-02']
+09:57:33 - [DEBUG] - Est Starts:  ['2026-06-02']
+09:57:33 - [DEBUG] - Real Ends:   [nan]
+09:57:33 - [DEBUG] - Est Ends:    ['2026-06-04']
+09:57:33 - [DEBUG] - Effective Starts: ['2026-06-02']
+09:57:33 - [DEBUG] - Effective Ends:   ['2026-06-04']
+09:57:33 - [DEBUG] - ---------------------------------------
+09:57:33 - [DEBUG] - --- Debugging Project: 65924 ---
+09:57:33 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+09:57:33 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-05-25', '2026-06-05']
+09:57:33 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+09:57:33 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-19', '2026-06-09', '2026-06-12']
+09:57:33 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+09:57:33 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-19', '2026-06-09', '2026-06-12']
+09:57:33 - [DEBUG] - ---------------------------------------
+09:57:33 - [DEBUG] - --- Debugging Project: 66107 ---
+09:57:33 - [DEBUG] - Real Starts: [nan]
+09:57:33 - [DEBUG] - Est Starts:  ['2026-06-08']
+09:57:33 - [DEBUG] - Real Ends:   [nan]
+09:57:33 - [DEBUG] - Est Ends:    ['2026-06-09']
+09:57:33 - [DEBUG] - Effective Starts: ['2026-06-08']
+09:57:33 - [DEBUG] - Effective Ends:   ['2026-06-09']
+09:57:33 - [DEBUG] - ---------------------------------------
+09:57:33 - [DEBUG] - --- Debugging Project: 66101 ---
+09:57:33 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:33 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:33 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:33 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+09:57:33 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:33 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+09:57:33 - [DEBUG] - ---------------------------------------
+09:57:33 - [DEBUG] - --- Debugging Project: 66172 ---
+09:57:33 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+09:57:33 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:57:33 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+09:57:33 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:33 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:57:33 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:33 - [DEBUG] - ---------------------------------------
+09:57:33 - [DEBUG] - --- Debugging Project: 66224 ---
+09:57:33 - [DEBUG] - Real Starts: [nan]
+09:57:33 - [DEBUG] - Est Starts:  ['2026-06-15']
+09:57:33 - [DEBUG] - Real Ends:   [nan]
+09:57:33 - [DEBUG] - Est Ends:    ['2026-06-16']
+09:57:33 - [DEBUG] - Effective Starts: ['2026-06-15']
+09:57:33 - [DEBUG] - Effective Ends:   ['2026-06-16']
+09:57:33 - [DEBUG] - ---------------------------------------
+09:57:33 - [DEBUG] - --- Debugging Project: 66170 ---
+09:57:33 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:57:34 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+09:57:34 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:34 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+09:57:34 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+09:57:34 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+09:57:34 - [DEBUG] - ---------------------------------------
+09:57:34 - [DEBUG] - --- Debugging Project: 66285 ---
+09:57:34 - [DEBUG] - Real Starts: [nan]
+09:57:34 - [DEBUG] - Est Starts:  ['2026-06-10']
+09:57:34 - [DEBUG] - Real Ends:   [nan]
+09:57:34 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:57:34 - [DEBUG] - Effective Starts: ['2026-06-10']
+09:57:34 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:57:34 - [DEBUG] - ---------------------------------------
+09:57:34 - [DEBUG] - --- Debugging Project: 66257 ---
+09:57:34 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+09:57:34 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:57:34 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+09:57:34 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:57:34 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:57:34 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:57:34 - [DEBUG] - ---------------------------------------
+09:57:34 - [DEBUG] - --- Debugging Project: 66222 ---
+09:57:34 - [DEBUG] - Real Starts: [nan]
+09:57:34 - [DEBUG] - Est Starts:  ['2026-06-18']
+09:57:34 - [DEBUG] - Real Ends:   [nan]
+09:57:34 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:57:34 - [DEBUG] - Effective Starts: ['2026-06-18']
+09:57:34 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:57:34 - [DEBUG] - ---------------------------------------
+09:57:34 - [DEBUG] - --- Debugging Project: 66331 ---
+09:57:34 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+09:57:34 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:34 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+09:57:34 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:57:34 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:34 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:57:34 - [DEBUG] - ---------------------------------------
+09:57:34 - [DEBUG] - --- Debugging Project: 66322 ---
+09:57:34 - [DEBUG] - Real Starts: [nan]
+09:57:34 - [DEBUG] - Est Starts:  ['2026-06-22']
+09:57:34 - [DEBUG] - Real Ends:   [nan]
+09:57:34 - [DEBUG] - Est Ends:    ['2026-06-23']
+09:57:34 - [DEBUG] - Effective Starts: ['2026-06-22']
+09:57:34 - [DEBUG] - Effective Ends:   ['2026-06-23']
+09:57:34 - [DEBUG] - ---------------------------------------
+09:57:34 - [DEBUG] - --- Debugging Project: 66374 ---
+09:57:34 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:57:34 - [DEBUG] - Est Starts:  [nan, nan, nan]
+09:57:34 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:34 - [DEBUG] - Est Ends:    [nan, nan, nan]
+09:57:34 - [DEBUG] - Effective Starts: [nan, nan, nan]
+09:57:34 - [DEBUG] - Effective Ends:   [nan, nan, nan]
+09:57:34 - [DEBUG] - ---------------------------------------
+09:57:34 - [DEBUG] - --- Debugging Project: 66370 ---
+09:57:34 - [DEBUG] - Real Starts: [nan]
+09:57:34 - [DEBUG] - Est Starts:  [nan]
+09:57:34 - [DEBUG] - Real Ends:   [nan]
+09:57:34 - [DEBUG] - Est Ends:    [nan]
+09:57:34 - [DEBUG] - Effective Starts: [nan]
+09:57:34 - [DEBUG] - Effective Ends:   [nan]
+09:57:34 - [DEBUG] - ---------------------------------------
+09:57:37 - [DEBUG] - --- Debugging Project: 66036 ---
+09:57:37 - [DEBUG] - Real Starts: ['2026-06-02']
+09:57:37 - [DEBUG] - Est Starts:  ['2026-06-02']
+09:57:37 - [DEBUG] - Real Ends:   [nan]
+09:57:37 - [DEBUG] - Est Ends:    ['2026-06-04']
+09:57:37 - [DEBUG] - Effective Starts: ['2026-06-02']
+09:57:37 - [DEBUG] - Effective Ends:   ['2026-06-04']
+09:57:37 - [DEBUG] - ---------------------------------------
+09:57:37 - [DEBUG] - --- Debugging Project: 65924 ---
+09:57:37 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+09:57:37 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-05-25', '2026-06-05']
+09:57:37 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+09:57:37 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-12']
+09:57:37 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+09:57:37 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-12']
+09:57:37 - [DEBUG] - ---------------------------------------
+09:57:37 - [DEBUG] - --- Debugging Project: 66107 ---
+09:57:37 - [DEBUG] - Real Starts: [nan]
+09:57:37 - [DEBUG] - Est Starts:  ['2026-06-08']
+09:57:37 - [DEBUG] - Real Ends:   [nan]
+09:57:37 - [DEBUG] - Est Ends:    ['2026-06-09']
+09:57:37 - [DEBUG] - Effective Starts: ['2026-06-08']
+09:57:37 - [DEBUG] - Effective Ends:   ['2026-06-09']
+09:57:37 - [DEBUG] - ---------------------------------------
+09:57:37 - [DEBUG] - --- Debugging Project: 66101 ---
+09:57:37 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:37 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:37 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:37 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+09:57:37 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:37 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+09:57:37 - [DEBUG] - ---------------------------------------
+09:57:37 - [DEBUG] - --- Debugging Project: 66172 ---
+09:57:37 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+09:57:37 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:57:37 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+09:57:37 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:37 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:57:37 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:37 - [DEBUG] - ---------------------------------------
+09:57:37 - [DEBUG] - --- Debugging Project: 66224 ---
+09:57:37 - [DEBUG] - Real Starts: [nan]
+09:57:37 - [DEBUG] - Est Starts:  ['2026-06-15']
+09:57:37 - [DEBUG] - Real Ends:   [nan]
+09:57:37 - [DEBUG] - Est Ends:    ['2026-06-16']
+09:57:37 - [DEBUG] - Effective Starts: ['2026-06-15']
+09:57:37 - [DEBUG] - Effective Ends:   ['2026-06-16']
+09:57:37 - [DEBUG] - ---------------------------------------
+09:57:37 - [DEBUG] - --- Debugging Project: 66170 ---
+09:57:37 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:57:37 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+09:57:37 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:37 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+09:57:37 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+09:57:37 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+09:57:37 - [DEBUG] - ---------------------------------------
+09:57:37 - [DEBUG] - --- Debugging Project: 66285 ---
+09:57:37 - [DEBUG] - Real Starts: [nan]
+09:57:37 - [DEBUG] - Est Starts:  ['2026-06-10']
+09:57:37 - [DEBUG] - Real Ends:   [nan]
+09:57:37 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:57:37 - [DEBUG] - Effective Starts: ['2026-06-10']
+09:57:37 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:57:37 - [DEBUG] - ---------------------------------------
+09:57:37 - [DEBUG] - --- Debugging Project: 66257 ---
+09:57:37 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+09:57:37 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:57:37 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+09:57:37 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:57:37 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:57:37 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:57:37 - [DEBUG] - ---------------------------------------
+09:57:37 - [DEBUG] - --- Debugging Project: 66222 ---
+09:57:37 - [DEBUG] - Real Starts: [nan]
+09:57:37 - [DEBUG] - Est Starts:  ['2026-06-18']
+09:57:37 - [DEBUG] - Real Ends:   [nan]
+09:57:37 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:57:37 - [DEBUG] - Effective Starts: ['2026-06-18']
+09:57:37 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:57:37 - [DEBUG] - ---------------------------------------
+09:57:37 - [DEBUG] - --- Debugging Project: 66331 ---
+09:57:37 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+09:57:37 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:37 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+09:57:37 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:57:37 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:37 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:57:37 - [DEBUG] - ---------------------------------------
+09:57:37 - [DEBUG] - --- Debugging Project: 66322 ---
+09:57:37 - [DEBUG] - Real Starts: [nan]
+09:57:37 - [DEBUG] - Est Starts:  ['2026-06-22']
+09:57:37 - [DEBUG] - Real Ends:   [nan]
+09:57:37 - [DEBUG] - Est Ends:    ['2026-06-23']
+09:57:37 - [DEBUG] - Effective Starts: ['2026-06-22']
+09:57:37 - [DEBUG] - Effective Ends:   ['2026-06-23']
+09:57:37 - [DEBUG] - ---------------------------------------
+09:57:37 - [DEBUG] - --- Debugging Project: 66374 ---
+09:57:37 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:57:37 - [DEBUG] - Est Starts:  [nan, nan, nan]
+09:57:37 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:37 - [DEBUG] - Est Ends:    [nan, nan, nan]
+09:57:37 - [DEBUG] - Effective Starts: [nan, nan, nan]
+09:57:37 - [DEBUG] - Effective Ends:   [nan, nan, nan]
+09:57:37 - [DEBUG] - ---------------------------------------
+09:57:37 - [DEBUG] - --- Debugging Project: 66370 ---
+09:57:37 - [DEBUG] - Real Starts: [nan]
+09:57:37 - [DEBUG] - Est Starts:  [nan]
+09:57:37 - [DEBUG] - Real Ends:   [nan]
+09:57:37 - [DEBUG] - Est Ends:    [nan]
+09:57:37 - [DEBUG] - Effective Starts: [nan]
+09:57:37 - [DEBUG] - Effective Ends:   [nan]
+09:57:37 - [DEBUG] - ---------------------------------------
+09:57:39 - [DEBUG] - --- Debugging Project: 66036 ---
+09:57:39 - [DEBUG] - Real Starts: ['2026-06-02']
+09:57:39 - [DEBUG] - Est Starts:  ['2026-06-02']
+09:57:39 - [DEBUG] - Real Ends:   [nan]
+09:57:39 - [DEBUG] - Est Ends:    ['2026-06-04']
+09:57:39 - [DEBUG] - Effective Starts: ['2026-06-02']
+09:57:39 - [DEBUG] - Effective Ends:   ['2026-06-04']
+09:57:39 - [DEBUG] - ---------------------------------------
+09:57:39 - [DEBUG] - --- Debugging Project: 65924 ---
+09:57:39 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+09:57:39 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+09:57:39 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+09:57:39 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-10', '2026-06-12']
+09:57:39 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+09:57:39 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-10', '2026-06-12']
+09:57:39 - [DEBUG] - ---------------------------------------
+09:57:39 - [DEBUG] - --- Debugging Project: 66107 ---
+09:57:39 - [DEBUG] - Real Starts: [nan]
+09:57:39 - [DEBUG] - Est Starts:  ['2026-06-08']
+09:57:39 - [DEBUG] - Real Ends:   [nan]
+09:57:39 - [DEBUG] - Est Ends:    ['2026-06-09']
+09:57:39 - [DEBUG] - Effective Starts: ['2026-06-08']
+09:57:39 - [DEBUG] - Effective Ends:   ['2026-06-09']
+09:57:39 - [DEBUG] - ---------------------------------------
+09:57:39 - [DEBUG] - --- Debugging Project: 66101 ---
+09:57:39 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:39 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:39 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:39 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+09:57:39 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:39 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+09:57:39 - [DEBUG] - ---------------------------------------
+09:57:39 - [DEBUG] - --- Debugging Project: 66172 ---
+09:57:39 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+09:57:39 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:57:39 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+09:57:39 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:39 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:57:39 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:39 - [DEBUG] - ---------------------------------------
+09:57:39 - [DEBUG] - --- Debugging Project: 66224 ---
+09:57:39 - [DEBUG] - Real Starts: [nan]
+09:57:39 - [DEBUG] - Est Starts:  ['2026-06-15']
+09:57:39 - [DEBUG] - Real Ends:   [nan]
+09:57:39 - [DEBUG] - Est Ends:    ['2026-06-16']
+09:57:39 - [DEBUG] - Effective Starts: ['2026-06-15']
+09:57:39 - [DEBUG] - Effective Ends:   ['2026-06-16']
+09:57:39 - [DEBUG] - ---------------------------------------
+09:57:39 - [DEBUG] - --- Debugging Project: 66170 ---
+09:57:39 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:57:39 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+09:57:39 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:39 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+09:57:39 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+09:57:39 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+09:57:39 - [DEBUG] - ---------------------------------------
+09:57:39 - [DEBUG] - --- Debugging Project: 66285 ---
+09:57:39 - [DEBUG] - Real Starts: [nan]
+09:57:39 - [DEBUG] - Est Starts:  ['2026-06-10']
+09:57:39 - [DEBUG] - Real Ends:   [nan]
+09:57:39 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:57:39 - [DEBUG] - Effective Starts: ['2026-06-10']
+09:57:39 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:57:39 - [DEBUG] - ---------------------------------------
+09:57:39 - [DEBUG] - --- Debugging Project: 66257 ---
+09:57:39 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+09:57:39 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:57:39 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+09:57:39 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:57:39 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:57:39 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:57:39 - [DEBUG] - ---------------------------------------
+09:57:39 - [DEBUG] - --- Debugging Project: 66222 ---
+09:57:39 - [DEBUG] - Real Starts: [nan]
+09:57:39 - [DEBUG] - Est Starts:  ['2026-06-18']
+09:57:39 - [DEBUG] - Real Ends:   [nan]
+09:57:39 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:57:39 - [DEBUG] - Effective Starts: ['2026-06-18']
+09:57:39 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:57:39 - [DEBUG] - ---------------------------------------
+09:57:39 - [DEBUG] - --- Debugging Project: 66331 ---
+09:57:39 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+09:57:39 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:39 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+09:57:39 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:57:39 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:39 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:57:39 - [DEBUG] - ---------------------------------------
+09:57:39 - [DEBUG] - --- Debugging Project: 66322 ---
+09:57:39 - [DEBUG] - Real Starts: [nan]
+09:57:39 - [DEBUG] - Est Starts:  ['2026-06-22']
+09:57:39 - [DEBUG] - Real Ends:   [nan]
+09:57:39 - [DEBUG] - Est Ends:    ['2026-06-23']
+09:57:39 - [DEBUG] - Effective Starts: ['2026-06-22']
+09:57:39 - [DEBUG] - Effective Ends:   ['2026-06-23']
+09:57:39 - [DEBUG] - ---------------------------------------
+09:57:39 - [DEBUG] - --- Debugging Project: 66374 ---
+09:57:39 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:57:39 - [DEBUG] - Est Starts:  [nan, nan, nan]
+09:57:39 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:39 - [DEBUG] - Est Ends:    [nan, nan, nan]
+09:57:39 - [DEBUG] - Effective Starts: [nan, nan, nan]
+09:57:39 - [DEBUG] - Effective Ends:   [nan, nan, nan]
+09:57:39 - [DEBUG] - ---------------------------------------
+09:57:39 - [DEBUG] - --- Debugging Project: 66370 ---
+09:57:39 - [DEBUG] - Real Starts: [nan]
+09:57:39 - [DEBUG] - Est Starts:  [nan]
+09:57:39 - [DEBUG] - Real Ends:   [nan]
+09:57:39 - [DEBUG] - Est Ends:    [nan]
+09:57:39 - [DEBUG] - Effective Starts: [nan]
+09:57:39 - [DEBUG] - Effective Ends:   [nan]
+09:57:39 - [DEBUG] - ---------------------------------------
+09:57:41 - [DEBUG] - --- Debugging Project: 66036 ---
+09:57:41 - [DEBUG] - Real Starts: ['2026-06-02']
+09:57:41 - [DEBUG] - Est Starts:  ['2026-06-02']
+09:57:41 - [DEBUG] - Real Ends:   [nan]
+09:57:41 - [DEBUG] - Est Ends:    ['2026-06-04']
+09:57:41 - [DEBUG] - Effective Starts: ['2026-06-02']
+09:57:41 - [DEBUG] - Effective Ends:   ['2026-06-04']
+09:57:41 - [DEBUG] - ---------------------------------------
+09:57:41 - [DEBUG] - --- Debugging Project: 65924 ---
+09:57:41 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+09:57:41 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+09:57:41 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+09:57:41 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-12']
+09:57:41 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+09:57:41 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-12']
+09:57:41 - [DEBUG] - ---------------------------------------
+09:57:41 - [DEBUG] - --- Debugging Project: 66107 ---
+09:57:41 - [DEBUG] - Real Starts: [nan]
+09:57:41 - [DEBUG] - Est Starts:  ['2026-06-08']
+09:57:41 - [DEBUG] - Real Ends:   [nan]
+09:57:41 - [DEBUG] - Est Ends:    ['2026-06-09']
+09:57:41 - [DEBUG] - Effective Starts: ['2026-06-08']
+09:57:41 - [DEBUG] - Effective Ends:   ['2026-06-09']
+09:57:41 - [DEBUG] - ---------------------------------------
+09:57:41 - [DEBUG] - --- Debugging Project: 66101 ---
+09:57:41 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:41 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:41 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:41 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+09:57:41 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:41 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+09:57:41 - [DEBUG] - ---------------------------------------
+09:57:41 - [DEBUG] - --- Debugging Project: 66172 ---
+09:57:41 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+09:57:41 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:57:41 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+09:57:41 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:41 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:57:41 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:41 - [DEBUG] - ---------------------------------------
+09:57:41 - [DEBUG] - --- Debugging Project: 66224 ---
+09:57:41 - [DEBUG] - Real Starts: [nan]
+09:57:41 - [DEBUG] - Est Starts:  ['2026-06-15']
+09:57:41 - [DEBUG] - Real Ends:   [nan]
+09:57:41 - [DEBUG] - Est Ends:    ['2026-06-16']
+09:57:41 - [DEBUG] - Effective Starts: ['2026-06-15']
+09:57:41 - [DEBUG] - Effective Ends:   ['2026-06-16']
+09:57:41 - [DEBUG] - ---------------------------------------
+09:57:41 - [DEBUG] - --- Debugging Project: 66170 ---
+09:57:41 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:57:41 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+09:57:41 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:41 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+09:57:41 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+09:57:41 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+09:57:41 - [DEBUG] - ---------------------------------------
+09:57:41 - [DEBUG] - --- Debugging Project: 66285 ---
+09:57:41 - [DEBUG] - Real Starts: [nan]
+09:57:41 - [DEBUG] - Est Starts:  ['2026-06-10']
+09:57:41 - [DEBUG] - Real Ends:   [nan]
+09:57:41 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:57:41 - [DEBUG] - Effective Starts: ['2026-06-10']
+09:57:41 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:57:41 - [DEBUG] - ---------------------------------------
+09:57:41 - [DEBUG] - --- Debugging Project: 66257 ---
+09:57:41 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+09:57:41 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:57:41 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+09:57:41 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:57:41 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:57:41 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:57:41 - [DEBUG] - ---------------------------------------
+09:57:41 - [DEBUG] - --- Debugging Project: 66222 ---
+09:57:41 - [DEBUG] - Real Starts: [nan]
+09:57:41 - [DEBUG] - Est Starts:  ['2026-06-18']
+09:57:41 - [DEBUG] - Real Ends:   [nan]
+09:57:41 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:57:41 - [DEBUG] - Effective Starts: ['2026-06-18']
+09:57:41 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:57:41 - [DEBUG] - ---------------------------------------
+09:57:41 - [DEBUG] - --- Debugging Project: 66331 ---
+09:57:41 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+09:57:41 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:41 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+09:57:41 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:57:41 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:41 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:57:41 - [DEBUG] - ---------------------------------------
+09:57:41 - [DEBUG] - --- Debugging Project: 66322 ---
+09:57:41 - [DEBUG] - Real Starts: [nan]
+09:57:41 - [DEBUG] - Est Starts:  ['2026-06-22']
+09:57:41 - [DEBUG] - Real Ends:   [nan]
+09:57:41 - [DEBUG] - Est Ends:    ['2026-06-23']
+09:57:41 - [DEBUG] - Effective Starts: ['2026-06-22']
+09:57:41 - [DEBUG] - Effective Ends:   ['2026-06-23']
+09:57:41 - [DEBUG] - ---------------------------------------
+09:57:41 - [DEBUG] - --- Debugging Project: 66374 ---
+09:57:41 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:57:41 - [DEBUG] - Est Starts:  [nan, nan, nan]
+09:57:41 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:41 - [DEBUG] - Est Ends:    [nan, nan, nan]
+09:57:41 - [DEBUG] - Effective Starts: [nan, nan, nan]
+09:57:41 - [DEBUG] - Effective Ends:   [nan, nan, nan]
+09:57:41 - [DEBUG] - ---------------------------------------
+09:57:41 - [DEBUG] - --- Debugging Project: 66370 ---
+09:57:41 - [DEBUG] - Real Starts: [nan]
+09:57:41 - [DEBUG] - Est Starts:  [nan]
+09:57:41 - [DEBUG] - Real Ends:   [nan]
+09:57:41 - [DEBUG] - Est Ends:    [nan]
+09:57:41 - [DEBUG] - Effective Starts: [nan]
+09:57:41 - [DEBUG] - Effective Ends:   [nan]
+09:57:41 - [DEBUG] - ---------------------------------------
+09:57:42 - [DEBUG] - --- Debugging Project: 66036 ---
+09:57:42 - [DEBUG] - Real Starts: ['2026-06-02']
+09:57:42 - [DEBUG] - Est Starts:  ['2026-06-02']
+09:57:42 - [DEBUG] - Real Ends:   [nan]
+09:57:42 - [DEBUG] - Est Ends:    ['2026-06-04']
+09:57:42 - [DEBUG] - Effective Starts: ['2026-06-02']
+09:57:42 - [DEBUG] - Effective Ends:   ['2026-06-04']
+09:57:42 - [DEBUG] - ---------------------------------------
+09:57:42 - [DEBUG] - --- Debugging Project: 65924 ---
+09:57:42 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+09:57:42 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+09:57:42 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+09:57:42 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-12']
+09:57:42 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+09:57:42 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-12']
+09:57:42 - [DEBUG] - ---------------------------------------
+09:57:42 - [DEBUG] - --- Debugging Project: 66107 ---
+09:57:42 - [DEBUG] - Real Starts: [nan]
+09:57:42 - [DEBUG] - Est Starts:  ['2026-06-08']
+09:57:42 - [DEBUG] - Real Ends:   [nan]
+09:57:42 - [DEBUG] - Est Ends:    ['2026-06-09']
+09:57:42 - [DEBUG] - Effective Starts: ['2026-06-08']
+09:57:42 - [DEBUG] - Effective Ends:   ['2026-06-09']
+09:57:42 - [DEBUG] - ---------------------------------------
+09:57:42 - [DEBUG] - --- Debugging Project: 66101 ---
+09:57:42 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:42 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:42 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:42 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+09:57:42 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:42 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+09:57:42 - [DEBUG] - ---------------------------------------
+09:57:42 - [DEBUG] - --- Debugging Project: 66172 ---
+09:57:42 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+09:57:42 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:57:42 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+09:57:42 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:42 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:57:42 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:42 - [DEBUG] - ---------------------------------------
+09:57:42 - [DEBUG] - --- Debugging Project: 66224 ---
+09:57:42 - [DEBUG] - Real Starts: [nan]
+09:57:42 - [DEBUG] - Est Starts:  ['2026-06-15']
+09:57:42 - [DEBUG] - Real Ends:   [nan]
+09:57:42 - [DEBUG] - Est Ends:    ['2026-06-16']
+09:57:42 - [DEBUG] - Effective Starts: ['2026-06-15']
+09:57:42 - [DEBUG] - Effective Ends:   ['2026-06-16']
+09:57:42 - [DEBUG] - ---------------------------------------
+09:57:42 - [DEBUG] - --- Debugging Project: 66170 ---
+09:57:42 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:57:42 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+09:57:42 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:42 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+09:57:42 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+09:57:42 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+09:57:42 - [DEBUG] - ---------------------------------------
+09:57:42 - [DEBUG] - --- Debugging Project: 66285 ---
+09:57:42 - [DEBUG] - Real Starts: [nan]
+09:57:42 - [DEBUG] - Est Starts:  ['2026-06-10']
+09:57:42 - [DEBUG] - Real Ends:   [nan]
+09:57:42 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:57:42 - [DEBUG] - Effective Starts: ['2026-06-10']
+09:57:42 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:57:42 - [DEBUG] - ---------------------------------------
+09:57:42 - [DEBUG] - --- Debugging Project: 66257 ---
+09:57:42 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+09:57:42 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:57:42 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+09:57:42 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:57:42 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:57:42 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:57:42 - [DEBUG] - ---------------------------------------
+09:57:42 - [DEBUG] - --- Debugging Project: 66222 ---
+09:57:42 - [DEBUG] - Real Starts: [nan]
+09:57:42 - [DEBUG] - Est Starts:  ['2026-06-18']
+09:57:42 - [DEBUG] - Real Ends:   [nan]
+09:57:42 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:57:42 - [DEBUG] - Effective Starts: ['2026-06-18']
+09:57:42 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:57:42 - [DEBUG] - ---------------------------------------
+09:57:42 - [DEBUG] - --- Debugging Project: 66331 ---
+09:57:42 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+09:57:42 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:42 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+09:57:42 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:57:42 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:42 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:57:42 - [DEBUG] - ---------------------------------------
+09:57:42 - [DEBUG] - --- Debugging Project: 66322 ---
+09:57:42 - [DEBUG] - Real Starts: [nan]
+09:57:42 - [DEBUG] - Est Starts:  ['2026-06-22']
+09:57:42 - [DEBUG] - Real Ends:   [nan]
+09:57:42 - [DEBUG] - Est Ends:    ['2026-06-23']
+09:57:42 - [DEBUG] - Effective Starts: ['2026-06-22']
+09:57:42 - [DEBUG] - Effective Ends:   ['2026-06-23']
+09:57:42 - [DEBUG] - ---------------------------------------
+09:57:42 - [DEBUG] - --- Debugging Project: 66374 ---
+09:57:42 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:57:42 - [DEBUG] - Est Starts:  [nan, nan, nan]
+09:57:42 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:42 - [DEBUG] - Est Ends:    [nan, nan, nan]
+09:57:42 - [DEBUG] - Effective Starts: [nan, nan, nan]
+09:57:42 - [DEBUG] - Effective Ends:   [nan, nan, nan]
+09:57:42 - [DEBUG] - ---------------------------------------
+09:57:42 - [DEBUG] - --- Debugging Project: 66370 ---
+09:57:42 - [DEBUG] - Real Starts: [nan]
+09:57:42 - [DEBUG] - Est Starts:  [nan]
+09:57:42 - [DEBUG] - Real Ends:   [nan]
+09:57:42 - [DEBUG] - Est Ends:    [nan]
+09:57:42 - [DEBUG] - Effective Starts: [nan]
+09:57:42 - [DEBUG] - Effective Ends:   [nan]
+09:57:42 - [DEBUG] - ---------------------------------------
+09:57:44 - [DEBUG] - --- Debugging Project: 66036 ---
+09:57:44 - [DEBUG] - Real Starts: ['2026-06-02']
+09:57:44 - [DEBUG] - Est Starts:  ['2026-06-02']
+09:57:44 - [DEBUG] - Real Ends:   [nan]
+09:57:44 - [DEBUG] - Est Ends:    ['2026-06-04']
+09:57:44 - [DEBUG] - Effective Starts: ['2026-06-02']
+09:57:44 - [DEBUG] - Effective Ends:   ['2026-06-04']
+09:57:44 - [DEBUG] - ---------------------------------------
+09:57:44 - [DEBUG] - --- Debugging Project: 65924 ---
+09:57:44 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+09:57:44 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+09:57:44 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+09:57:44 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-12']
+09:57:44 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+09:57:44 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-12']
+09:57:44 - [DEBUG] - ---------------------------------------
+09:57:44 - [DEBUG] - --- Debugging Project: 66107 ---
+09:57:44 - [DEBUG] - Real Starts: [nan]
+09:57:44 - [DEBUG] - Est Starts:  ['2026-06-08']
+09:57:44 - [DEBUG] - Real Ends:   [nan]
+09:57:44 - [DEBUG] - Est Ends:    ['2026-06-09']
+09:57:44 - [DEBUG] - Effective Starts: ['2026-06-08']
+09:57:44 - [DEBUG] - Effective Ends:   ['2026-06-09']
+09:57:44 - [DEBUG] - ---------------------------------------
+09:57:44 - [DEBUG] - --- Debugging Project: 66101 ---
+09:57:44 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:44 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:44 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:44 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+09:57:44 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:44 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+09:57:44 - [DEBUG] - ---------------------------------------
+09:57:44 - [DEBUG] - --- Debugging Project: 66172 ---
+09:57:44 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+09:57:44 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:57:44 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+09:57:44 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:44 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:57:44 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:44 - [DEBUG] - ---------------------------------------
+09:57:44 - [DEBUG] - --- Debugging Project: 66224 ---
+09:57:44 - [DEBUG] - Real Starts: [nan]
+09:57:44 - [DEBUG] - Est Starts:  ['2026-06-15']
+09:57:44 - [DEBUG] - Real Ends:   [nan]
+09:57:44 - [DEBUG] - Est Ends:    ['2026-06-16']
+09:57:44 - [DEBUG] - Effective Starts: ['2026-06-15']
+09:57:44 - [DEBUG] - Effective Ends:   ['2026-06-16']
+09:57:44 - [DEBUG] - ---------------------------------------
+09:57:44 - [DEBUG] - --- Debugging Project: 66170 ---
+09:57:44 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:57:44 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+09:57:44 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:44 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+09:57:44 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+09:57:44 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+09:57:44 - [DEBUG] - ---------------------------------------
+09:57:44 - [DEBUG] - --- Debugging Project: 66285 ---
+09:57:44 - [DEBUG] - Real Starts: [nan]
+09:57:44 - [DEBUG] - Est Starts:  ['2026-06-10']
+09:57:44 - [DEBUG] - Real Ends:   [nan]
+09:57:44 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:57:44 - [DEBUG] - Effective Starts: ['2026-06-10']
+09:57:44 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:57:44 - [DEBUG] - ---------------------------------------
+09:57:44 - [DEBUG] - --- Debugging Project: 66257 ---
+09:57:44 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+09:57:44 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:57:44 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+09:57:44 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:57:44 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:57:44 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:57:44 - [DEBUG] - ---------------------------------------
+09:57:44 - [DEBUG] - --- Debugging Project: 66222 ---
+09:57:44 - [DEBUG] - Real Starts: [nan]
+09:57:44 - [DEBUG] - Est Starts:  ['2026-06-18']
+09:57:44 - [DEBUG] - Real Ends:   [nan]
+09:57:44 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:57:44 - [DEBUG] - Effective Starts: ['2026-06-18']
+09:57:44 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:57:44 - [DEBUG] - ---------------------------------------
+09:57:44 - [DEBUG] - --- Debugging Project: 66331 ---
+09:57:44 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+09:57:44 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:44 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+09:57:44 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:57:44 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:44 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:57:44 - [DEBUG] - ---------------------------------------
+09:57:44 - [DEBUG] - --- Debugging Project: 66322 ---
+09:57:44 - [DEBUG] - Real Starts: [nan]
+09:57:44 - [DEBUG] - Est Starts:  ['2026-06-22']
+09:57:44 - [DEBUG] - Real Ends:   [nan]
+09:57:44 - [DEBUG] - Est Ends:    ['2026-06-23']
+09:57:44 - [DEBUG] - Effective Starts: ['2026-06-22']
+09:57:44 - [DEBUG] - Effective Ends:   ['2026-06-23']
+09:57:44 - [DEBUG] - ---------------------------------------
+09:57:44 - [DEBUG] - --- Debugging Project: 66374 ---
+09:57:44 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:57:44 - [DEBUG] - Est Starts:  [nan, nan, nan]
+09:57:44 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:44 - [DEBUG] - Est Ends:    [nan, nan, nan]
+09:57:44 - [DEBUG] - Effective Starts: [nan, nan, nan]
+09:57:44 - [DEBUG] - Effective Ends:   [nan, nan, nan]
+09:57:44 - [DEBUG] - ---------------------------------------
+09:57:44 - [DEBUG] - --- Debugging Project: 66370 ---
+09:57:44 - [DEBUG] - Real Starts: [nan]
+09:57:44 - [DEBUG] - Est Starts:  [nan]
+09:57:44 - [DEBUG] - Real Ends:   [nan]
+09:57:44 - [DEBUG] - Est Ends:    [nan]
+09:57:44 - [DEBUG] - Effective Starts: [nan]
+09:57:44 - [DEBUG] - Effective Ends:   [nan]
+09:57:44 - [DEBUG] - ---------------------------------------
+09:57:45 - [DEBUG] - --- Debugging Project: 66036 ---
+09:57:45 - [DEBUG] - Real Starts: ['2026-06-02']
+09:57:45 - [DEBUG] - Est Starts:  ['2026-06-02']
+09:57:45 - [DEBUG] - Real Ends:   [nan]
+09:57:45 - [DEBUG] - Est Ends:    ['2026-06-04']
+09:57:45 - [DEBUG] - Effective Starts: ['2026-06-02']
+09:57:45 - [DEBUG] - Effective Ends:   ['2026-06-04']
+09:57:45 - [DEBUG] - ---------------------------------------
+09:57:45 - [DEBUG] - --- Debugging Project: 65924 ---
+09:57:45 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+09:57:45 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+09:57:45 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+09:57:45 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-09']
+09:57:45 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+09:57:45 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-09']
+09:57:45 - [DEBUG] - ---------------------------------------
+09:57:45 - [DEBUG] - --- Debugging Project: 66107 ---
+09:57:45 - [DEBUG] - Real Starts: [nan]
+09:57:45 - [DEBUG] - Est Starts:  ['2026-06-08']
+09:57:45 - [DEBUG] - Real Ends:   [nan]
+09:57:45 - [DEBUG] - Est Ends:    ['2026-06-09']
+09:57:45 - [DEBUG] - Effective Starts: ['2026-06-08']
+09:57:45 - [DEBUG] - Effective Ends:   ['2026-06-09']
+09:57:45 - [DEBUG] - ---------------------------------------
+09:57:45 - [DEBUG] - --- Debugging Project: 66101 ---
+09:57:45 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:45 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:45 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:45 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+09:57:45 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:45 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+09:57:45 - [DEBUG] - ---------------------------------------
+09:57:45 - [DEBUG] - --- Debugging Project: 66172 ---
+09:57:45 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+09:57:45 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:57:45 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+09:57:45 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:45 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:57:45 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:45 - [DEBUG] - ---------------------------------------
+09:57:45 - [DEBUG] - --- Debugging Project: 66224 ---
+09:57:45 - [DEBUG] - Real Starts: [nan]
+09:57:45 - [DEBUG] - Est Starts:  ['2026-06-15']
+09:57:45 - [DEBUG] - Real Ends:   [nan]
+09:57:45 - [DEBUG] - Est Ends:    ['2026-06-16']
+09:57:45 - [DEBUG] - Effective Starts: ['2026-06-15']
+09:57:45 - [DEBUG] - Effective Ends:   ['2026-06-16']
+09:57:45 - [DEBUG] - ---------------------------------------
+09:57:45 - [DEBUG] - --- Debugging Project: 66170 ---
+09:57:45 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:57:45 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+09:57:45 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:45 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+09:57:45 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+09:57:45 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+09:57:45 - [DEBUG] - ---------------------------------------
+09:57:45 - [DEBUG] - --- Debugging Project: 66285 ---
+09:57:45 - [DEBUG] - Real Starts: [nan]
+09:57:45 - [DEBUG] - Est Starts:  ['2026-06-10']
+09:57:45 - [DEBUG] - Real Ends:   [nan]
+09:57:45 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:57:45 - [DEBUG] - Effective Starts: ['2026-06-10']
+09:57:45 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:57:45 - [DEBUG] - ---------------------------------------
+09:57:45 - [DEBUG] - --- Debugging Project: 66257 ---
+09:57:45 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+09:57:45 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:57:45 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+09:57:45 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:57:45 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:57:45 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:57:45 - [DEBUG] - ---------------------------------------
+09:57:45 - [DEBUG] - --- Debugging Project: 66222 ---
+09:57:45 - [DEBUG] - Real Starts: [nan]
+09:57:45 - [DEBUG] - Est Starts:  ['2026-06-18']
+09:57:45 - [DEBUG] - Real Ends:   [nan]
+09:57:45 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:57:45 - [DEBUG] - Effective Starts: ['2026-06-18']
+09:57:45 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:57:45 - [DEBUG] - ---------------------------------------
+09:57:45 - [DEBUG] - --- Debugging Project: 66331 ---
+09:57:45 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+09:57:45 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:45 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+09:57:45 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:57:45 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:45 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:57:45 - [DEBUG] - ---------------------------------------
+09:57:45 - [DEBUG] - --- Debugging Project: 66322 ---
+09:57:45 - [DEBUG] - Real Starts: [nan]
+09:57:45 - [DEBUG] - Est Starts:  ['2026-06-22']
+09:57:45 - [DEBUG] - Real Ends:   [nan]
+09:57:45 - [DEBUG] - Est Ends:    ['2026-06-23']
+09:57:45 - [DEBUG] - Effective Starts: ['2026-06-22']
+09:57:45 - [DEBUG] - Effective Ends:   ['2026-06-23']
+09:57:45 - [DEBUG] - ---------------------------------------
+09:57:45 - [DEBUG] - --- Debugging Project: 66374 ---
+09:57:45 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:57:45 - [DEBUG] - Est Starts:  [nan, nan, nan]
+09:57:45 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:45 - [DEBUG] - Est Ends:    [nan, nan, nan]
+09:57:45 - [DEBUG] - Effective Starts: [nan, nan, nan]
+09:57:45 - [DEBUG] - Effective Ends:   [nan, nan, nan]
+09:57:45 - [DEBUG] - ---------------------------------------
+09:57:45 - [DEBUG] - --- Debugging Project: 66370 ---
+09:57:45 - [DEBUG] - Real Starts: [nan]
+09:57:45 - [DEBUG] - Est Starts:  [nan]
+09:57:45 - [DEBUG] - Real Ends:   [nan]
+09:57:45 - [DEBUG] - Est Ends:    [nan]
+09:57:45 - [DEBUG] - Effective Starts: [nan]
+09:57:45 - [DEBUG] - Effective Ends:   [nan]
+09:57:45 - [DEBUG] - ---------------------------------------
+09:57:51 - [DEBUG] - --- Debugging Project: 66036 ---
+09:57:51 - [DEBUG] - Real Starts: ['2026-06-02']
+09:57:51 - [DEBUG] - Est Starts:  ['2026-06-02']
+09:57:51 - [DEBUG] - Real Ends:   [nan]
+09:57:51 - [DEBUG] - Est Ends:    ['2026-06-04']
+09:57:51 - [DEBUG] - Effective Starts: ['2026-06-02']
+09:57:51 - [DEBUG] - Effective Ends:   ['2026-06-04']
+09:57:51 - [DEBUG] - ---------------------------------------
+09:57:51 - [DEBUG] - --- Debugging Project: 65924 ---
+09:57:51 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+09:57:51 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+09:57:51 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+09:57:51 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-11']
+09:57:51 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+09:57:51 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-11']
+09:57:51 - [DEBUG] - ---------------------------------------
+09:57:51 - [DEBUG] - --- Debugging Project: 66107 ---
+09:57:51 - [DEBUG] - Real Starts: [nan]
+09:57:51 - [DEBUG] - Est Starts:  ['2026-06-08']
+09:57:51 - [DEBUG] - Real Ends:   [nan]
+09:57:51 - [DEBUG] - Est Ends:    ['2026-06-09']
+09:57:51 - [DEBUG] - Effective Starts: ['2026-06-08']
+09:57:51 - [DEBUG] - Effective Ends:   ['2026-06-09']
+09:57:51 - [DEBUG] - ---------------------------------------
+09:57:51 - [DEBUG] - --- Debugging Project: 66101 ---
+09:57:51 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:51 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:51 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:51 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+09:57:51 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+09:57:51 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+09:57:51 - [DEBUG] - ---------------------------------------
+09:57:51 - [DEBUG] - --- Debugging Project: 66172 ---
+09:57:51 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+09:57:51 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:57:51 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+09:57:51 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:51 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+09:57:51 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:51 - [DEBUG] - ---------------------------------------
+09:57:51 - [DEBUG] - --- Debugging Project: 66224 ---
+09:57:51 - [DEBUG] - Real Starts: [nan]
+09:57:51 - [DEBUG] - Est Starts:  ['2026-06-15']
+09:57:51 - [DEBUG] - Real Ends:   [nan]
+09:57:51 - [DEBUG] - Est Ends:    ['2026-06-16']
+09:57:51 - [DEBUG] - Effective Starts: ['2026-06-15']
+09:57:51 - [DEBUG] - Effective Ends:   ['2026-06-16']
+09:57:51 - [DEBUG] - ---------------------------------------
+09:57:51 - [DEBUG] - --- Debugging Project: 66170 ---
+09:57:51 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:57:51 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+09:57:51 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:51 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+09:57:51 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+09:57:51 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+09:57:51 - [DEBUG] - ---------------------------------------
+09:57:51 - [DEBUG] - --- Debugging Project: 66285 ---
+09:57:51 - [DEBUG] - Real Starts: [nan]
+09:57:51 - [DEBUG] - Est Starts:  ['2026-06-10']
+09:57:51 - [DEBUG] - Real Ends:   [nan]
+09:57:51 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:57:51 - [DEBUG] - Effective Starts: ['2026-06-10']
+09:57:51 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:57:51 - [DEBUG] - ---------------------------------------
+09:57:51 - [DEBUG] - --- Debugging Project: 66257 ---
+09:57:51 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+09:57:51 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:57:51 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+09:57:51 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:57:51 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+09:57:51 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+09:57:51 - [DEBUG] - ---------------------------------------
+09:57:51 - [DEBUG] - --- Debugging Project: 66222 ---
+09:57:51 - [DEBUG] - Real Starts: [nan]
+09:57:51 - [DEBUG] - Est Starts:  ['2026-06-18']
+09:57:51 - [DEBUG] - Real Ends:   [nan]
+09:57:51 - [DEBUG] - Est Ends:    ['2026-06-19']
+09:57:51 - [DEBUG] - Effective Starts: ['2026-06-18']
+09:57:51 - [DEBUG] - Effective Ends:   ['2026-06-19']
+09:57:51 - [DEBUG] - ---------------------------------------
+09:57:51 - [DEBUG] - --- Debugging Project: 66331 ---
+09:57:51 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+09:57:51 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:51 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+09:57:51 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:57:51 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+09:57:51 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+09:57:51 - [DEBUG] - ---------------------------------------
+09:57:51 - [DEBUG] - --- Debugging Project: 66322 ---
+09:57:51 - [DEBUG] - Real Starts: [nan]
+09:57:51 - [DEBUG] - Est Starts:  ['2026-06-22']
+09:57:51 - [DEBUG] - Real Ends:   [nan]
+09:57:51 - [DEBUG] - Est Ends:    ['2026-06-23']
+09:57:51 - [DEBUG] - Effective Starts: ['2026-06-22']
+09:57:51 - [DEBUG] - Effective Ends:   ['2026-06-23']
+09:57:51 - [DEBUG] - ---------------------------------------
+09:57:51 - [DEBUG] - --- Debugging Project: 66374 ---
+09:57:51 - [DEBUG] - Real Starts: [nan, nan, nan]
+09:57:51 - [DEBUG] - Est Starts:  [nan, nan, nan]
+09:57:51 - [DEBUG] - Real Ends:   [nan, nan, nan]
+09:57:51 - [DEBUG] - Est Ends:    [nan, nan, nan]
+09:57:51 - [DEBUG] - Effective Starts: [nan, nan, nan]
+09:57:51 - [DEBUG] - Effective Ends:   [nan, nan, nan]
+09:57:51 - [DEBUG] - ---------------------------------------
+09:57:51 - [DEBUG] - --- Debugging Project: 66370 ---
+09:57:51 - [DEBUG] - Real Starts: [nan]
+09:57:51 - [DEBUG] - Est Starts:  [nan]
+09:57:51 - [DEBUG] - Real Ends:   [nan]
+09:57:51 - [DEBUG] - Est Ends:    [nan]
+09:57:51 - [DEBUG] - Effective Starts: [nan]
+09:57:51 - [DEBUG] - Effective Ends:   [nan]
+09:57:51 - [DEBUG] - ---------------------------------------
+10:02:29 - [INFO] - Successfully saved 3 edits to the database.
+10:02:29 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+10:02:29 - [DEBUG] - Starting new HTTPS connection (1): api.github.com:443
+10:02:30 - [DEBUG] - https://api.github.com:443 "GET /repos/begratefull/MyGantt/contents/data/schedule.json?ref=master HTTP/1.1" 200 28678
+10:02:30 - [DEBUG] - Starting new HTTPS connection (1): api.github.com:443
+10:02:31 - [DEBUG] - https://api.github.com:443 "PUT /repos/begratefull/MyGantt/contents/data/schedule.json HTTP/1.1" 200 None
+10:02:31 - [INFO] - Successfully pushed Custom Team schedule to GitHub web interface.
+10:02:34 - [DEBUG] - --- Debugging Project: 66036 ---
+10:02:34 - [DEBUG] - Real Starts: ['2026-06-02']
+10:02:34 - [DEBUG] - Est Starts:  ['2026-06-02']
+10:02:34 - [DEBUG] - Real Ends:   [nan]
+10:02:34 - [DEBUG] - Est Ends:    ['2026-06-04']
+10:02:34 - [DEBUG] - Effective Starts: ['2026-06-02']
+10:02:34 - [DEBUG] - Effective Ends:   ['2026-06-04']
+10:02:34 - [DEBUG] - ---------------------------------------
+10:02:34 - [DEBUG] - --- Debugging Project: 65924 ---
+10:02:34 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+10:02:34 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+10:02:34 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+10:02:34 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-11']
+10:02:34 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+10:02:34 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-11']
+10:02:34 - [DEBUG] - ---------------------------------------
+10:02:34 - [DEBUG] - --- Debugging Project: 66107 ---
+10:02:34 - [DEBUG] - Real Starts: [nan]
+10:02:34 - [DEBUG] - Est Starts:  ['2026-06-08']
+10:02:34 - [DEBUG] - Real Ends:   [nan]
+10:02:34 - [DEBUG] - Est Ends:    ['2026-06-09']
+10:02:34 - [DEBUG] - Effective Starts: ['2026-06-08']
+10:02:34 - [DEBUG] - Effective Ends:   ['2026-06-09']
+10:02:34 - [DEBUG] - ---------------------------------------
+10:02:34 - [DEBUG] - --- Debugging Project: 66101 ---
+10:02:34 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+10:02:34 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+10:02:34 - [DEBUG] - Real Ends:   [nan, nan, nan]
+10:02:34 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+10:02:34 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+10:02:34 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+10:02:34 - [DEBUG] - ---------------------------------------
+10:02:34 - [DEBUG] - --- Debugging Project: 66172 ---
+10:02:34 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+10:02:34 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+10:02:34 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+10:02:34 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:02:34 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+10:02:34 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:02:34 - [DEBUG] - ---------------------------------------
+10:02:34 - [DEBUG] - --- Debugging Project: 66224 ---
+10:02:34 - [DEBUG] - Real Starts: [nan]
+10:02:34 - [DEBUG] - Est Starts:  ['2026-06-15']
+10:02:34 - [DEBUG] - Real Ends:   [nan]
+10:02:34 - [DEBUG] - Est Ends:    ['2026-06-16']
+10:02:34 - [DEBUG] - Effective Starts: ['2026-06-15']
+10:02:34 - [DEBUG] - Effective Ends:   ['2026-06-16']
+10:02:34 - [DEBUG] - ---------------------------------------
+10:02:34 - [DEBUG] - --- Debugging Project: 66170 ---
+10:02:34 - [DEBUG] - Real Starts: [nan, nan, nan]
+10:02:34 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+10:02:34 - [DEBUG] - Real Ends:   [nan, nan, nan]
+10:02:34 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+10:02:34 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+10:02:34 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+10:02:34 - [DEBUG] - ---------------------------------------
+10:02:34 - [DEBUG] - --- Debugging Project: 66285 ---
+10:02:34 - [DEBUG] - Real Starts: [nan]
+10:02:34 - [DEBUG] - Est Starts:  ['2026-06-10']
+10:02:34 - [DEBUG] - Real Ends:   [nan]
+10:02:34 - [DEBUG] - Est Ends:    ['2026-06-19']
+10:02:34 - [DEBUG] - Effective Starts: ['2026-06-10']
+10:02:34 - [DEBUG] - Effective Ends:   ['2026-06-19']
+10:02:34 - [DEBUG] - ---------------------------------------
+10:02:34 - [DEBUG] - --- Debugging Project: 66257 ---
+10:02:34 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+10:02:34 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+10:02:34 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+10:02:34 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+10:02:34 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+10:02:34 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+10:02:34 - [DEBUG] - ---------------------------------------
+10:02:34 - [DEBUG] - --- Debugging Project: 66222 ---
+10:02:34 - [DEBUG] - Real Starts: [nan]
+10:02:34 - [DEBUG] - Est Starts:  ['2026-06-18']
+10:02:34 - [DEBUG] - Real Ends:   [nan]
+10:02:34 - [DEBUG] - Est Ends:    ['2026-06-19']
+10:02:34 - [DEBUG] - Effective Starts: ['2026-06-18']
+10:02:34 - [DEBUG] - Effective Ends:   ['2026-06-19']
+10:02:34 - [DEBUG] - ---------------------------------------
+10:02:34 - [DEBUG] - --- Debugging Project: 66331 ---
+10:02:34 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+10:02:34 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:02:34 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+10:02:34 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+10:02:34 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:02:34 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+10:02:34 - [DEBUG] - ---------------------------------------
+10:02:34 - [DEBUG] - --- Debugging Project: 66322 ---
+10:02:34 - [DEBUG] - Real Starts: [nan]
+10:02:34 - [DEBUG] - Est Starts:  ['2026-06-22']
+10:02:34 - [DEBUG] - Real Ends:   [nan]
+10:02:34 - [DEBUG] - Est Ends:    ['2026-06-23']
+10:02:34 - [DEBUG] - Effective Starts: ['2026-06-22']
+10:02:34 - [DEBUG] - Effective Ends:   ['2026-06-23']
+10:02:34 - [DEBUG] - ---------------------------------------
+10:02:34 - [DEBUG] - --- Debugging Project: 66374 ---
+10:02:34 - [DEBUG] - Real Starts: [nan, nan, nan]
+10:02:34 - [DEBUG] - Est Starts:  [nan, nan, nan]
+10:02:34 - [DEBUG] - Real Ends:   [nan, nan, nan]
+10:02:34 - [DEBUG] - Est Ends:    [nan, nan, nan]
+10:02:34 - [DEBUG] - Effective Starts: [nan, nan, nan]
+10:02:34 - [DEBUG] - Effective Ends:   [nan, nan, nan]
+10:02:34 - [DEBUG] - ---------------------------------------
+10:02:34 - [DEBUG] - --- Debugging Project: 66370 ---
+10:02:34 - [DEBUG] - Real Starts: [nan]
+10:02:34 - [DEBUG] - Est Starts:  [nan]
+10:02:34 - [DEBUG] - Real Ends:   [nan]
+10:02:34 - [DEBUG] - Est Ends:    [nan]
+10:02:34 - [DEBUG] - Effective Starts: [nan]
+10:02:34 - [DEBUG] - Effective Ends:   [nan]
+10:02:34 - [DEBUG] - ---------------------------------------
+10:19:02 - [INFO] - =========================================
+10:19:02 - [INFO] - Starting MyGantt Application...
+10:19:02 - [INFO] - Initializing Data Model...
+10:19:02 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+10:19:02 - [INFO] - Database schemas initialized successfully.
+10:19:02 - [INFO] - Initializing Application Controller...
+10:19:02 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+10:19:02 - [INFO] - Displaying Main Window...
+10:19:02 - [INFO] - Launch sequence complete!
+10:19:03 - [DEBUG] - --- Debugging Project: 66036 ---
+10:19:03 - [DEBUG] - Real Starts: ['2026-06-02']
+10:19:03 - [DEBUG] - Est Starts:  ['2026-06-02']
+10:19:03 - [DEBUG] - Real Ends:   [nan]
+10:19:03 - [DEBUG] - Est Ends:    ['2026-06-04']
+10:19:03 - [DEBUG] - Effective Starts: ['2026-06-02']
+10:19:03 - [DEBUG] - Effective Ends:   ['2026-06-04']
+10:19:03 - [DEBUG] - ---------------------------------------
+10:19:03 - [DEBUG] - --- Debugging Project: 65924 ---
+10:19:03 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+10:19:03 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+10:19:03 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+10:19:03 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-11']
+10:19:03 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+10:19:03 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-11']
+10:19:03 - [DEBUG] - ---------------------------------------
+10:19:03 - [DEBUG] - --- Debugging Project: 66107 ---
+10:19:03 - [DEBUG] - Real Starts: [nan]
+10:19:03 - [DEBUG] - Est Starts:  ['2026-06-08']
+10:19:03 - [DEBUG] - Real Ends:   [nan]
+10:19:03 - [DEBUG] - Est Ends:    ['2026-06-09']
+10:19:03 - [DEBUG] - Effective Starts: ['2026-06-08']
+10:19:03 - [DEBUG] - Effective Ends:   ['2026-06-09']
+10:19:03 - [DEBUG] - ---------------------------------------
+10:19:03 - [DEBUG] - --- Debugging Project: 66101 ---
+10:19:03 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+10:19:03 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+10:19:03 - [DEBUG] - Real Ends:   [nan, nan, nan]
+10:19:03 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+10:19:03 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+10:19:03 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+10:19:03 - [DEBUG] - ---------------------------------------
+10:19:03 - [DEBUG] - --- Debugging Project: 66172 ---
+10:19:03 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+10:19:03 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+10:19:03 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+10:19:03 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:19:03 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+10:19:03 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:19:03 - [DEBUG] - ---------------------------------------
+10:19:03 - [DEBUG] - --- Debugging Project: 66224 ---
+10:19:03 - [DEBUG] - Real Starts: [nan]
+10:19:03 - [DEBUG] - Est Starts:  ['2026-06-15']
+10:19:03 - [DEBUG] - Real Ends:   [nan]
+10:19:03 - [DEBUG] - Est Ends:    ['2026-06-16']
+10:19:03 - [DEBUG] - Effective Starts: ['2026-06-15']
+10:19:03 - [DEBUG] - Effective Ends:   ['2026-06-16']
+10:19:03 - [DEBUG] - ---------------------------------------
+10:19:03 - [DEBUG] - --- Debugging Project: 66170 ---
+10:19:03 - [DEBUG] - Real Starts: [nan, nan, nan]
+10:19:03 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+10:19:03 - [DEBUG] - Real Ends:   [nan, nan, nan]
+10:19:03 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+10:19:03 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+10:19:03 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+10:19:03 - [DEBUG] - ---------------------------------------
+10:19:03 - [DEBUG] - --- Debugging Project: 66285 ---
+10:19:03 - [DEBUG] - Real Starts: [nan]
+10:19:03 - [DEBUG] - Est Starts:  ['2026-06-10']
+10:19:03 - [DEBUG] - Real Ends:   [nan]
+10:19:03 - [DEBUG] - Est Ends:    ['2026-06-19']
+10:19:03 - [DEBUG] - Effective Starts: ['2026-06-10']
+10:19:03 - [DEBUG] - Effective Ends:   ['2026-06-19']
+10:19:03 - [DEBUG] - ---------------------------------------
+10:19:03 - [DEBUG] - --- Debugging Project: 66257 ---
+10:19:03 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+10:19:03 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+10:19:03 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+10:19:03 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+10:19:03 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+10:19:03 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+10:19:03 - [DEBUG] - ---------------------------------------
+10:19:03 - [DEBUG] - --- Debugging Project: 66222 ---
+10:19:03 - [DEBUG] - Real Starts: [nan]
+10:19:03 - [DEBUG] - Est Starts:  ['2026-06-18']
+10:19:03 - [DEBUG] - Real Ends:   [nan]
+10:19:03 - [DEBUG] - Est Ends:    ['2026-06-19']
+10:19:03 - [DEBUG] - Effective Starts: ['2026-06-18']
+10:19:03 - [DEBUG] - Effective Ends:   ['2026-06-19']
+10:19:03 - [DEBUG] - ---------------------------------------
+10:19:03 - [DEBUG] - --- Debugging Project: 66331 ---
+10:19:03 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+10:19:03 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:19:03 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+10:19:03 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+10:19:03 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:19:03 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+10:19:03 - [DEBUG] - ---------------------------------------
+10:19:03 - [DEBUG] - --- Debugging Project: 66322 ---
+10:19:03 - [DEBUG] - Real Starts: [nan]
+10:19:03 - [DEBUG] - Est Starts:  ['2026-06-22']
+10:19:03 - [DEBUG] - Real Ends:   [nan]
+10:19:03 - [DEBUG] - Est Ends:    ['2026-06-23']
+10:19:03 - [DEBUG] - Effective Starts: ['2026-06-22']
+10:19:03 - [DEBUG] - Effective Ends:   ['2026-06-23']
+10:19:03 - [DEBUG] - ---------------------------------------
+10:19:03 - [DEBUG] - --- Debugging Project: 66374 ---
+10:19:03 - [DEBUG] - Real Starts: [nan, nan, nan]
+10:19:03 - [DEBUG] - Est Starts:  [nan, nan, nan]
+10:19:03 - [DEBUG] - Real Ends:   [nan, nan, nan]
+10:19:03 - [DEBUG] - Est Ends:    [nan, nan, nan]
+10:19:03 - [DEBUG] - Effective Starts: [nan, nan, nan]
+10:19:03 - [DEBUG] - Effective Ends:   [nan, nan, nan]
+10:19:03 - [DEBUG] - ---------------------------------------
+10:19:03 - [DEBUG] - --- Debugging Project: 66370 ---
+10:19:03 - [DEBUG] - Real Starts: [nan]
+10:19:03 - [DEBUG] - Est Starts:  [nan]
+10:19:03 - [DEBUG] - Real Ends:   [nan]
+10:19:03 - [DEBUG] - Est Ends:    [nan]
+10:19:03 - [DEBUG] - Effective Starts: [nan]
+10:19:03 - [DEBUG] - Effective Ends:   [nan]
+10:19:03 - [DEBUG] - ---------------------------------------
+10:19:07 - [DEBUG] - --- Debugging Project: 66036 ---
+10:19:07 - [DEBUG] - Real Starts: ['2026-06-02']
+10:19:07 - [DEBUG] - Est Starts:  ['2026-06-02']
+10:19:07 - [DEBUG] - Real Ends:   [nan]
+10:19:07 - [DEBUG] - Est Ends:    ['2026-06-04']
+10:19:07 - [DEBUG] - Effective Starts: ['2026-06-02']
+10:19:07 - [DEBUG] - Effective Ends:   ['2026-06-04']
+10:19:07 - [DEBUG] - ---------------------------------------
+10:19:07 - [DEBUG] - --- Debugging Project: 65924 ---
+10:19:07 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+10:19:07 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+10:19:07 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+10:19:07 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-11']
+10:19:07 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+10:19:07 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-11']
+10:19:07 - [DEBUG] - ---------------------------------------
+10:19:07 - [DEBUG] - --- Debugging Project: 66107 ---
+10:19:07 - [DEBUG] - Real Starts: [nan]
+10:19:07 - [DEBUG] - Est Starts:  ['2026-06-08']
+10:19:07 - [DEBUG] - Real Ends:   [nan]
+10:19:07 - [DEBUG] - Est Ends:    ['2026-06-09']
+10:19:07 - [DEBUG] - Effective Starts: ['2026-06-08']
+10:19:07 - [DEBUG] - Effective Ends:   ['2026-06-09']
+10:19:07 - [DEBUG] - ---------------------------------------
+10:19:07 - [DEBUG] - --- Debugging Project: 66101 ---
+10:19:07 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+10:19:07 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+10:19:07 - [DEBUG] - Real Ends:   [nan, nan, nan]
+10:19:07 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+10:19:07 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+10:19:07 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+10:19:07 - [DEBUG] - ---------------------------------------
+10:19:07 - [DEBUG] - --- Debugging Project: 66172 ---
+10:19:07 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+10:19:07 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+10:19:07 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+10:19:08 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:19:08 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+10:19:08 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:19:08 - [DEBUG] - ---------------------------------------
+10:19:08 - [DEBUG] - --- Debugging Project: 66224 ---
+10:19:08 - [DEBUG] - Real Starts: [nan]
+10:19:08 - [DEBUG] - Est Starts:  ['2026-06-15']
+10:19:08 - [DEBUG] - Real Ends:   [nan]
+10:19:08 - [DEBUG] - Est Ends:    ['2026-06-16']
+10:19:08 - [DEBUG] - Effective Starts: ['2026-06-15']
+10:19:08 - [DEBUG] - Effective Ends:   ['2026-06-16']
+10:19:08 - [DEBUG] - ---------------------------------------
+10:19:08 - [DEBUG] - --- Debugging Project: 66170 ---
+10:19:08 - [DEBUG] - Real Starts: [nan, nan, nan]
+10:19:08 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+10:19:08 - [DEBUG] - Real Ends:   [nan, nan, nan]
+10:19:08 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+10:19:08 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+10:19:08 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+10:19:08 - [DEBUG] - ---------------------------------------
+10:19:08 - [DEBUG] - --- Debugging Project: 66285 ---
+10:19:08 - [DEBUG] - Real Starts: [nan]
+10:19:08 - [DEBUG] - Est Starts:  ['2026-06-10']
+10:19:08 - [DEBUG] - Real Ends:   [nan]
+10:19:08 - [DEBUG] - Est Ends:    ['2026-06-19']
+10:19:08 - [DEBUG] - Effective Starts: ['2026-06-10']
+10:19:08 - [DEBUG] - Effective Ends:   ['2026-06-19']
+10:19:08 - [DEBUG] - ---------------------------------------
+10:19:08 - [DEBUG] - --- Debugging Project: 66257 ---
+10:19:08 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+10:19:08 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+10:19:08 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+10:19:08 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+10:19:08 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+10:19:08 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+10:19:08 - [DEBUG] - ---------------------------------------
+10:19:08 - [DEBUG] - --- Debugging Project: 66222 ---
+10:19:08 - [DEBUG] - Real Starts: [nan]
+10:19:08 - [DEBUG] - Est Starts:  ['2026-06-18']
+10:19:08 - [DEBUG] - Real Ends:   [nan]
+10:19:08 - [DEBUG] - Est Ends:    ['2026-06-19']
+10:19:08 - [DEBUG] - Effective Starts: ['2026-06-18']
+10:19:08 - [DEBUG] - Effective Ends:   ['2026-06-19']
+10:19:08 - [DEBUG] - ---------------------------------------
+10:19:08 - [DEBUG] - --- Debugging Project: 66331 ---
+10:19:08 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+10:19:08 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:19:08 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+10:19:08 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+10:19:08 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:19:08 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+10:19:08 - [DEBUG] - ---------------------------------------
+10:19:08 - [DEBUG] - --- Debugging Project: 66322 ---
+10:19:08 - [DEBUG] - Real Starts: [nan]
+10:19:08 - [DEBUG] - Est Starts:  ['2026-06-22']
+10:19:08 - [DEBUG] - Real Ends:   [nan]
+10:19:08 - [DEBUG] - Est Ends:    ['2026-06-23']
+10:19:08 - [DEBUG] - Effective Starts: ['2026-06-22']
+10:19:08 - [DEBUG] - Effective Ends:   ['2026-06-23']
+10:19:08 - [DEBUG] - ---------------------------------------
+10:19:08 - [DEBUG] - --- Debugging Project: 66374 ---
+10:19:08 - [DEBUG] - Real Starts: [nan, nan, nan]
+10:19:08 - [DEBUG] - Est Starts:  [nan, nan, nan]
+10:19:08 - [DEBUG] - Real Ends:   [nan, nan, nan]
+10:19:08 - [DEBUG] - Est Ends:    [nan, nan, nan]
+10:19:08 - [DEBUG] - Effective Starts: [nan, nan, nan]
+10:19:08 - [DEBUG] - Effective Ends:   [nan, nan, nan]
+10:19:08 - [DEBUG] - ---------------------------------------
+10:19:08 - [DEBUG] - --- Debugging Project: 66370 ---
+10:19:08 - [DEBUG] - Real Starts: [nan]
+10:19:08 - [DEBUG] - Est Starts:  [nan]
+10:19:08 - [DEBUG] - Real Ends:   [nan]
+10:19:08 - [DEBUG] - Est Ends:    [nan]
+10:19:08 - [DEBUG] - Effective Starts: [nan]
+10:19:08 - [DEBUG] - Effective Ends:   [nan]
+10:19:08 - [DEBUG] - ---------------------------------------
+10:19:11 - [DEBUG] - --- Debugging Project: 66036 ---
+10:19:11 - [DEBUG] - Real Starts: ['2026-06-02']
+10:19:11 - [DEBUG] - Est Starts:  ['2026-06-02']
+10:19:11 - [DEBUG] - Real Ends:   [nan]
+10:19:11 - [DEBUG] - Est Ends:    ['2026-06-04']
+10:19:11 - [DEBUG] - Effective Starts: ['2026-06-02']
+10:19:11 - [DEBUG] - Effective Ends:   ['2026-06-04']
+10:19:11 - [DEBUG] - ---------------------------------------
+10:19:11 - [DEBUG] - --- Debugging Project: 65924 ---
+10:19:11 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+10:19:11 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+10:19:11 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+10:19:11 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-11']
+10:19:11 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+10:19:11 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-11']
+10:19:11 - [DEBUG] - ---------------------------------------
+10:19:11 - [DEBUG] - --- Debugging Project: 66107 ---
+10:19:11 - [DEBUG] - Real Starts: [nan]
+10:19:11 - [DEBUG] - Est Starts:  ['2026-06-08']
+10:19:11 - [DEBUG] - Real Ends:   [nan]
+10:19:11 - [DEBUG] - Est Ends:    ['2026-06-09']
+10:19:11 - [DEBUG] - Effective Starts: ['2026-06-08']
+10:19:11 - [DEBUG] - Effective Ends:   ['2026-06-09']
+10:19:11 - [DEBUG] - ---------------------------------------
+10:19:11 - [DEBUG] - --- Debugging Project: 66101 ---
+10:19:11 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+10:19:11 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+10:19:11 - [DEBUG] - Real Ends:   [nan, nan, nan]
+10:19:11 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+10:19:11 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+10:19:11 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+10:19:11 - [DEBUG] - ---------------------------------------
+10:19:11 - [DEBUG] - --- Debugging Project: 66172 ---
+10:19:11 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+10:19:11 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+10:19:11 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+10:19:11 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:19:11 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+10:19:11 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:19:11 - [DEBUG] - ---------------------------------------
+10:19:11 - [DEBUG] - --- Debugging Project: 66224 ---
+10:19:11 - [DEBUG] - Real Starts: [nan]
+10:19:11 - [DEBUG] - Est Starts:  ['2026-06-15']
+10:19:11 - [DEBUG] - Real Ends:   [nan]
+10:19:11 - [DEBUG] - Est Ends:    ['2026-06-16']
+10:19:11 - [DEBUG] - Effective Starts: ['2026-06-15']
+10:19:11 - [DEBUG] - Effective Ends:   ['2026-06-16']
+10:19:11 - [DEBUG] - ---------------------------------------
+10:19:11 - [DEBUG] - --- Debugging Project: 66170 ---
+10:19:11 - [DEBUG] - Real Starts: [nan, nan, nan]
+10:19:11 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+10:19:11 - [DEBUG] - Real Ends:   [nan, nan, nan]
+10:19:11 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+10:19:11 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+10:19:11 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+10:19:11 - [DEBUG] - ---------------------------------------
+10:19:11 - [DEBUG] - --- Debugging Project: 66285 ---
+10:19:11 - [DEBUG] - Real Starts: [nan]
+10:19:11 - [DEBUG] - Est Starts:  ['2026-06-10']
+10:19:11 - [DEBUG] - Real Ends:   [nan]
+10:19:11 - [DEBUG] - Est Ends:    ['2026-06-19']
+10:19:11 - [DEBUG] - Effective Starts: ['2026-06-10']
+10:19:11 - [DEBUG] - Effective Ends:   ['2026-06-19']
+10:19:11 - [DEBUG] - ---------------------------------------
+10:19:11 - [DEBUG] - --- Debugging Project: 66257 ---
+10:19:11 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+10:19:11 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+10:19:11 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+10:19:11 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+10:19:11 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+10:19:11 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+10:19:11 - [DEBUG] - ---------------------------------------
+10:19:11 - [DEBUG] - --- Debugging Project: 66222 ---
+10:19:11 - [DEBUG] - Real Starts: [nan]
+10:19:11 - [DEBUG] - Est Starts:  ['2026-06-18']
+10:19:11 - [DEBUG] - Real Ends:   [nan]
+10:19:11 - [DEBUG] - Est Ends:    ['2026-06-19']
+10:19:11 - [DEBUG] - Effective Starts: ['2026-06-18']
+10:19:11 - [DEBUG] - Effective Ends:   ['2026-06-19']
+10:19:11 - [DEBUG] - ---------------------------------------
+10:19:11 - [DEBUG] - --- Debugging Project: 66331 ---
+10:19:11 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+10:19:11 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:19:11 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+10:19:11 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+10:19:11 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:19:11 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+10:19:11 - [DEBUG] - ---------------------------------------
+10:19:11 - [DEBUG] - --- Debugging Project: 66322 ---
+10:19:11 - [DEBUG] - Real Starts: [nan]
+10:19:11 - [DEBUG] - Est Starts:  ['2026-06-22']
+10:19:11 - [DEBUG] - Real Ends:   [nan]
+10:19:11 - [DEBUG] - Est Ends:    ['2026-06-23']
+10:19:11 - [DEBUG] - Effective Starts: ['2026-06-22']
+10:19:11 - [DEBUG] - Effective Ends:   ['2026-06-23']
+10:19:11 - [DEBUG] - ---------------------------------------
+10:19:11 - [DEBUG] - --- Debugging Project: 66374 ---
+10:19:11 - [DEBUG] - Real Starts: [nan, nan, nan]
+10:19:11 - [DEBUG] - Est Starts:  [nan, nan, nan]
+10:19:11 - [DEBUG] - Real Ends:   [nan, nan, nan]
+10:19:11 - [DEBUG] - Est Ends:    [nan, nan, nan]
+10:19:11 - [DEBUG] - Effective Starts: [nan, nan, nan]
+10:19:11 - [DEBUG] - Effective Ends:   [nan, nan, nan]
+10:19:11 - [DEBUG] - ---------------------------------------
+10:19:11 - [DEBUG] - --- Debugging Project: 66370 ---
+10:19:11 - [DEBUG] - Real Starts: [nan]
+10:19:11 - [DEBUG] - Est Starts:  [nan]
+10:19:11 - [DEBUG] - Real Ends:   [nan]
+10:19:11 - [DEBUG] - Est Ends:    [nan]
+10:19:11 - [DEBUG] - Effective Starts: [nan]
+10:19:11 - [DEBUG] - Effective Ends:   [nan]
+10:19:11 - [DEBUG] - ---------------------------------------
+10:19:13 - [DEBUG] - --- Debugging Project: 66036 ---
+10:19:13 - [DEBUG] - Real Starts: ['2026-06-02']
+10:19:13 - [DEBUG] - Est Starts:  ['2026-06-02']
+10:19:13 - [DEBUG] - Real Ends:   [nan]
+10:19:13 - [DEBUG] - Est Ends:    ['2026-06-04']
+10:19:13 - [DEBUG] - Effective Starts: ['2026-06-02']
+10:19:13 - [DEBUG] - Effective Ends:   ['2026-06-04']
+10:19:13 - [DEBUG] - ---------------------------------------
+10:19:13 - [DEBUG] - --- Debugging Project: 65924 ---
+10:19:13 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+10:19:13 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+10:19:13 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+10:19:13 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-11']
+10:19:13 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+10:19:13 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-11']
+10:19:13 - [DEBUG] - ---------------------------------------
+10:19:13 - [DEBUG] - --- Debugging Project: 66107 ---
+10:19:13 - [DEBUG] - Real Starts: [nan]
+10:19:13 - [DEBUG] - Est Starts:  ['2026-06-08']
+10:19:13 - [DEBUG] - Real Ends:   [nan]
+10:19:13 - [DEBUG] - Est Ends:    ['2026-06-09']
+10:19:13 - [DEBUG] - Effective Starts: ['2026-06-08']
+10:19:13 - [DEBUG] - Effective Ends:   ['2026-06-09']
+10:19:13 - [DEBUG] - ---------------------------------------
+10:19:13 - [DEBUG] - --- Debugging Project: 66101 ---
+10:19:13 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+10:19:13 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+10:19:13 - [DEBUG] - Real Ends:   [nan, nan, nan]
+10:19:13 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+10:19:13 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+10:19:13 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+10:19:13 - [DEBUG] - ---------------------------------------
+10:19:13 - [DEBUG] - --- Debugging Project: 66172 ---
+10:19:13 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+10:19:13 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+10:19:13 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+10:19:13 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:19:13 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+10:19:13 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:19:13 - [DEBUG] - ---------------------------------------
+10:19:13 - [DEBUG] - --- Debugging Project: 66224 ---
+10:19:13 - [DEBUG] - Real Starts: [nan]
+10:19:13 - [DEBUG] - Est Starts:  ['2026-06-15']
+10:19:13 - [DEBUG] - Real Ends:   [nan]
+10:19:13 - [DEBUG] - Est Ends:    ['2026-06-16']
+10:19:13 - [DEBUG] - Effective Starts: ['2026-06-15']
+10:19:13 - [DEBUG] - Effective Ends:   ['2026-06-16']
+10:19:13 - [DEBUG] - ---------------------------------------
+10:19:13 - [DEBUG] - --- Debugging Project: 66170 ---
+10:19:13 - [DEBUG] - Real Starts: [nan, nan, nan]
+10:19:13 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+10:19:13 - [DEBUG] - Real Ends:   [nan, nan, nan]
+10:19:13 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+10:19:13 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+10:19:13 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+10:19:13 - [DEBUG] - ---------------------------------------
+10:19:13 - [DEBUG] - --- Debugging Project: 66285 ---
+10:19:13 - [DEBUG] - Real Starts: [nan]
+10:19:13 - [DEBUG] - Est Starts:  ['2026-06-10']
+10:19:13 - [DEBUG] - Real Ends:   [nan]
+10:19:13 - [DEBUG] - Est Ends:    ['2026-06-19']
+10:19:13 - [DEBUG] - Effective Starts: ['2026-06-10']
+10:19:13 - [DEBUG] - Effective Ends:   ['2026-06-19']
+10:19:13 - [DEBUG] - ---------------------------------------
+10:19:13 - [DEBUG] - --- Debugging Project: 66257 ---
+10:19:13 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+10:19:13 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+10:19:13 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+10:19:13 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+10:19:13 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+10:19:13 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+10:19:13 - [DEBUG] - ---------------------------------------
+10:19:13 - [DEBUG] - --- Debugging Project: 66222 ---
+10:19:13 - [DEBUG] - Real Starts: [nan]
+10:19:13 - [DEBUG] - Est Starts:  ['2026-06-18']
+10:19:13 - [DEBUG] - Real Ends:   [nan]
+10:19:13 - [DEBUG] - Est Ends:    ['2026-06-19']
+10:19:13 - [DEBUG] - Effective Starts: ['2026-06-18']
+10:19:13 - [DEBUG] - Effective Ends:   ['2026-06-19']
+10:19:13 - [DEBUG] - ---------------------------------------
+10:19:13 - [DEBUG] - --- Debugging Project: 66331 ---
+10:19:13 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+10:19:13 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:19:13 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+10:19:13 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+10:19:13 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:19:13 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+10:19:13 - [DEBUG] - ---------------------------------------
+10:19:13 - [DEBUG] - --- Debugging Project: 66322 ---
+10:19:13 - [DEBUG] - Real Starts: [nan]
+10:19:13 - [DEBUG] - Est Starts:  ['2026-06-22']
+10:19:13 - [DEBUG] - Real Ends:   [nan]
+10:19:13 - [DEBUG] - Est Ends:    ['2026-06-23']
+10:19:13 - [DEBUG] - Effective Starts: ['2026-06-22']
+10:19:13 - [DEBUG] - Effective Ends:   ['2026-06-23']
+10:19:13 - [DEBUG] - ---------------------------------------
+10:19:13 - [DEBUG] - --- Debugging Project: 66374 ---
+10:19:13 - [DEBUG] - Real Starts: [nan, nan, nan]
+10:19:13 - [DEBUG] - Est Starts:  [nan, nan, nan]
+10:19:13 - [DEBUG] - Real Ends:   [nan, nan, nan]
+10:19:13 - [DEBUG] - Est Ends:    [nan, nan, nan]
+10:19:13 - [DEBUG] - Effective Starts: [nan, nan, nan]
+10:19:13 - [DEBUG] - Effective Ends:   [nan, nan, nan]
+10:19:13 - [DEBUG] - ---------------------------------------
+10:19:13 - [DEBUG] - --- Debugging Project: 66370 ---
+10:19:13 - [DEBUG] - Real Starts: [nan]
+10:19:13 - [DEBUG] - Est Starts:  [nan]
+10:19:13 - [DEBUG] - Real Ends:   [nan]
+10:19:13 - [DEBUG] - Est Ends:    [nan]
+10:19:13 - [DEBUG] - Effective Starts: [nan]
+10:19:13 - [DEBUG] - Effective Ends:   [nan]
+10:19:13 - [DEBUG] - ---------------------------------------
+10:19:14 - [DEBUG] - --- Debugging Project: 66036 ---
+10:19:14 - [DEBUG] - Real Starts: ['2026-06-02']
+10:19:14 - [DEBUG] - Est Starts:  ['2026-06-02']
+10:19:14 - [DEBUG] - Real Ends:   [nan]
+10:19:14 - [DEBUG] - Est Ends:    ['2026-06-04']
+10:19:14 - [DEBUG] - Effective Starts: ['2026-06-02']
+10:19:14 - [DEBUG] - Effective Ends:   ['2026-06-04']
+10:19:14 - [DEBUG] - ---------------------------------------
+10:19:14 - [DEBUG] - --- Debugging Project: 65924 ---
+10:19:14 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+10:19:14 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+10:19:14 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+10:19:14 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-11']
+10:19:14 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+10:19:14 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-11']
+10:19:14 - [DEBUG] - ---------------------------------------
+10:19:14 - [DEBUG] - --- Debugging Project: 66107 ---
+10:19:14 - [DEBUG] - Real Starts: [nan]
+10:19:14 - [DEBUG] - Est Starts:  ['2026-06-08']
+10:19:14 - [DEBUG] - Real Ends:   [nan]
+10:19:14 - [DEBUG] - Est Ends:    ['2026-06-09']
+10:19:14 - [DEBUG] - Effective Starts: ['2026-06-08']
+10:19:14 - [DEBUG] - Effective Ends:   ['2026-06-09']
+10:19:14 - [DEBUG] - ---------------------------------------
+10:19:14 - [DEBUG] - --- Debugging Project: 66101 ---
+10:19:14 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+10:19:14 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+10:19:14 - [DEBUG] - Real Ends:   [nan, nan, nan]
+10:19:14 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+10:19:14 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+10:19:14 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+10:19:14 - [DEBUG] - ---------------------------------------
+10:19:14 - [DEBUG] - --- Debugging Project: 66172 ---
+10:19:14 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+10:19:14 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+10:19:14 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+10:19:14 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:19:14 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+10:19:14 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:19:14 - [DEBUG] - ---------------------------------------
+10:19:14 - [DEBUG] - --- Debugging Project: 66224 ---
+10:19:14 - [DEBUG] - Real Starts: [nan]
+10:19:14 - [DEBUG] - Est Starts:  ['2026-06-15']
+10:19:14 - [DEBUG] - Real Ends:   [nan]
+10:19:14 - [DEBUG] - Est Ends:    ['2026-06-16']
+10:19:14 - [DEBUG] - Effective Starts: ['2026-06-15']
+10:19:14 - [DEBUG] - Effective Ends:   ['2026-06-16']
+10:19:14 - [DEBUG] - ---------------------------------------
+10:19:14 - [DEBUG] - --- Debugging Project: 66170 ---
+10:19:14 - [DEBUG] - Real Starts: [nan, nan, nan]
+10:19:14 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+10:19:14 - [DEBUG] - Real Ends:   [nan, nan, nan]
+10:19:14 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+10:19:14 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+10:19:14 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+10:19:14 - [DEBUG] - ---------------------------------------
+10:19:14 - [DEBUG] - --- Debugging Project: 66285 ---
+10:19:14 - [DEBUG] - Real Starts: [nan]
+10:19:14 - [DEBUG] - Est Starts:  ['2026-06-10']
+10:19:14 - [DEBUG] - Real Ends:   [nan]
+10:19:14 - [DEBUG] - Est Ends:    ['2026-06-19']
+10:19:14 - [DEBUG] - Effective Starts: ['2026-06-10']
+10:19:14 - [DEBUG] - Effective Ends:   ['2026-06-19']
+10:19:14 - [DEBUG] - ---------------------------------------
+10:19:14 - [DEBUG] - --- Debugging Project: 66257 ---
+10:19:14 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+10:19:14 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+10:19:14 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+10:19:14 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+10:19:14 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+10:19:14 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+10:19:14 - [DEBUG] - ---------------------------------------
+10:19:14 - [DEBUG] - --- Debugging Project: 66222 ---
+10:19:14 - [DEBUG] - Real Starts: [nan]
+10:19:14 - [DEBUG] - Est Starts:  ['2026-06-18']
+10:19:14 - [DEBUG] - Real Ends:   [nan]
+10:19:14 - [DEBUG] - Est Ends:    ['2026-06-19']
+10:19:14 - [DEBUG] - Effective Starts: ['2026-06-18']
+10:19:14 - [DEBUG] - Effective Ends:   ['2026-06-19']
+10:19:14 - [DEBUG] - ---------------------------------------
+10:19:14 - [DEBUG] - --- Debugging Project: 66331 ---
+10:19:14 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+10:19:14 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:19:14 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+10:19:14 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+10:19:14 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+10:19:14 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+10:19:14 - [DEBUG] - ---------------------------------------
+10:19:14 - [DEBUG] - --- Debugging Project: 66322 ---
+10:19:14 - [DEBUG] - Real Starts: [nan]
+10:19:14 - [DEBUG] - Est Starts:  ['2026-06-22']
+10:19:14 - [DEBUG] - Real Ends:   [nan]
+10:19:14 - [DEBUG] - Est Ends:    ['2026-06-23']
+10:19:14 - [DEBUG] - Effective Starts: ['2026-06-22']
+10:19:14 - [DEBUG] - Effective Ends:   ['2026-06-23']
+10:19:14 - [DEBUG] - ---------------------------------------
+10:19:14 - [DEBUG] - --- Debugging Project: 66374 ---
+10:19:14 - [DEBUG] - Real Starts: [nan, nan, nan]
+10:19:14 - [DEBUG] - Est Starts:  [nan, nan, nan]
+10:19:14 - [DEBUG] - Real Ends:   [nan, nan, nan]
+10:19:14 - [DEBUG] - Est Ends:    [nan, nan, nan]
+10:19:14 - [DEBUG] - Effective Starts: [nan, nan, nan]
+10:19:14 - [DEBUG] - Effective Ends:   [nan, nan, nan]
+10:19:14 - [DEBUG] - ---------------------------------------
+10:19:14 - [DEBUG] - --- Debugging Project: 66370 ---
+10:19:14 - [DEBUG] - Real Starts: [nan]
+10:19:14 - [DEBUG] - Est Starts:  [nan]
+10:19:14 - [DEBUG] - Real Ends:   [nan]
+10:19:14 - [DEBUG] - Est Ends:    [nan]
+10:19:14 - [DEBUG] - Effective Starts: [nan]
+10:19:14 - [DEBUG] - Effective Ends:   [nan]
+10:19:14 - [DEBUG] - ---------------------------------------
+11:10:34 - [INFO] - =========================================
+11:10:34 - [INFO] - Starting MyGantt Application...
+11:10:34 - [INFO] - Initializing Data Model...
+11:10:34 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+11:10:34 - [INFO] - Database schemas initialized successfully.
+11:10:34 - [INFO] - Initializing Application Controller...
+11:10:34 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+11:10:34 - [INFO] - Displaying Main Window...
+11:10:34 - [INFO] - Launch sequence complete!
+11:10:36 - [DEBUG] - --- Debugging Project: 66036 ---
+11:10:36 - [DEBUG] - Real Starts: ['2026-06-02']
+11:10:36 - [DEBUG] - Est Starts:  ['2026-06-02']
+11:10:36 - [DEBUG] - Real Ends:   [nan]
+11:10:36 - [DEBUG] - Est Ends:    ['2026-06-04']
+11:10:36 - [DEBUG] - Effective Starts: ['2026-06-02']
+11:10:36 - [DEBUG] - Effective Ends:   ['2026-06-04']
+11:10:36 - [DEBUG] - ---------------------------------------
+11:10:36 - [DEBUG] - --- Debugging Project: 65924 ---
+11:10:36 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+11:10:36 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+11:10:36 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+11:10:36 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-11']
+11:10:36 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+11:10:36 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-11']
+11:10:36 - [DEBUG] - ---------------------------------------
+11:10:36 - [DEBUG] - --- Debugging Project: 66107 ---
+11:10:36 - [DEBUG] - Real Starts: [nan]
+11:10:36 - [DEBUG] - Est Starts:  ['2026-06-08']
+11:10:36 - [DEBUG] - Real Ends:   [nan]
+11:10:36 - [DEBUG] - Est Ends:    ['2026-06-09']
+11:10:36 - [DEBUG] - Effective Starts: ['2026-06-08']
+11:10:36 - [DEBUG] - Effective Ends:   ['2026-06-09']
+11:10:36 - [DEBUG] - ---------------------------------------
+11:10:36 - [DEBUG] - --- Debugging Project: 66101 ---
+11:10:36 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+11:10:36 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+11:10:36 - [DEBUG] - Real Ends:   [nan, nan, nan]
+11:10:36 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+11:10:36 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+11:10:36 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+11:10:36 - [DEBUG] - ---------------------------------------
+11:10:36 - [DEBUG] - --- Debugging Project: 66172 ---
+11:10:36 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+11:10:36 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+11:10:36 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+11:10:36 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+11:10:36 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+11:10:36 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+11:10:36 - [DEBUG] - ---------------------------------------
+11:10:36 - [DEBUG] - --- Debugging Project: 66224 ---
+11:10:36 - [DEBUG] - Real Starts: [nan]
+11:10:36 - [DEBUG] - Est Starts:  ['2026-06-15']
+11:10:36 - [DEBUG] - Real Ends:   [nan]
+11:10:36 - [DEBUG] - Est Ends:    ['2026-06-16']
+11:10:36 - [DEBUG] - Effective Starts: ['2026-06-15']
+11:10:36 - [DEBUG] - Effective Ends:   ['2026-06-16']
+11:10:36 - [DEBUG] - ---------------------------------------
+11:10:36 - [DEBUG] - --- Debugging Project: 66170 ---
+11:10:36 - [DEBUG] - Real Starts: [nan, nan, nan]
+11:10:36 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+11:10:36 - [DEBUG] - Real Ends:   [nan, nan, nan]
+11:10:36 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+11:10:36 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+11:10:36 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+11:10:36 - [DEBUG] - ---------------------------------------
+11:10:36 - [DEBUG] - --- Debugging Project: 66285 ---
+11:10:36 - [DEBUG] - Real Starts: [nan]
+11:10:36 - [DEBUG] - Est Starts:  ['2026-06-10']
+11:10:36 - [DEBUG] - Real Ends:   [nan]
+11:10:36 - [DEBUG] - Est Ends:    ['2026-06-19']
+11:10:36 - [DEBUG] - Effective Starts: ['2026-06-10']
+11:10:36 - [DEBUG] - Effective Ends:   ['2026-06-19']
+11:10:36 - [DEBUG] - ---------------------------------------
+11:10:36 - [DEBUG] - --- Debugging Project: 66257 ---
+11:10:36 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+11:10:36 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+11:10:36 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+11:10:36 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+11:10:36 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+11:10:36 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+11:10:36 - [DEBUG] - ---------------------------------------
+11:10:36 - [DEBUG] - --- Debugging Project: 66222 ---
+11:10:36 - [DEBUG] - Real Starts: [nan]
+11:10:36 - [DEBUG] - Est Starts:  ['2026-06-18']
+11:10:36 - [DEBUG] - Real Ends:   [nan]
+11:10:36 - [DEBUG] - Est Ends:    ['2026-06-19']
+11:10:36 - [DEBUG] - Effective Starts: ['2026-06-18']
+11:10:36 - [DEBUG] - Effective Ends:   ['2026-06-19']
+11:10:36 - [DEBUG] - ---------------------------------------
+11:10:36 - [DEBUG] - --- Debugging Project: 66331 ---
+11:10:36 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+11:10:36 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+11:10:36 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+11:10:36 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+11:10:36 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+11:10:36 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+11:10:36 - [DEBUG] - ---------------------------------------
+11:10:36 - [DEBUG] - --- Debugging Project: 66322 ---
+11:10:36 - [DEBUG] - Real Starts: [nan]
+11:10:36 - [DEBUG] - Est Starts:  ['2026-06-22']
+11:10:36 - [DEBUG] - Real Ends:   [nan]
+11:10:36 - [DEBUG] - Est Ends:    ['2026-06-23']
+11:10:36 - [DEBUG] - Effective Starts: ['2026-06-22']
+11:10:36 - [DEBUG] - Effective Ends:   ['2026-06-23']
+11:10:36 - [DEBUG] - ---------------------------------------
+11:10:36 - [DEBUG] - --- Debugging Project: 66374 ---
+11:10:36 - [DEBUG] - Real Starts: [nan, nan, nan]
+11:10:36 - [DEBUG] - Est Starts:  [nan, nan, nan]
+11:10:36 - [DEBUG] - Real Ends:   [nan, nan, nan]
+11:10:36 - [DEBUG] - Est Ends:    [nan, nan, nan]
+11:10:36 - [DEBUG] - Effective Starts: [nan, nan, nan]
+11:10:36 - [DEBUG] - Effective Ends:   [nan, nan, nan]
+11:10:36 - [DEBUG] - ---------------------------------------
+11:10:36 - [DEBUG] - --- Debugging Project: 66370 ---
+11:10:36 - [DEBUG] - Real Starts: [nan]
+11:10:36 - [DEBUG] - Est Starts:  [nan]
+11:10:36 - [DEBUG] - Real Ends:   [nan]
+11:10:36 - [DEBUG] - Est Ends:    [nan]
+11:10:36 - [DEBUG] - Effective Starts: [nan]
+11:10:36 - [DEBUG] - Effective Ends:   [nan]
+11:10:36 - [DEBUG] - ---------------------------------------
+11:10:42 - [DEBUG] - --- Debugging Project: 66036 ---
+11:10:42 - [DEBUG] - Real Starts: ['2026-06-02']
+11:10:42 - [DEBUG] - Est Starts:  ['2026-06-02']
+11:10:42 - [DEBUG] - Real Ends:   [nan]
+11:10:42 - [DEBUG] - Est Ends:    ['2026-06-04']
+11:10:42 - [DEBUG] - Effective Starts: ['2026-06-02']
+11:10:42 - [DEBUG] - Effective Ends:   ['2026-06-04']
+11:10:42 - [DEBUG] - ---------------------------------------
+11:10:42 - [DEBUG] - --- Debugging Project: 65924 ---
+11:10:42 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+11:10:42 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+11:10:42 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+11:10:42 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-11']
+11:10:42 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+11:10:42 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-11']
+11:10:42 - [DEBUG] - ---------------------------------------
+11:10:42 - [DEBUG] - --- Debugging Project: 66107 ---
+11:10:42 - [DEBUG] - Real Starts: [nan]
+11:10:42 - [DEBUG] - Est Starts:  ['2026-06-08']
+11:10:42 - [DEBUG] - Real Ends:   [nan]
+11:10:42 - [DEBUG] - Est Ends:    ['2026-06-09']
+11:10:42 - [DEBUG] - Effective Starts: ['2026-06-08']
+11:10:42 - [DEBUG] - Effective Ends:   ['2026-06-09']
+11:10:42 - [DEBUG] - ---------------------------------------
+11:10:42 - [DEBUG] - --- Debugging Project: 66101 ---
+11:10:42 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+11:10:42 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+11:10:42 - [DEBUG] - Real Ends:   [nan, nan, nan]
+11:10:42 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+11:10:42 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+11:10:42 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+11:10:42 - [DEBUG] - ---------------------------------------
+11:10:42 - [DEBUG] - --- Debugging Project: 66172 ---
+11:10:42 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+11:10:42 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+11:10:42 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+11:10:42 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+11:10:42 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+11:10:42 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+11:10:42 - [DEBUG] - ---------------------------------------
+11:10:42 - [DEBUG] - --- Debugging Project: 66224 ---
+11:10:42 - [DEBUG] - Real Starts: [nan]
+11:10:42 - [DEBUG] - Est Starts:  ['2026-06-15']
+11:10:42 - [DEBUG] - Real Ends:   [nan]
+11:10:42 - [DEBUG] - Est Ends:    ['2026-06-16']
+11:10:42 - [DEBUG] - Effective Starts: ['2026-06-15']
+11:10:42 - [DEBUG] - Effective Ends:   ['2026-06-16']
+11:10:42 - [DEBUG] - ---------------------------------------
+11:10:42 - [DEBUG] - --- Debugging Project: 66170 ---
+11:10:42 - [DEBUG] - Real Starts: [nan, nan, nan]
+11:10:42 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+11:10:42 - [DEBUG] - Real Ends:   [nan, nan, nan]
+11:10:42 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+11:10:42 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+11:10:42 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+11:10:42 - [DEBUG] - ---------------------------------------
+11:10:42 - [DEBUG] - --- Debugging Project: 66285 ---
+11:10:42 - [DEBUG] - Real Starts: [nan]
+11:10:42 - [DEBUG] - Est Starts:  ['2026-06-10']
+11:10:42 - [DEBUG] - Real Ends:   [nan]
+11:10:42 - [DEBUG] - Est Ends:    ['2026-06-19']
+11:10:42 - [DEBUG] - Effective Starts: ['2026-06-10']
+11:10:42 - [DEBUG] - Effective Ends:   ['2026-06-19']
+11:10:42 - [DEBUG] - ---------------------------------------
+11:10:42 - [DEBUG] - --- Debugging Project: 66257 ---
+11:10:42 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+11:10:42 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+11:10:42 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+11:10:42 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+11:10:42 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+11:10:42 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+11:10:42 - [DEBUG] - ---------------------------------------
+11:10:42 - [DEBUG] - --- Debugging Project: 66222 ---
+11:10:42 - [DEBUG] - Real Starts: [nan]
+11:10:42 - [DEBUG] - Est Starts:  ['2026-06-18']
+11:10:42 - [DEBUG] - Real Ends:   [nan]
+11:10:42 - [DEBUG] - Est Ends:    ['2026-06-19']
+11:10:42 - [DEBUG] - Effective Starts: ['2026-06-18']
+11:10:42 - [DEBUG] - Effective Ends:   ['2026-06-19']
+11:10:42 - [DEBUG] - ---------------------------------------
+11:10:42 - [DEBUG] - --- Debugging Project: 66331 ---
+11:10:42 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+11:10:42 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+11:10:42 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+11:10:42 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+11:10:42 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+11:10:42 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+11:10:42 - [DEBUG] - ---------------------------------------
+11:10:42 - [DEBUG] - --- Debugging Project: 66322 ---
+11:10:42 - [DEBUG] - Real Starts: [nan]
+11:10:42 - [DEBUG] - Est Starts:  ['2026-06-22']
+11:10:42 - [DEBUG] - Real Ends:   [nan]
+11:10:42 - [DEBUG] - Est Ends:    ['2026-06-23']
+11:10:42 - [DEBUG] - Effective Starts: ['2026-06-22']
+11:10:42 - [DEBUG] - Effective Ends:   ['2026-06-23']
+11:10:42 - [DEBUG] - ---------------------------------------
+11:10:42 - [DEBUG] - --- Debugging Project: 66374 ---
+11:10:42 - [DEBUG] - Real Starts: [nan, nan, nan]
+11:10:42 - [DEBUG] - Est Starts:  [nan, nan, nan]
+11:10:42 - [DEBUG] - Real Ends:   [nan, nan, nan]
+11:10:42 - [DEBUG] - Est Ends:    [nan, nan, nan]
+11:10:42 - [DEBUG] - Effective Starts: [nan, nan, nan]
+11:10:42 - [DEBUG] - Effective Ends:   [nan, nan, nan]
+11:10:42 - [DEBUG] - ---------------------------------------
+11:10:42 - [DEBUG] - --- Debugging Project: 66370 ---
+11:10:42 - [DEBUG] - Real Starts: [nan]
+11:10:42 - [DEBUG] - Est Starts:  [nan]
+11:10:42 - [DEBUG] - Real Ends:   [nan]
+11:10:42 - [DEBUG] - Est Ends:    [nan]
+11:10:42 - [DEBUG] - Effective Starts: [nan]
+11:10:42 - [DEBUG] - Effective Ends:   [nan]
+11:10:42 - [DEBUG] - ---------------------------------------
+11:10:44 - [DEBUG] - --- Debugging Project: 66036 ---
+11:10:44 - [DEBUG] - Real Starts: ['2026-06-02']
+11:10:44 - [DEBUG] - Est Starts:  ['2026-06-02']
+11:10:44 - [DEBUG] - Real Ends:   [nan]
+11:10:44 - [DEBUG] - Est Ends:    ['2026-06-04']
+11:10:44 - [DEBUG] - Effective Starts: ['2026-06-02']
+11:10:44 - [DEBUG] - Effective Ends:   ['2026-06-04']
+11:10:44 - [DEBUG] - ---------------------------------------
+11:10:44 - [DEBUG] - --- Debugging Project: 65924 ---
+11:10:44 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+11:10:44 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+11:10:44 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+11:10:44 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-11']
+11:10:44 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+11:10:44 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-11']
+11:10:44 - [DEBUG] - ---------------------------------------
+11:10:44 - [DEBUG] - --- Debugging Project: 66107 ---
+11:10:44 - [DEBUG] - Real Starts: [nan]
+11:10:44 - [DEBUG] - Est Starts:  ['2026-06-08']
+11:10:44 - [DEBUG] - Real Ends:   [nan]
+11:10:44 - [DEBUG] - Est Ends:    ['2026-06-09']
+11:10:44 - [DEBUG] - Effective Starts: ['2026-06-08']
+11:10:44 - [DEBUG] - Effective Ends:   ['2026-06-09']
+11:10:44 - [DEBUG] - ---------------------------------------
+11:10:44 - [DEBUG] - --- Debugging Project: 66101 ---
+11:10:44 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+11:10:44 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+11:10:44 - [DEBUG] - Real Ends:   [nan, nan, nan]
+11:10:44 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+11:10:44 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+11:10:44 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+11:10:44 - [DEBUG] - ---------------------------------------
+11:10:44 - [DEBUG] - --- Debugging Project: 66172 ---
+11:10:44 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+11:10:44 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+11:10:44 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+11:10:44 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+11:10:44 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+11:10:44 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+11:10:44 - [DEBUG] - ---------------------------------------
+11:10:44 - [DEBUG] - --- Debugging Project: 66224 ---
+11:10:44 - [DEBUG] - Real Starts: [nan]
+11:10:44 - [DEBUG] - Est Starts:  ['2026-06-15']
+11:10:44 - [DEBUG] - Real Ends:   [nan]
+11:10:44 - [DEBUG] - Est Ends:    ['2026-06-16']
+11:10:44 - [DEBUG] - Effective Starts: ['2026-06-15']
+11:10:44 - [DEBUG] - Effective Ends:   ['2026-06-16']
+11:10:44 - [DEBUG] - ---------------------------------------
+11:10:44 - [DEBUG] - --- Debugging Project: 66170 ---
+11:10:44 - [DEBUG] - Real Starts: [nan, nan, nan]
+11:10:44 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+11:10:44 - [DEBUG] - Real Ends:   [nan, nan, nan]
+11:10:44 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+11:10:44 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+11:10:44 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+11:10:44 - [DEBUG] - ---------------------------------------
+11:10:44 - [DEBUG] - --- Debugging Project: 66285 ---
+11:10:44 - [DEBUG] - Real Starts: [nan]
+11:10:44 - [DEBUG] - Est Starts:  ['2026-06-10']
+11:10:44 - [DEBUG] - Real Ends:   [nan]
+11:10:44 - [DEBUG] - Est Ends:    ['2026-06-19']
+11:10:44 - [DEBUG] - Effective Starts: ['2026-06-10']
+11:10:44 - [DEBUG] - Effective Ends:   ['2026-06-19']
+11:10:44 - [DEBUG] - ---------------------------------------
+11:10:44 - [DEBUG] - --- Debugging Project: 66257 ---
+11:10:44 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+11:10:44 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+11:10:44 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+11:10:44 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+11:10:44 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+11:10:44 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+11:10:44 - [DEBUG] - ---------------------------------------
+11:10:44 - [DEBUG] - --- Debugging Project: 66222 ---
+11:10:44 - [DEBUG] - Real Starts: [nan]
+11:10:44 - [DEBUG] - Est Starts:  ['2026-06-18']
+11:10:44 - [DEBUG] - Real Ends:   [nan]
+11:10:44 - [DEBUG] - Est Ends:    ['2026-06-19']
+11:10:44 - [DEBUG] - Effective Starts: ['2026-06-18']
+11:10:44 - [DEBUG] - Effective Ends:   ['2026-06-19']
+11:10:44 - [DEBUG] - ---------------------------------------
+11:10:44 - [DEBUG] - --- Debugging Project: 66331 ---
+11:10:44 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+11:10:44 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+11:10:44 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+11:10:44 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+11:10:44 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+11:10:44 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+11:10:44 - [DEBUG] - ---------------------------------------
+11:10:44 - [DEBUG] - --- Debugging Project: 66322 ---
+11:10:44 - [DEBUG] - Real Starts: [nan]
+11:10:44 - [DEBUG] - Est Starts:  ['2026-06-22']
+11:10:44 - [DEBUG] - Real Ends:   [nan]
+11:10:44 - [DEBUG] - Est Ends:    ['2026-06-23']
+11:10:44 - [DEBUG] - Effective Starts: ['2026-06-22']
+11:10:44 - [DEBUG] - Effective Ends:   ['2026-06-23']
+11:10:44 - [DEBUG] - ---------------------------------------
+11:10:45 - [DEBUG] - --- Debugging Project: 66374 ---
+11:10:45 - [DEBUG] - Real Starts: [nan, nan, nan]
+11:10:45 - [DEBUG] - Est Starts:  ['2026-05-18', nan, nan]
+11:10:45 - [DEBUG] - Real Ends:   [nan, nan, nan]
+11:10:45 - [DEBUG] - Est Ends:    ['2026-05-28', nan, nan]
+11:10:45 - [DEBUG] - Effective Starts: ['2026-05-18', nan, nan]
+11:10:45 - [DEBUG] - Effective Ends:   ['2026-05-28', nan, nan]
+11:10:45 - [DEBUG] - ---------------------------------------
+11:10:45 - [DEBUG] - --- Debugging Project: 66370 ---
+11:10:45 - [DEBUG] - Real Starts: [nan]
+11:10:45 - [DEBUG] - Est Starts:  [nan]
+11:10:45 - [DEBUG] - Real Ends:   [nan]
+11:10:45 - [DEBUG] - Est Ends:    [nan]
+11:10:45 - [DEBUG] - Effective Starts: [nan]
+11:10:45 - [DEBUG] - Effective Ends:   [nan]
+11:10:45 - [DEBUG] - ---------------------------------------
+11:10:49 - [DEBUG] - --- Debugging Project: 66036 ---
+11:10:49 - [DEBUG] - Real Starts: ['2026-06-02']
+11:10:49 - [DEBUG] - Est Starts:  ['2026-06-02']
+11:10:49 - [DEBUG] - Real Ends:   [nan]
+11:10:49 - [DEBUG] - Est Ends:    ['2026-06-04']
+11:10:49 - [DEBUG] - Effective Starts: ['2026-06-02']
+11:10:49 - [DEBUG] - Effective Ends:   ['2026-06-04']
+11:10:49 - [DEBUG] - ---------------------------------------
+11:10:49 - [DEBUG] - --- Debugging Project: 65924 ---
+11:10:49 - [DEBUG] - Real Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', nan]
+11:10:49 - [DEBUG] - Est Starts:  ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+11:10:49 - [DEBUG] - Real Ends:   ['2026-06-03', '2026-06-03', nan, nan, nan, nan]
+11:10:49 - [DEBUG] - Est Ends:    ['2026-05-27', '2026-05-27', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-11']
+11:10:49 - [DEBUG] - Effective Starts: ['2026-05-18', '2026-05-18', '2026-06-05', '2026-06-05', '2026-06-05', '2026-06-05']
+11:10:49 - [DEBUG] - Effective Ends:   ['2026-06-03', '2026-06-03', '2026-06-09', '2026-06-09', '2026-06-09', '2026-06-11']
+11:10:49 - [DEBUG] - ---------------------------------------
+11:10:49 - [DEBUG] - --- Debugging Project: 66107 ---
+11:10:49 - [DEBUG] - Real Starts: [nan]
+11:10:49 - [DEBUG] - Est Starts:  ['2026-06-08']
+11:10:49 - [DEBUG] - Real Ends:   [nan]
+11:10:49 - [DEBUG] - Est Ends:    ['2026-06-09']
+11:10:49 - [DEBUG] - Effective Starts: ['2026-06-08']
+11:10:49 - [DEBUG] - Effective Ends:   ['2026-06-09']
+11:10:49 - [DEBUG] - ---------------------------------------
+11:10:49 - [DEBUG] - --- Debugging Project: 66101 ---
+11:10:49 - [DEBUG] - Real Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+11:10:49 - [DEBUG] - Est Starts:  ['2026-05-26', '2026-05-26', '2026-05-26']
+11:10:49 - [DEBUG] - Real Ends:   [nan, nan, nan]
+11:10:49 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12']
+11:10:49 - [DEBUG] - Effective Starts: ['2026-05-26', '2026-05-26', '2026-05-26']
+11:10:49 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12']
+11:10:49 - [DEBUG] - ---------------------------------------
+11:10:49 - [DEBUG] - --- Debugging Project: 66172 ---
+11:10:49 - [DEBUG] - Real Starts: [nan, nan, nan, nan]
+11:10:49 - [DEBUG] - Est Starts:  ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+11:10:49 - [DEBUG] - Real Ends:   [nan, nan, nan, nan]
+11:10:49 - [DEBUG] - Est Ends:    ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+11:10:49 - [DEBUG] - Effective Starts: ['2026-06-10', '2026-06-10', '2026-06-10', '2026-06-10']
+11:10:49 - [DEBUG] - Effective Ends:   ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+11:10:49 - [DEBUG] - ---------------------------------------
+11:10:49 - [DEBUG] - --- Debugging Project: 66224 ---
+11:10:49 - [DEBUG] - Real Starts: [nan]
+11:10:49 - [DEBUG] - Est Starts:  ['2026-06-15']
+11:10:49 - [DEBUG] - Real Ends:   [nan]
+11:10:49 - [DEBUG] - Est Ends:    ['2026-06-16']
+11:10:49 - [DEBUG] - Effective Starts: ['2026-06-15']
+11:10:49 - [DEBUG] - Effective Ends:   ['2026-06-16']
+11:10:49 - [DEBUG] - ---------------------------------------
+11:10:49 - [DEBUG] - --- Debugging Project: 66170 ---
+11:10:49 - [DEBUG] - Real Starts: [nan, nan, nan]
+11:10:49 - [DEBUG] - Est Starts:  ['2026-06-15', '2026-06-15', '2026-06-15']
+11:10:49 - [DEBUG] - Real Ends:   [nan, nan, nan]
+11:10:49 - [DEBUG] - Est Ends:    ['2026-06-17', '2026-06-17', '2026-06-17']
+11:10:49 - [DEBUG] - Effective Starts: ['2026-06-15', '2026-06-15', '2026-06-15']
+11:10:49 - [DEBUG] - Effective Ends:   ['2026-06-17', '2026-06-17', '2026-06-17']
+11:10:49 - [DEBUG] - ---------------------------------------
+11:10:49 - [DEBUG] - --- Debugging Project: 66285 ---
+11:10:49 - [DEBUG] - Real Starts: [nan]
+11:10:49 - [DEBUG] - Est Starts:  ['2026-06-10']
+11:10:49 - [DEBUG] - Real Ends:   [nan]
+11:10:49 - [DEBUG] - Est Ends:    ['2026-06-19']
+11:10:49 - [DEBUG] - Effective Starts: ['2026-06-10']
+11:10:49 - [DEBUG] - Effective Ends:   ['2026-06-19']
+11:10:49 - [DEBUG] - ---------------------------------------
+11:10:49 - [DEBUG] - --- Debugging Project: 66257 ---
+11:10:49 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan]
+11:10:49 - [DEBUG] - Est Starts:  ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+11:10:49 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan]
+11:10:49 - [DEBUG] - Est Ends:    ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+11:10:49 - [DEBUG] - Effective Starts: ['2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08', '2026-06-08']
+11:10:49 - [DEBUG] - Effective Ends:   ['2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19', '2026-06-19']
+11:10:49 - [DEBUG] - ---------------------------------------
+11:10:49 - [DEBUG] - --- Debugging Project: 66222 ---
+11:10:49 - [DEBUG] - Real Starts: [nan]
+11:10:49 - [DEBUG] - Est Starts:  ['2026-06-18']
+11:10:49 - [DEBUG] - Real Ends:   [nan]
+11:10:49 - [DEBUG] - Est Ends:    ['2026-06-19']
+11:10:49 - [DEBUG] - Effective Starts: ['2026-06-18']
+11:10:49 - [DEBUG] - Effective Ends:   ['2026-06-19']
+11:10:49 - [DEBUG] - ---------------------------------------
+11:10:49 - [DEBUG] - --- Debugging Project: 66331 ---
+11:10:49 - [DEBUG] - Real Starts: [nan, nan, nan, nan, nan, nan]
+11:10:49 - [DEBUG] - Est Starts:  ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+11:10:49 - [DEBUG] - Real Ends:   [nan, nan, nan, nan, nan, nan]
+11:10:49 - [DEBUG] - Est Ends:    ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+11:10:49 - [DEBUG] - Effective Starts: ['2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12', '2026-06-12']
+11:10:49 - [DEBUG] - Effective Ends:   ['2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23', '2026-06-23']
+11:10:49 - [DEBUG] - ---------------------------------------
+11:10:49 - [DEBUG] - --- Debugging Project: 66322 ---
+11:10:49 - [DEBUG] - Real Starts: [nan]
+11:10:49 - [DEBUG] - Est Starts:  ['2026-06-22']
+11:10:49 - [DEBUG] - Real Ends:   [nan]
+11:10:49 - [DEBUG] - Est Ends:    ['2026-06-23']
+11:10:49 - [DEBUG] - Effective Starts: ['2026-06-22']
+11:10:49 - [DEBUG] - Effective Ends:   ['2026-06-23']
+11:10:49 - [DEBUG] - ---------------------------------------
+11:10:49 - [DEBUG] - --- Debugging Project: 66374 ---
+11:10:49 - [DEBUG] - Real Starts: [nan, nan, nan]
+11:10:49 - [DEBUG] - Est Starts:  ['2026-05-18', nan, nan]
+11:10:49 - [DEBUG] - Real Ends:   [nan, nan, nan]
+11:10:49 - [DEBUG] - Est Ends:    ['2026-06-01', nan, nan]
+11:10:49 - [DEBUG] - Effective Starts: ['2026-05-18', nan, nan]
+11:10:49 - [DEBUG] - Effective Ends:   ['2026-06-01', nan, nan]
+11:10:49 - [DEBUG] - ---------------------------------------
+11:10:49 - [DEBUG] - --- Debugging Project: 66370 ---
+11:10:49 - [DEBUG] - Real Starts: [nan]
+11:10:49 - [DEBUG] - Est Starts:  [nan]
+11:10:49 - [DEBUG] - Real Ends:   [nan]
+11:10:49 - [DEBUG] - Est Ends:    [nan]
+11:10:49 - [DEBUG] - Effective Starts: [nan]
+11:10:49 - [DEBUG] - Effective Ends:   [nan]
+11:10:49 - [DEBUG] - ---------------------------------------
+11:17:44 - [INFO] - =========================================
+11:17:44 - [INFO] - Starting MyGantt Application...
+11:17:44 - [INFO] - Initializing Data Model...
+11:17:44 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+11:17:44 - [INFO] - Database schemas initialized successfully.
+11:17:44 - [INFO] - Initializing Application Controller...
+11:17:44 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+11:17:44 - [INFO] - Displaying Main Window...
+11:17:44 - [INFO] - Launch sequence complete!
+12:22:43 - [INFO] - =========================================
+12:22:43 - [INFO] - Starting MyGantt Application...
+12:22:43 - [INFO] - Initializing Data Model...
+12:22:43 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+12:22:43 - [INFO] - Database schemas initialized successfully.
+12:22:43 - [INFO] - Initializing Application Controller...
+12:22:43 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+12:22:43 - [INFO] - Displaying Main Window...
+12:22:43 - [INFO] - Launch sequence complete!
+12:22:49 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:22:50 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:22:51 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:22:51 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:22:52 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:22:53 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:22:54 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:22:57 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:22:58 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:22:58 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:23:02 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:23:02 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:23:03 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:23:03 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:23:04 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:23:04 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:23:05 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:23:07 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:23:08 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:23:08 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:23:09 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:23:09 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:23:15 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:25:51 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:25:51 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:25:51 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:25:57 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:25:58 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:25:59 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:25:59 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:25:59 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:53:37 - [INFO] - =========================================
+12:53:37 - [INFO] - Starting MyGantt Application...
+12:53:37 - [INFO] - Initializing Data Model...
+12:53:37 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+12:53:37 - [INFO] - Database schemas initialized successfully.
+12:53:37 - [INFO] - Initializing Application Controller...
+12:53:37 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+12:53:37 - [INFO] - Displaying Main Window...
+12:53:37 - [INFO] - Launch sequence complete!
+12:54:53 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:55:00 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+12:58:17 - [ERROR] - Error populating KPI inspector: 'str' object has no attribute 'get'
+13:03:55 - [INFO] - =========================================
+13:03:55 - [INFO] - Starting MyGantt Application...
+13:03:55 - [INFO] - Initializing Data Model...
+13:03:55 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+13:03:55 - [INFO] - Database schemas initialized successfully.
+13:03:55 - [INFO] - Initializing Application Controller...
+13:03:55 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+13:03:55 - [INFO] - Displaying Main Window...
+13:03:56 - [INFO] - Launch sequence complete!
+13:09:52 - [INFO] - =========================================
+13:09:52 - [INFO] - Starting MyGantt Application...
+13:09:52 - [INFO] - Initializing Data Model...
+13:09:52 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+13:09:52 - [INFO] - Database schemas initialized successfully.
+13:09:52 - [INFO] - Initializing Application Controller...
+13:09:52 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+13:09:52 - [INFO] - Displaying Main Window...
+13:09:53 - [INFO] - Launch sequence complete!
+13:52:17 - [INFO] - =========================================
+13:52:17 - [INFO] - Starting MyGantt Application...
+13:52:17 - [INFO] - Initializing Data Model...
+13:52:17 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+13:52:17 - [INFO] - Database schemas initialized successfully.
+13:52:17 - [INFO] - Initializing Application Controller...
+13:52:17 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+13:52:18 - [INFO] - Displaying Main Window...
+13:52:18 - [INFO] - Launch sequence complete!
+14:21:27 - [INFO] - =========================================
+14:21:27 - [INFO] - Starting MyGantt Application...
+14:21:27 - [INFO] - Initializing Data Model...
+14:21:27 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+14:21:27 - [INFO] - Database schemas initialized successfully.
+14:21:27 - [INFO] - Initializing Application Controller...
+14:21:27 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+14:21:27 - [INFO] - Displaying Main Window...
+14:21:27 - [INFO] - Launch sequence complete!
+14:27:59 - [INFO] - =========================================
+14:27:59 - [INFO] - Starting MyGantt Application...
+14:27:59 - [INFO] - Initializing Data Model...
+14:27:59 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+14:27:59 - [INFO] - Database schemas initialized successfully.
+14:27:59 - [INFO] - Initializing Application Controller...
+14:27:59 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+14:27:59 - [INFO] - Displaying Main Window...
+14:27:59 - [INFO] - Launch sequence complete!
+14:32:01 - [INFO] - =========================================
+14:32:01 - [INFO] - Starting MyGantt Application...
+14:32:01 - [INFO] - Initializing Data Model...
+14:32:01 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+14:32:01 - [INFO] - Database schemas initialized successfully.
+14:32:01 - [INFO] - Initializing Application Controller...
+14:32:01 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+14:32:01 - [INFO] - Displaying Main Window...
+14:32:02 - [INFO] - Launch sequence complete!
