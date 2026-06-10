@@ -8,7 +8,10 @@ from typing import Optional, List, Dict, Any
 import numpy as np
 import pandas as pd
 from PySide6.QtCore import Qt, Signal, QRectF, QRect, QTimer
-from PySide6.QtGui import QPainter, QColor, QPen, QMouseEvent, QFont, QWheelEvent, QBrush, QPolygonF, QPainterPath
+from PySide6.QtGui import (
+    QPainter, QColor, QPen, QMouseEvent, QFont, QWheelEvent,
+    QBrush, QPolygonF, QPainterPath, QPixmap, QIcon
+)
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QComboBox, QSplitter, QTableWidget, QAbstractItemView,
@@ -469,19 +472,25 @@ class GanttScreenWidget(QWidget):
                 is_parent = row.get('IS_PARENT', False)
 
                 if is_parent:
-                    prefix = "▼ " if row.get('PROJECT_ID') in expanded_projects else "▶ "
-                    req_text = f"{prefix}{str(row.get('REQUIREMENT', ''))}"
+                    req_text = str(row.get('REQUIREMENT', ''))
                     project_text = str(row.get('PROJECT NAME', ''))
 
+                    # Generate the geometric icon
+                    is_expanded = row.get('PROJECT_ID') in expanded_projects
+                    icon_color = "#E0E0E0" if 'PROD' in req_text.upper() else "#888888"
+                    icon = self.create_triangle_icon(is_expanded, icon_color)
+
+                    item_req = QTableWidgetItem(icon, req_text)
+
                     items = [
-                        QTableWidgetItem(req_text),
+                        item_req,
                         QTableWidgetItem(str(row.get('QUOTE NO', ''))),
                         QTableWidgetItem(project_text),
                         QTableWidgetItem(str(row.get('ESD', ''))),
                         QTableWidgetItem(str(row.get('STATUS', '')))
                     ]
 
-                    items[0].setToolTip(req_text.strip("▼▶ "))
+                    items[0].setToolTip(req_text)
                     items[2].setToolTip(project_text)
 
                     for col, item in enumerate(items):
@@ -520,6 +529,27 @@ class GanttScreenWidget(QWidget):
             return int(np.busday_count(d1_safe, d2_safe))
         except ValueError:
             return 0
+
+    @staticmethod
+    def create_triangle_icon(expanded: bool, color: str = "#AAAAAA") -> QIcon:
+        """Draws a pixel-perfect geometric triangle in memory to bypass font inconsistencies."""
+        pixmap = QPixmap(16, 16)
+        pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setBrush(QBrush(QColor(color)))
+        painter.setPen(Qt.PenStyle.NoPen)
+
+        if expanded:
+            # Down pointing
+            poly = QPolygonF([QPointF(3, 6), QPointF(13, 6), QPointF(8, 11)])
+        else:
+            # Right pointing
+            poly = QPolygonF([QPointF(6, 3), QPointF(6, 13), QPointF(11, 8)])
+
+        painter.drawPolygon(poly)
+        painter.end()
+        return QIcon(pixmap)
 
     def draw_gantt_canvas(
             self,

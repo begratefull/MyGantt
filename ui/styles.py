@@ -4,7 +4,21 @@ QMainWindow { background-color: #1E1E1E; }
 QWidget { color: #F0F0F0; font-family: 'Segoe UI', 'Roboto', sans-serif; font-size: 12px; }
 
 /* Status Bar */
-QStatusBar { color: #AAAAAA; background-color: #1E1E1E; border-top: 1px solid #3E3E42; }
+QStatusBar { 
+    color: #AAAAAA; 
+    background-color: #1E1E1E; 
+    border-top: 1px solid #3E3E42; 
+}
+QStatusBar::item { 
+    border: none; 
+}
+QLabel#VersionLabel { 
+    color: #666666; 
+    padding-right: 5px; 
+    font-weight: bold; 
+    border: none;
+    background: transparent;
+}
 
 /* --- CONTAINERS (The Card & Well System) --- */
 QFrame#sidebarFrame, QFrame#mainCardFrame, QFrame#Panel {
@@ -64,8 +78,12 @@ QTableView, QTableWidget {
 
 /* Left-hand Gantt Info Table specific corners */
 QTableWidget#LeftTable {
-    border-top-left-radius: 8px; 
-    border-bottom-left-radius: 8px;
+    border-top-left-radius: 10px; 
+    border-bottom-left-radius: 10px;
+}
+
+QTableWidget#LeftTable QHeaderView::section:first {
+    border-top-left-radius: 10px;
 }
 
 QHeaderView::section {
@@ -122,8 +140,15 @@ QScrollBar::add-line, QScrollBar::sub-line, QScrollBar::add-page, QScrollBar::su
 /* --- GANTT SPECIFIC --- */
 QSplitter::handle { background: #3E3E42; width: 1px; }
 QGraphicsView { background: transparent; border: none; }
-QGraphicsView#HeaderView { border-bottom: 1px solid #3E3E42; border-top-right-radius: 8px; }
-QGraphicsView#CanvasView { border-bottom-right-radius: 8px; }
+
+QGraphicsView#HeaderView { 
+    border-bottom: 1px solid #3E3E42; 
+    border-top-right-radius: 10px; 
+}
+
+QGraphicsView#CanvasView { 
+    border-bottom-right-radius: 10px; 
+}
 
 /* --- COMPONENTS & WIDGETS --- */
 QChartView { background: transparent; border: none; }

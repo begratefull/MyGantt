@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class AppConstants:
     # --- App Metadata ---
-    APP_VERSION = 'v1.0.0'
+    APP_VERSION = 'v2.0.1'
 
     # --- Smart Pathing (Single Source of Truth) ---
     @staticmethod

@@ -34,7 +34,8 @@ class MyGanttWindow(QMainWindow):
 
         # Version Number to far right of Status Bar
         self.version_label = QLabel(AppConstants.APP_VERSION)
-        self.version_label.setStyleSheet("color: #666666; padding-right: 15px; font-weight: bold;")
+        self.version_label.setObjectName("VersionLabel")
+        self.version_label.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight)
         self.statusBar().addPermanentWidget(self.version_label)
 
         central_widget = QWidget()

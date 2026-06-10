@@ -296,7 +296,8 @@ class AppController:
 
         self._old_workers = [w for w in self._old_workers if w.isRunning()]
 
-        self.refresh_worker = DataRefreshWorker(self.model, staged_edits, gantt_team_filter, req_filter, status_filter, sort_by, maintain_ids)
+        self.refresh_worker = DataRefreshWorker(self.model, staged_edits, gantt_team_filter, req_filter, status_filter,
+                                                sort_by, maintain_ids, self.pto_dict)
         self.refresh_worker.data_ready.connect(self.on_data_refreshed)
         self.refresh_worker.start()
 
