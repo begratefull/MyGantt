@@ -7,7 +7,7 @@ from typing import Optional, List, Dict, Any
 
 import numpy as np
 import pandas as pd
-from PySide6.QtCore import Qt, Signal, QRectF, QRect, QTimer
+from PySide6.QtCore import Qt, Signal, QRectF, QRect, QTimer, QSize
 from PySide6.QtGui import (
     QPainter, QColor, QPen, QMouseEvent, QFont, QWheelEvent,
     QBrush, QPolygonF, QPainterPath, QPixmap, QIcon
@@ -192,18 +192,26 @@ class GanttScreenWidget(QWidget):
         self.info_table.setMouseTracking(True)
         self.info_table.viewport().setMouseTracking(True)
 
+        self.info_table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
         self.info_table.verticalHeader().setDefaultSectionSize(self.row_height)
         self.info_table.verticalHeader().setVisible(False)
-        self.info_table.horizontalHeader().setMinimumHeight(45)
+        self.info_table.horizontalHeader().setFixedHeight(45)
         self.info_table.horizontalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         self.info_table.setShowGrid(False)
+        self.info_table.setFrameShape(QFrame.Shape.NoFrame)
+
+        # --- THE FIX: Force horizontal scrollbar to Always On so viewport heights match perfectly! ---
         self.info_table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.info_table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         self.info_table.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.info_table.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        # ---------------------------------------------------------------------------------------------
+
         self.info_table.horizontalHeader().setStretchLastSection(True)
         self.info_table.setMinimumWidth(250)
 
         self.canvas_container = QFrame()
+        self.canvas_container.setFrameShape(QFrame.Shape.NoFrame)
         canvas_layout = QVBoxLayout(self.canvas_container)
         canvas_layout.setContentsMargins(0, 0, 0, 0)
         canvas_layout.setSpacing(0)
@@ -211,6 +219,7 @@ class GanttScreenWidget(QWidget):
         self.header_scene = QGraphicsScene()
         self.header_view = QGraphicsView(self.header_scene)
         self.header_view.setFixedHeight(45)
+        self.header_view.setFrameShape(QFrame.Shape.NoFrame)
         self.header_view.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         self.header_view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.header_view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -218,6 +227,10 @@ class GanttScreenWidget(QWidget):
 
         self.gantt_scene = GanttGridScene(day_width=self.day_width, row_height=self.row_height)
         self.gantt_view = GanttView(self.gantt_scene)
+        self.gantt_view.setFrameShape(QFrame.Shape.NoFrame)
+
+        # --- Ensure Gantt View also strictly respects the scrollbar policy ---
+        self.gantt_view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
 
         self.gantt_view.horizontalScrollBar().valueChanged.connect(self.header_view.horizontalScrollBar().setValue)
         self.header_view.horizontalScrollBar().valueChanged.connect(self.gantt_view.horizontalScrollBar().setValue)
@@ -610,7 +623,9 @@ class GanttScreenWidget(QWidget):
 
             total_business_days = max_offset_days + 30
             total_width = total_business_days * self.day_width
-            total_height = max(len(visual_rows) * self.row_height, 800)
+
+            # --- THE FIX: Strict 1:1 mathematical height. NO arbitrary padding. ---
+            total_height = max(len(visual_rows) * self.row_height, 1)
 
             self.header_scene.setSceneRect(0, 0, total_width, 45)
             self.gantt_scene.setSceneRect(0, 0, total_width, total_height)
@@ -637,7 +652,8 @@ class GanttScreenWidget(QWidget):
                 current_date_str = current_date.strftime('%Y-%m-%d')
                 if current_date_str in safe_holiday:
                     holiday_path = QPainterPath()
-                    holiday_path.addRoundedRect(current_x + 2, 0, self.day_width - 4, total_height + 2000, 4, 4)
+                    # Removed the dirty +2000 so the path stops perfectly at the bottom edge
+                    holiday_path.addRoundedRect(current_x + 2, 0, self.day_width - 4, total_height, 4, 4)
                     self.gantt_scene.addPath(
                         holiday_path, QPen(Qt.PenStyle.NoPen), QBrush(QColor(255, 82, 82, 30))
                     )
@@ -650,13 +666,16 @@ class GanttScreenWidget(QWidget):
 
                 if current_date == today:
                     self.gantt_scene.addRect(
-                        current_x, 0, self.day_width, total_height + 2000,
+                        current_x, 0, self.day_width, total_height,
                         QPen(Qt.PenStyle.NoPen), QColor(255, 255, 255, 25)
                     )
                     today_x = current_x
 
                 if current_date.weekday() == 0:
                     self.header_scene.addLine(current_x, 25, current_x, 45, QPen(QColor("#666666"), 2))
+
+                    week_pen = QPen(QColor("#555555"), 1, Qt.PenStyle.SolidLine)
+                    self.gantt_scene.addLine(current_x, 0, current_x, total_height, week_pen)
 
                 d_text = self.header_scene.addText(str(current_date.day))
                 d_text.setDefaultTextColor(QColor("#888888"))
