@@ -9,6 +9,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 class AppConstants:
+    """
+    A centralized static class housing all application constants, including
+    file paths, routing rules, line type classifications, and regex patterns.
+    """
+
     # --- App Metadata ---
     APP_VERSION = 'v2.0.1'
 
@@ -18,6 +23,9 @@ class AppConstants:
         """
         Returns the single source-of-truth data directory located on OneDrive.
         Aggressively checks for Business/Commercial OneDrive environments first.
+
+        Returns:
+            str: The absolute path to the MyGantt_Data directory.
         """
         try:
             # Priority 1: Business/Commercial OneDrive (Standard for enterprise Microsoft 365)
@@ -33,7 +41,6 @@ class AppConstants:
                 onedrive_path = os.path.expanduser(os.path.join('~', 'OneDrive'))
 
             # Construct the specific path for the app's data folder
-            # FIXED: Pointing to the 'Development' folder instead of 'Engineering Workload_Data'
             data_dir = os.path.join(onedrive_path, 'Development', 'MyGantt_Data')
 
             # Ensure the directory exists
@@ -54,6 +61,9 @@ class AppConstants:
         """
         Returns the absolute path to the app_config.json file, utilizing the
         single-source OneDrive directory.
+
+        Returns:
+            str: The absolute path to the configuration JSON file.
         """
         try:
             return os.path.join(AppConstants.get_data_dir(), 'app_config.json')
@@ -83,8 +93,9 @@ class AppConstants:
     HOLIDAY_SHEET_NAME = f'HOLIDAY DATES {CURRENT_YEAR}'
 
     # --- Task Estimation Defaults ---
-    # Regex pattern to identify Quote or Approval lines from the 'REQUIREMENT' column
-    QUOTE_REQ_PATTERN = 'QUOT|APP'
+    # Regex patterns to identify phase requirements from the 'REQUIREMENT' column
+    QUOTE_REQ_PATTERN = r'QUOT|APP'
+    PROD_REQ_PATTERN = r'PROD|RE-?WORK'
 
     # Default estimated days to complete standard tasks vs quotes
     DEFAULT_EST_DAYS = 5

@@ -2,12 +2,13 @@
 Provides the Interactive Gantt Chart interface.
 """
 
-from PySide6.QtCore import QPointF
+import logging
+import re
 from typing import Optional, List, Dict, Any
 
 import numpy as np
 import pandas as pd
-from PySide6.QtCore import Qt, Signal, QRectF, QRect, QTimer, QSize
+from PySide6.QtCore import Qt, Signal, QRectF, QRect, QTimer, QPointF
 from PySide6.QtGui import (
     QPainter, QColor, QPen, QMouseEvent, QFont, QWheelEvent,
     QBrush, QPolygonF, QPainterPath, QPixmap, QIcon
@@ -19,7 +20,6 @@ from PySide6.QtWidgets import (
     QTableWidgetItem, QHeaderView
 )
 
-import logging
 from logic.constants import AppConstants
 from ui.components.gantt_components import GanttBlock, DueDateMarker
 
@@ -29,26 +29,37 @@ logger = logging.getLogger(__name__)
 class GanttView(QGraphicsView):
     """
     The main interactive graphics view for the Gantt timeline.
-    Supports native rubber-band multi-selection.
+    Supports native rubber-band multi-selection and horizontal scrolling overrides.
     """
     empty_clicked = Signal()
 
     def __init__(self, scene: QGraphicsScene) -> None:
-        """Initializes the view, sets visual hints, and enables rubber-band drag mode."""
-        super().__init__(scene)
-        self.setRenderHint(QPainter.RenderHint.Antialiasing)
-        self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.setObjectName("CanvasView")
+        """
+        Initializes the view, sets visual hints, and enables rubber-band drag mode.
 
-        # Phase 2: Enable native rubber-band multi-selection dragging
-        self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
+        Args:
+            scene (QGraphicsScene): The scene to render within the view.
+        """
+        super().__init__(scene)
+        try:
+            self.setRenderHint(QPainter.RenderHint.Antialiasing)
+            self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+            self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            self.setObjectName("CanvasView")
+
+            # Enable native rubber-band multi-selection dragging
+            self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
+        except Exception as e:
+            logger.error(f"Error initializing GanttView: {e}")
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         """
         Handles mouse clicks. Triggers native selection logic and emits
         empty_clicked if the user clicks the background, allowing external
         components to clear their states while the rubber-band draws.
+
+        Args:
+            event (QMouseEvent): The captured mouse event.
         """
         try:
             # Native QGraphicsView handling initiates the RubberBandDrag
@@ -65,6 +76,9 @@ class GanttView(QGraphicsView):
         """
         Intercepts mouse wheel scrolling.
         If Shift is held down, translates the vertical wheel movement into horizontal scrolling.
+
+        Args:
+            event (QWheelEvent): The captured wheel event.
         """
         try:
             if event.modifiers() == Qt.KeyboardModifier.ShiftModifier:
@@ -84,28 +98,55 @@ class GanttGridScene(QGraphicsScene):
     based on the established row height and day width.
     """
     def __init__(self, day_width: int, row_height: int, parent: Optional[QWidget] = None) -> None:
+        """
+        Initializes the custom grid scene.
+
+        Args:
+            day_width (int): The pixel width of a single day column.
+            row_height (int): The pixel height of a single data row.
+            parent (Optional[QWidget]): The parent widget, if any.
+        """
         super().__init__(parent)
         self.day_width = day_width
         self.row_height = row_height
 
     def drawBackground(self, painter: QPainter, rect: QRect | QRectF) -> None:
-        """Paints the dark background and the dotted grid lines."""
+        """
+        Paints the dark background and the dotted grid lines, clamping them to
+        the actual boundary of the data rows.
+
+        Args:
+            painter (QPainter): The active painter context.
+            rect (QRect | QRectF): The bounding rectangle to draw within.
+        """
         try:
+            # Paint the absolute background color first
             painter.fillRect(rect, QColor("#1E1E1E"))
 
             row_pen = QPen(QColor("#252526"))
             col_pen = QPen(QColor("#3E3E42"))
             col_pen.setStyle(Qt.PenStyle.DotLine)
 
+            # Clamp drawing so grid lines do not bleed past the final data row
+            scene_bottom = int(self.sceneRect().bottom())
+            draw_bottom = min(int(rect.bottom()), scene_bottom)
+
             top_y = int(rect.top()) - (int(rect.top()) % self.row_height)
-            for y in range(top_y, int(rect.bottom()), self.row_height):
-                painter.setPen(row_pen)
-                painter.drawLine(int(rect.left()), y, int(rect.right()), y)
+
+            # Only draw horizontal lines if our current view is above the bottom of the data
+            if top_y <= scene_bottom:
+                for y in range(top_y, draw_bottom + 1, self.row_height):
+                    painter.setPen(row_pen)
+                    painter.drawLine(int(rect.left()), y, int(rect.right()), y)
 
             left_x = int(rect.left()) - (int(rect.left()) % self.day_width)
-            for x in range(left_x, int(rect.right()), self.day_width):
-                painter.setPen(col_pen)
-                painter.drawLine(x, int(rect.top()), x, int(rect.bottom()))
+
+            # Only draw vertical lines if our current view is above the bottom of the data
+            if int(rect.top()) < scene_bottom:
+                for x in range(left_x, int(rect.right()), self.day_width):
+                    painter.setPen(col_pen)
+                    painter.drawLine(x, int(rect.top()), x, draw_bottom)
+
         except Exception as e:
             logger.error(f"Error drawing background in GanttGridScene: {e}")
 
@@ -121,6 +162,7 @@ class GanttScreenWidget(QWidget):
     bulk_kpi_update_signal = Signal(list, str, object)
 
     def __init__(self) -> None:
+        """Initializes the main Gantt layout and variables."""
         super().__init__()
 
         self.day_width: int = 25
@@ -131,192 +173,194 @@ class GanttScreenWidget(QWidget):
         self._setup_ui()
 
     def _setup_ui(self) -> None:
-        """Initializes and layouts the UI components."""
-        gantt_main_layout = QVBoxLayout(self)
-        gantt_main_layout.setContentsMargins(0, 0, 0, 0)
+        """Initializes and layouts all the UI components for the Gantt Screen."""
+        try:
+            gantt_main_layout = QVBoxLayout(self)
+            gantt_main_layout.setContentsMargins(0, 0, 0, 0)
 
-        gantt_header_layout = QHBoxLayout()
-        gantt_header_layout.setContentsMargins(0, 0, 0, 10)
+            gantt_header_layout = QHBoxLayout()
+            gantt_header_layout.setContentsMargins(0, 0, 0, 10)
 
-        gantt_header = QLabel("Interactive Gantt Chart")
-        gantt_header.setObjectName("Header")
-        gantt_header_layout.addWidget(gantt_header)
-        gantt_header_layout.addStretch()
+            gantt_header = QLabel("Interactive Gantt Chart")
+            gantt_header.setObjectName("Header")
+            gantt_header_layout.addWidget(gantt_header)
+            gantt_header_layout.addStretch()
 
-        filter_lbl = QLabel("Filters:")
-        filter_lbl.setObjectName("FilterLabel")
-        gantt_header_layout.addWidget(filter_lbl)
+            filter_lbl = QLabel("Filters:")
+            filter_lbl.setObjectName("FilterLabel")
+            gantt_header_layout.addWidget(filter_lbl)
 
-        self.filter_team = QComboBox()
-        self.filter_team.addItem("All Teams")
+            self.filter_team = QComboBox()
+            self.filter_team.addItem("All Teams")
 
-        self.filter_req = QComboBox()
-        self.filter_req.addItem("All Reqs")
+            self.filter_req = QComboBox()
+            self.filter_req.addItem("All Reqs")
 
-        self.filter_status = QComboBox()
-        self.filter_status.addItems(["All Status", "Active", "Complete"])
-        self.filter_status.setCurrentText("Active")
+            self.filter_status = QComboBox()
+            self.filter_status.addItems(["All Status", "Active", "Complete"])
+            self.filter_status.setCurrentText("Active")
 
-        gantt_header_layout.addWidget(self.filter_team)
-        gantt_header_layout.addWidget(self.filter_req)
-        gantt_header_layout.addWidget(self.filter_status)
+            gantt_header_layout.addWidget(self.filter_team)
+            gantt_header_layout.addWidget(self.filter_req)
+            gantt_header_layout.addWidget(self.filter_status)
 
-        gantt_header_layout.addSpacing(10)
-        sort_lbl = QLabel("Sort By:")
-        sort_lbl.setObjectName("FilterLabel")
-        gantt_header_layout.addWidget(sort_lbl)
+            gantt_header_layout.addSpacing(10)
+            sort_lbl = QLabel("Sort By:")
+            sort_lbl.setObjectName("FilterLabel")
+            gantt_header_layout.addWidget(sort_lbl)
 
-        self.sort_by = QComboBox()
-        self.sort_by.addItems(["Start Date", "Eng Due Date", "ESD"])
-        gantt_header_layout.addWidget(self.sort_by)
+            self.sort_by = QComboBox()
+            self.sort_by.addItems(["Start Date", "Eng Due Date", "ESD"])
+            gantt_header_layout.addWidget(self.sort_by)
 
-        gantt_main_layout.addLayout(gantt_header_layout)
+            gantt_main_layout.addLayout(gantt_header_layout)
 
-        gantt_body_layout = QHBoxLayout()
-        gantt_body_layout.setSpacing(15)
+            gantt_body_layout = QHBoxLayout()
+            gantt_body_layout.setSpacing(15)
 
-        self.unified_gantt_card = QFrame()
-        self.unified_gantt_card.setObjectName("TableWell")
-        unified_layout = QVBoxLayout(self.unified_gantt_card)
-        unified_layout.setContentsMargins(0, 0, 0, 0)
-        unified_layout.setSpacing(0)
+            self.unified_gantt_card = QFrame()
+            self.unified_gantt_card.setObjectName("TableWell")
+            unified_layout = QVBoxLayout(self.unified_gantt_card)
+            unified_layout.setContentsMargins(0, 0, 0, 0)
+            unified_layout.setSpacing(0)
 
-        self.gantt_splitter = QSplitter(Qt.Orientation.Horizontal)
+            self.gantt_splitter = QSplitter(Qt.Orientation.Horizontal)
 
-        self.info_table = QTableWidget()
-        self.info_table.setObjectName("LeftTable")
-        self.info_table.setColumnCount(5)
-        self.info_table.setHorizontalHeaderLabels(["Req.", "Quote", "Project", "ESD", "Status"])
-        self.info_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.info_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.info_table.setMouseTracking(True)
-        self.info_table.viewport().setMouseTracking(True)
+            self.info_table = QTableWidget()
+            self.info_table.setObjectName("LeftTable")
+            self.info_table.setColumnCount(5)
+            self.info_table.setHorizontalHeaderLabels(["Req.", "Quote", "Project", "ESD", "Status"])
+            self.info_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+            self.info_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+            self.info_table.setMouseTracking(True)
+            self.info_table.viewport().setMouseTracking(True)
 
-        self.info_table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
-        self.info_table.verticalHeader().setDefaultSectionSize(self.row_height)
-        self.info_table.verticalHeader().setVisible(False)
-        self.info_table.horizontalHeader().setFixedHeight(45)
-        self.info_table.horizontalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
-        self.info_table.setShowGrid(False)
-        self.info_table.setFrameShape(QFrame.Shape.NoFrame)
+            self.info_table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+            self.info_table.verticalHeader().setDefaultSectionSize(self.row_height)
+            self.info_table.verticalHeader().setVisible(False)
+            self.info_table.horizontalHeader().setFixedHeight(45)
+            self.info_table.horizontalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+            self.info_table.setShowGrid(False)
+            self.info_table.setFrameShape(QFrame.Shape.NoFrame)
 
-        # --- THE FIX: Force horizontal scrollbar to Always On so viewport heights match perfectly! ---
-        self.info_table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.info_table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
-        self.info_table.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
-        self.info_table.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
-        # ---------------------------------------------------------------------------------------------
+            # Force horizontal scrollbar to Always On so viewport heights match perfectly
+            self.info_table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            self.info_table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+            self.info_table.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+            self.info_table.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
 
-        self.info_table.horizontalHeader().setStretchLastSection(True)
-        self.info_table.setMinimumWidth(250)
+            self.info_table.horizontalHeader().setStretchLastSection(True)
+            self.info_table.setMinimumWidth(250)
 
-        self.canvas_container = QFrame()
-        self.canvas_container.setFrameShape(QFrame.Shape.NoFrame)
-        canvas_layout = QVBoxLayout(self.canvas_container)
-        canvas_layout.setContentsMargins(0, 0, 0, 0)
-        canvas_layout.setSpacing(0)
+            self.canvas_container = QFrame()
+            self.canvas_container.setFrameShape(QFrame.Shape.NoFrame)
+            canvas_layout = QVBoxLayout(self.canvas_container)
+            canvas_layout.setContentsMargins(0, 0, 0, 0)
+            canvas_layout.setSpacing(0)
 
-        self.header_scene = QGraphicsScene()
-        self.header_view = QGraphicsView(self.header_scene)
-        self.header_view.setFixedHeight(45)
-        self.header_view.setFrameShape(QFrame.Shape.NoFrame)
-        self.header_view.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
-        self.header_view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.header_view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.header_view.setObjectName("HeaderView")
+            self.header_scene = QGraphicsScene()
+            self.header_view = QGraphicsView(self.header_scene)
+            self.header_view.setFixedHeight(45)
+            self.header_view.setFrameShape(QFrame.Shape.NoFrame)
+            self.header_view.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+            self.header_view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            self.header_view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            self.header_view.setObjectName("HeaderView")
 
-        self.gantt_scene = GanttGridScene(day_width=self.day_width, row_height=self.row_height)
-        self.gantt_view = GanttView(self.gantt_scene)
-        self.gantt_view.setFrameShape(QFrame.Shape.NoFrame)
+            self.gantt_scene = GanttGridScene(day_width=self.day_width, row_height=self.row_height)
+            self.gantt_view = GanttView(self.gantt_scene)
+            self.gantt_view.setFrameShape(QFrame.Shape.NoFrame)
 
-        # --- Ensure Gantt View also strictly respects the scrollbar policy ---
-        self.gantt_view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+            # Ensure Gantt View also strictly respects the scrollbar policy
+            self.gantt_view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
 
-        self.gantt_view.horizontalScrollBar().valueChanged.connect(self.header_view.horizontalScrollBar().setValue)
-        self.header_view.horizontalScrollBar().valueChanged.connect(self.gantt_view.horizontalScrollBar().setValue)
-        self.info_table.verticalScrollBar().valueChanged.connect(self.gantt_view.verticalScrollBar().setValue)
-        self.gantt_view.verticalScrollBar().valueChanged.connect(self.info_table.verticalScrollBar().setValue)
+            self.gantt_view.horizontalScrollBar().valueChanged.connect(self.header_view.horizontalScrollBar().setValue)
+            self.header_view.horizontalScrollBar().valueChanged.connect(self.gantt_view.horizontalScrollBar().setValue)
+            self.info_table.verticalScrollBar().valueChanged.connect(self.gantt_view.verticalScrollBar().setValue)
+            self.gantt_view.verticalScrollBar().valueChanged.connect(self.info_table.verticalScrollBar().setValue)
 
-        canvas_layout.addWidget(self.header_view)
-        canvas_layout.addWidget(self.gantt_view)
+            canvas_layout.addWidget(self.header_view)
+            canvas_layout.addWidget(self.gantt_view)
 
-        self.gantt_splitter.addWidget(self.info_table)
-        self.gantt_splitter.addWidget(self.canvas_container)
-        self.gantt_splitter.setStretchFactor(0, 0)
-        self.gantt_splitter.setStretchFactor(1, 1)
+            self.gantt_splitter.addWidget(self.info_table)
+            self.gantt_splitter.addWidget(self.canvas_container)
+            self.gantt_splitter.setStretchFactor(0, 0)
+            self.gantt_splitter.setStretchFactor(1, 1)
 
-        self.gantt_splitter.setSizes([650, 800])
-        unified_layout.addWidget(self.gantt_splitter)
+            self.gantt_splitter.setSizes([650, 800])
+            unified_layout.addWidget(self.gantt_splitter)
 
-        self.kpi_panel = QFrame()
-        self.kpi_panel.setObjectName("TableWell")
-        self.kpi_panel.setFixedWidth(300)
-        self.kpi_panel.hide()
+            self.kpi_panel = QFrame()
+            self.kpi_panel.setObjectName("TableWell")
+            self.kpi_panel.setFixedWidth(300)
+            self.kpi_panel.hide()
 
-        kpi_layout = QVBoxLayout(self.kpi_panel)
-        kpi_layout.setContentsMargins(20, 20, 20, 20)
-        kpi_layout.setSpacing(15)
+            kpi_layout = QVBoxLayout(self.kpi_panel)
+            kpi_layout.setContentsMargins(20, 20, 20, 20)
+            kpi_layout.setSpacing(15)
 
-        self.kpi_title = QLabel("Job Inspector")
-        self.kpi_title.setObjectName("Header")
-        kpi_layout.addWidget(self.kpi_title)
+            self.kpi_title = QLabel("Job Inspector")
+            self.kpi_title.setObjectName("Header")
+            kpi_layout.addWidget(self.kpi_title)
 
-        form_layout = QFormLayout()
-        form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-        form_layout.setVerticalSpacing(15)
+            form_layout = QFormLayout()
+            form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+            form_layout.setVerticalSpacing(15)
 
-        self.inp_smart_id = QLineEdit()
-        self.inp_smart_id.hide()
+            self.inp_smart_id = QLineEdit()
+            self.inp_smart_id.hide()
 
-        self.lbl_est_days = QLabel("Est. Days:")
-        self.inp_est_days = QLineEdit()
+            self.lbl_est_days = QLabel("Est. Days:")
+            self.inp_est_days = QLineEdit()
 
-        self.inp_assignee = QComboBox()
-        self.inp_assignee.addItem("Unassigned")
+            self.inp_assignee = QComboBox()
+            self.inp_assignee.addItem("Unassigned")
 
-        self.kpi_order = QLabel("--")
-        self.kpi_quote = QLabel("--")
-        self.kpi_req = QLabel("--")
-        self.kpi_esd = QLabel("--")
-        self.kpi_eng_due = QLabel("--")
-        self.kpi_eng_var = QLabel("--")
-        self.kpi_esd_var = QLabel("--")
+            self.kpi_order = QLabel("--")
+            self.kpi_quote = QLabel("--")
+            self.kpi_req = QLabel("--")
+            self.kpi_esd = QLabel("--")
+            self.kpi_eng_due = QLabel("--")
+            self.kpi_eng_var = QLabel("--")
+            self.kpi_esd_var = QLabel("--")
 
-        self.kpi_order.setObjectName("KpiValue")
-        self.kpi_quote.setObjectName("KpiValue")
-        self.kpi_req.setObjectName("KpiLabel")
-        self.kpi_esd.setObjectName("KpiValue")
-        self.kpi_eng_due.setObjectName("KpiValue")
-        self.kpi_eng_var.setObjectName("KpiValue")
-        self.kpi_esd_var.setObjectName("KpiValue")
+            self.kpi_order.setObjectName("KpiValue")
+            self.kpi_quote.setObjectName("KpiValue")
+            self.kpi_req.setObjectName("KpiLabel")
+            self.kpi_esd.setObjectName("KpiValue")
+            self.kpi_eng_due.setObjectName("KpiValue")
+            self.kpi_eng_var.setObjectName("KpiValue")
+            self.kpi_esd_var.setObjectName("KpiValue")
 
-        form_layout.addRow("Order No:", self.kpi_order)
-        form_layout.addRow("Quote No:", self.kpi_quote)
-        form_layout.addRow("Requirement:", self.kpi_req)
-        form_layout.addRow(self.lbl_est_days, self.inp_est_days)
-        form_layout.addRow("Assign To:", self.inp_assignee)
+            form_layout.addRow("Order No:", self.kpi_order)
+            form_layout.addRow("Quote No:", self.kpi_quote)
+            form_layout.addRow("Requirement:", self.kpi_req)
+            form_layout.addRow(self.lbl_est_days, self.inp_est_days)
+            form_layout.addRow("Assign To:", self.inp_assignee)
 
-        line = QFrame()
-        line.setFrameShape(QFrame.Shape.HLine)
-        line.setObjectName("SeparatorLine")
-        form_layout.addRow(line)
+            line = QFrame()
+            line.setFrameShape(QFrame.Shape.HLine)
+            line.setObjectName("SeparatorLine")
+            form_layout.addRow(line)
 
-        form_layout.addRow("Eng Due Date:", self.kpi_eng_due)
-        form_layout.addRow("Eng Variance:", self.kpi_eng_var)
-        form_layout.addRow("Project ESD:", self.kpi_esd)
-        form_layout.addRow("ESD Variance:", self.kpi_esd_var)
+            form_layout.addRow("Eng Due Date:", self.kpi_eng_due)
+            form_layout.addRow("Eng Variance:", self.kpi_eng_var)
+            form_layout.addRow("Project ESD:", self.kpi_esd)
+            form_layout.addRow("ESD Variance:", self.kpi_esd_var)
 
-        kpi_layout.addLayout(form_layout)
-        kpi_layout.addStretch()
+            kpi_layout.addLayout(form_layout)
+            kpi_layout.addStretch()
 
-        gantt_body_layout.addWidget(self.unified_gantt_card, 1)
-        gantt_body_layout.addWidget(self.kpi_panel)
+            gantt_body_layout.addWidget(self.unified_gantt_card, 1)
+            gantt_body_layout.addWidget(self.kpi_panel)
 
-        gantt_main_layout.addLayout(gantt_body_layout, 1)
+            gantt_main_layout.addLayout(gantt_body_layout, 1)
 
-        # Connect bidirectional update signals
-        self.inp_est_days.editingFinished.connect(self._on_est_days_changed)
-        self.inp_assignee.activated.connect(self._on_assignee_changed)
+            # Connect bidirectional update signals
+            self.inp_est_days.editingFinished.connect(self._on_est_days_changed)
+            self.inp_assignee.activated.connect(self._on_assignee_changed)
+        except Exception as e:
+            logger.error(f"Error setting up Gantt Screen UI: {e}")
 
     def _on_est_days_changed(self) -> None:
         """Dispatches bulk duration updates derived from KPI text input."""
@@ -362,7 +406,12 @@ class GanttScreenWidget(QWidget):
             logger.error(f"Error emitting bulk assignee update: {e}")
 
     def populate_kpi_inspector(self, data_list: List[Dict[str, Any]]) -> None:
-        """Populates the KPI panel, rendering single details or multi-select averages and masks."""
+        """
+        Populates the KPI panel, rendering single details or multi-select averages and masks.
+
+        Args:
+            data_list (List[Dict[str, Any]]): The list of data dictionaries representing the current selection.
+        """
         try:
             if not data_list:
                 self.kpi_panel.hide()
@@ -455,10 +504,16 @@ class GanttScreenWidget(QWidget):
             logger.error(f"Error populating KPI inspector: {e}")
 
     def populate_left_table(self, visual_rows: List[Dict[str, Any]], expanded_projects: set) -> None:
-        """Populates the fixed-width table on the left side of the splitter."""
+        """
+        Populates the fixed-width table on the left side of the splitter.
+        Evaluates the production requirement logic using a centralized regex pattern.
+
+        Args:
+            visual_rows (List[Dict[str, Any]]): A list of dictionaries representing row data.
+            expanded_projects (set): A set of project IDs that are currently expanded.
+        """
         try:
             table = self.info_table
-            # Rest of method identical to previous implementation...
             table.clearSpans()
             table.setRowCount(len(visual_rows))
             table.setWordWrap(False)
@@ -490,7 +545,11 @@ class GanttScreenWidget(QWidget):
 
                     # Generate the geometric icon
                     is_expanded = row.get('PROJECT_ID') in expanded_projects
-                    icon_color = "#E0E0E0" if 'PROD' in req_text.upper() else "#888888"
+
+                    # Ensure Re-work is evaluated identically to Production lines
+                    is_prod = bool(re.search(AppConstants.PROD_REQ_PATTERN, req_text, re.IGNORECASE))
+                    icon_color = "#E0E0E0" if is_prod else "#888888"
+
                     icon = self.create_triangle_icon(is_expanded, icon_color)
 
                     item_req = QTableWidgetItem(icon, req_text)
@@ -533,7 +592,16 @@ class GanttScreenWidget(QWidget):
 
     @staticmethod
     def get_business_day_offset(start_date: pd.Timestamp, target_date: pd.Timestamp) -> int:
-        """Calculates the working day offset for positioning elements on the X-axis."""
+        """
+        Calculates the working day offset for positioning elements on the X-axis.
+
+        Args:
+            start_date (pd.Timestamp): The reference starting date.
+            target_date (pd.Timestamp): The end date to measure distance to.
+
+        Returns:
+            int: The business day offset between the dates.
+        """
         if pd.isna(target_date) or pd.isna(start_date):
             return 0
         try:
@@ -545,7 +613,16 @@ class GanttScreenWidget(QWidget):
 
     @staticmethod
     def create_triangle_icon(expanded: bool, color: str = "#AAAAAA") -> QIcon:
-        """Draws a pixel-perfect geometric triangle in memory to bypass font inconsistencies."""
+        """
+        Draws a pixel-perfect geometric triangle in memory to bypass font inconsistencies.
+
+        Args:
+            expanded (bool): If True, draws a downward-pointing triangle; otherwise, right-pointing.
+            color (str): The hex color string for the triangle fill.
+
+        Returns:
+            QIcon: The newly generated QIcon object.
+        """
         pixmap = QPixmap(16, 16)
         pixmap.fill(Qt.GlobalColor.transparent)
         painter = QPainter(pixmap)
@@ -571,7 +648,15 @@ class GanttScreenWidget(QWidget):
             color_map: Optional[Dict[str, str]] = None,
             pto_dict: Optional[Dict[str, List[str]]] = None
     ) -> None:
-        """Builds the actual graphics scene, drawing grid lines, dates, and Gantt blocks."""
+        """
+        Builds the actual graphics scene, drawing grid lines, dates, and Gantt blocks.
+
+        Args:
+            visual_rows (List[Dict[str, Any]]): The list of dictionaries representing row data.
+            dynamic_engineers (List[str]): List of engineers to pass down to interactive blocks.
+            color_map (Optional[Dict[str, str]]): Dictionary mapping engineers to hex colors.
+            pto_dict (Optional[Dict[str, List[str]]]): Dictionary of PTO dates mapped by engineer.
+        """
         try:
             self.header_scene.clear()
             self.gantt_scene.clear()
@@ -624,7 +709,7 @@ class GanttScreenWidget(QWidget):
             total_business_days = max_offset_days + 30
             total_width = total_business_days * self.day_width
 
-            # --- THE FIX: Strict 1:1 mathematical height. NO arbitrary padding. ---
+            # Strict 1:1 mathematical height. NO arbitrary padding.
             total_height = max(len(visual_rows) * self.row_height, 1)
 
             self.header_scene.setSceneRect(0, 0, total_width, 45)
@@ -652,7 +737,6 @@ class GanttScreenWidget(QWidget):
                 current_date_str = current_date.strftime('%Y-%m-%d')
                 if current_date_str in safe_holiday:
                     holiday_path = QPainterPath()
-                    # Removed the dirty +2000 so the path stops perfectly at the bottom edge
                     holiday_path.addRoundedRect(current_x + 2, 0, self.day_width - 4, total_height, 4, 4)
                     self.gantt_scene.addPath(
                         holiday_path, QPen(Qt.PenStyle.NoPen), QBrush(QColor(255, 82, 82, 30))
@@ -822,6 +906,18 @@ class GanttScreenWidget(QWidget):
             color_map: Optional[Dict[str, str]] = None,
             pto_dict: Optional[Dict[str, List[str]]] = None
     ) -> None:
-        """Core rendering pipeline call for external controllers to redraw the screen."""
-        self.populate_left_table(visual_rows, expanded_projects)
-        self.draw_gantt_canvas(visual_rows, dynamic_engineers, color_map, pto_dict)
+        """
+        Core rendering pipeline call for external controllers to redraw the screen.
+
+        Args:
+            visual_rows (List[Dict[str, Any]]): A list of dictionaries representing row data.
+            dynamic_engineers (List[str]): List of engineers available for assignments.
+            expanded_projects (set): Set of project IDs that are currently expanded.
+            color_map (Optional[Dict[str, str]]): Mapping of engineers to hex colors.
+            pto_dict (Optional[Dict[str, List[str]]]): Dictionary mapping engineers to PTO dates.
+        """
+        try:
+            self.populate_left_table(visual_rows, expanded_projects)
+            self.draw_gantt_canvas(visual_rows, dynamic_engineers, color_map, pto_dict)
+        except Exception as e:
+            logger.error(f"Error during core gantt render step: {e}")

@@ -5,6 +5,7 @@ ensuring the application remains highly responsive during data refreshes.
 """
 
 import logging
+import re
 from typing import Optional, List, Any, Dict
 
 import pandas as pd
@@ -120,8 +121,12 @@ class DataRefreshWorker(QThread):
                 plan_df = plan_df[plan_df['CALC_TEAM'] == self.team_filter.strip().upper()].copy()
                 plan_df = plan_df.drop(columns=['CALC_TEAM'])
 
+            # --- THE DATA BLEED FIX: Regex Filter interception ---
             if self.req_filter != "All Reqs":
-                plan_df = plan_df[plan_df['REQUIREMENT'].str.contains(self.req_filter, case=False, na=False)]
+                if re.search(AppConstants.PROD_REQ_PATTERN, self.req_filter, re.IGNORECASE):
+                    plan_df = plan_df[plan_df['REQUIREMENT'].str.contains(AppConstants.PROD_REQ_PATTERN, case=False, na=False, regex=True)]
+                else:
+                    plan_df = plan_df[plan_df['REQUIREMENT'].str.contains(self.req_filter, case=False, na=False)]
 
             # === Project-Aware Status Filtering ===
             if self.status_filter == "Active":

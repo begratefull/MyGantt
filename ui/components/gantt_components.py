@@ -5,34 +5,62 @@ and complex drag-and-drop timeline interactions supporting multi-selection.
 """
 
 import logging
+import re
 from typing import Dict, Any, List, Optional
 
 from PySide6.QtWidgets import (
-    QGraphicsObject, QGraphicsItem, QMenu, QWidget
+    QGraphicsObject, QGraphicsItem, QWidget
 )
 from PySide6.QtGui import (
     QBrush, QColor, QPen, QPainter, QFontMetrics, QPolygonF, QPainterPath
 )
 from PySide6.QtCore import Qt, QRectF, Signal, QTimer, QPointF
 
+from logic.constants import AppConstants
+
 logger = logging.getLogger(__name__)
 
 
 class DueDateMarker(QGraphicsItem):
-    """Draws a small yellow triangle to indicate a project's target due date."""
+    """
+    Draws a small yellow triangle to indicate a project's target due date
+    on the Gantt chart timeline.
+    """
     def __init__(self, x: float, y: float, _height: float) -> None:
-        """Initializes the marker at the specified X and Y coordinates."""
+        """
+        Initializes the marker at the specified X and Y coordinates.
+
+        Args:
+            x (float): The horizontal position on the scene.
+            y (float): The vertical position on the scene.
+            _height (float): The height of the row (unused for the marker itself, but kept for signature compatibility).
+        """
         super().__init__()
-        self.setPos(x, y)
-        self.rect: QRectF = QRectF(-10, -5, 20, 20)
-        self.setZValue(5)
+        try:
+            self.setPos(x, y)
+            self.rect: QRectF = QRectF(-10, -5, 20, 20)
+            self.setZValue(5)
+        except Exception as e:
+            logger.error(f"Error initializing DueDateMarker: {e}")
 
     def boundingRect(self) -> QRectF:
-        """Defines the clickable and drawable bounds of the marker."""
+        """
+        Defines the clickable and drawable bounds of the marker.
+
+        Returns:
+            QRectF: The bounding rectangle of the marker.
+        """
         return self.rect
 
     def paint(self, painter: QPainter, option: Any, widget: Optional[QWidget] = None) -> None:
-        """Paints the yellow warning triangle."""
+        """
+        Paints the yellow warning triangle onto the scene.
+
+        Args:
+            painter (QPainter): The painter object used for drawing.
+            option (Any): Style options for the item.
+            widget (Optional[QWidget]): The widget being painted on.
+        """
         try:
             painter.setRenderHint(QPainter.RenderHint.Antialiasing)
             painter.setBrush(QBrush(QColor("#FFD54F")))
@@ -60,46 +88,72 @@ class GanttBlock(QGraphicsObject):
     def __init__(self, project_data: Dict[str, Any], x: float, y: float, width: float,
                  height: float, day_width: float, dynamic_engineers: Optional[List[str]] = None,
                  is_parent: bool = False, due_x_offset: float = -1) -> None:
+        """
+        Initializes a Gantt block representing either a parent project or a child line item.
+
+        Args:
+            project_data (Dict[str, Any]): The payload of data for this specific task.
+            x (float): The horizontal start position.
+            y (float): The vertical start position.
+            width (float): The pixel width of the block.
+            height (float): The pixel height of the block.
+            day_width (float): The width of a single day column in pixels.
+            dynamic_engineers (Optional[List[str]]): List of available engineers for assignments.
+            is_parent (bool): Flag indicating if this is a parent aggregate block.
+            due_x_offset (float): Offset for drawing due date indicators.
+        """
         super().__init__()
-        self.setPos(x, y)
+        try:
+            self.setPos(x, y)
 
-        self.block_data: Dict[str, Any] = project_data
-        self.day_width: float = day_width
-        self.rect: QRectF = QRectF(0, 0, width, height)
+            self.block_data: Dict[str, Any] = project_data
+            self.day_width: float = day_width
+            self.rect: QRectF = QRectF(0, 0, width, height)
 
-        self.is_parent: bool = is_parent
-        self.dynamic_engineers: List[str] = dynamic_engineers if dynamic_engineers else []
-        self.due_x_offset: float = due_x_offset
+            self.is_parent: bool = is_parent
+            self.dynamic_engineers: List[str] = dynamic_engineers if dynamic_engineers else []
+            self.due_x_offset: float = due_x_offset
 
-        self.base_color: QColor = QColor()
-        self.text_color: QColor = QColor()
-        self.brush: QBrush = QBrush()
+            self.base_color: QColor = QColor()
+            self.text_color: QColor = QColor()
+            self.brush: QBrush = QBrush()
 
-        self.is_resizing_hover: bool = False
-        self.is_resizing: bool = False
-        self.is_moving: bool = False
+            self.is_resizing_hover: bool = False
+            self.is_resizing: bool = False
+            self.is_moving: bool = False
 
-        self.start_pos: QPointF = QPointF()
-        self.start_scene_pos: QPointF = QPointF()
-        self.start_rect: QRectF = QRectF()
+            self.start_pos: QPointF = QPointF()
+            self.start_scene_pos: QPointF = QPointF()
+            self.start_rect: QRectF = QRectF()
 
-        self._selection_state: Dict['GanttBlock', Dict[str, float]] = {}
+            self._selection_state: Dict['GanttBlock', Dict[str, float]] = {}
 
-        self.can_move: bool = True
-        self.can_resize: bool = True
-        self.is_started: bool = False
+            self.can_move: bool = True
+            self.can_resize: bool = True
+            self.is_started: bool = False
 
-        self.setAcceptHoverEvents(True)
-        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
+            self.setAcceptHoverEvents(True)
+            self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
 
-        self.refresh_visuals()
+            self.refresh_visuals()
+        except Exception as e:
+            logger.error(f"Error initializing GanttBlock: {e}")
 
     @property
     def data(self) -> Dict[str, Any]:  # type: ignore # noqa
-        """Allows controller.py to access the payload via item.data natively."""
+        """
+        Allows the controller to access the payload via item.data natively.
+
+        Returns:
+            Dict[str, Any]: The block's data dictionary.
+        """
         return self.block_data
 
     def refresh_visuals(self) -> None:
+        """
+        Updates the colors, opacity, and interaction states of the block based on its data payload.
+        Utilizes the centralized PROD_REQ_PATTERN to identify production and re-work items.
+        """
         try:
             assignee = str(self.block_data.get('ASSIGNED TO', '')).strip().upper()
             status = str(self.block_data.get('STATUS', '')).strip().upper()
@@ -118,7 +172,8 @@ class GanttBlock(QGraphicsObject):
             planned_color = QColor(self.base_color)
             ghost_color = QColor(self.base_color)
 
-            is_prod = 'PROD' in req
+            # Evaluate production logic using the centralized pattern
+            is_prod = bool(re.search(AppConstants.PROD_REQ_PATTERN, req))
 
             if not is_prod:
                 actual_color.setAlpha(90)
@@ -162,9 +217,28 @@ class GanttBlock(QGraphicsObject):
             logger.error(f"Error refreshing GanttBlock visuals: {e}")
 
     def boundingRect(self) -> QRectF:
-        return self.rect.adjusted(-2, -2, 2, 2)
+        """
+        Defines the interactable boundaries of the block on the canvas.
+
+        Returns:
+            QRectF: The padded bounding rectangle.
+        """
+        try:
+            return self.rect.adjusted(-2, -2, 2, 2)
+        except Exception as e:
+            logger.error(f"Error calculating bounding rect for GanttBlock: {e}")
+            return QRectF()
 
     def paint(self, painter: QPainter, option: Any, widget: Optional[QWidget] = None) -> None:
+        """
+        Draws the visual representation of the block, including selection outlines,
+        progress bars (started tasks), and text labels.
+
+        Args:
+            painter (QPainter): The active painter context.
+            option (Any): Style options.
+            widget (Optional[QWidget]): The widget being painted on.
+        """
         try:
             painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
@@ -213,60 +287,81 @@ class GanttBlock(QGraphicsObject):
             logger.error(f"Error painting GanttBlock: {e}")
 
     def _draw_shape(self, painter: QPainter) -> None:
-        path = QPainterPath()
-        if self.is_parent:
-            poly = QPolygonF([
-                QPointF(0, 0),
-                QPointF(self.rect.width(), 0),
-                QPointF(self.rect.width(), self.rect.height()),
-                QPointF(self.rect.width() - 8, self.rect.height() - 8),
-                QPointF(8, self.rect.height() - 8),
-                QPointF(0, self.rect.height())
-            ])
-            path.addPolygon(poly)
-        else:
-            path.addRoundedRect(self.rect, 4.0, 4.0)
+        """
+        Constructs and paints the geometric path of the block (polygon for parents, rounded rect for children).
+        Handles drawing multi-colored segment slices for parent items with multiple assignees.
 
-        assignee = str(self.block_data.get('ASSIGNED TO', '')).strip().upper()
-        all_colors = self.block_data.get('ALL_COLORS', [])
-
-        if self.is_parent and assignee == "MULTIPLE" and len(all_colors) > 1:
-            painter.save()
-            painter.setClipPath(path)
-
-            req = str(self.block_data.get('REQUIREMENT', '')).strip().upper()
-            alpha = 120 if 'PROD' in req else 60
-
-            w = self.rect.width()
-            h = self.rect.height()
-            step = w / len(all_colors)
-
-            painter.setPen(Qt.PenStyle.NoPen)
-            for i, c_hex in enumerate(all_colors):
-                qc = QColor(c_hex)
-                qc.setAlpha(alpha)
-                painter.setBrush(QBrush(qc))
-
-                slice_poly = QPolygonF([
-                    QPointF(i * step, 0),
-                    QPointF((i + 1) * step, 0),
-                    QPointF((i + 1) * step - h, h),
-                    QPointF(i * step - h, h)
+        Args:
+            painter (QPainter): The active painter context.
+        """
+        try:
+            path = QPainterPath()
+            if self.is_parent:
+                poly = QPolygonF([
+                    QPointF(0, 0),
+                    QPointF(self.rect.width(), 0),
+                    QPointF(self.rect.width(), self.rect.height()),
+                    QPointF(self.rect.width() - 8, self.rect.height() - 8),
+                    QPointF(8, self.rect.height() - 8),
+                    QPointF(0, self.rect.height())
                 ])
-                painter.drawPolygon(slice_poly)
-
-            painter.restore()
-
-            if self.isSelected():
-                painter.setPen(QPen(QColor("#FFFFFF"), 2))
+                path.addPolygon(poly)
             else:
+                path.addRoundedRect(self.rect, 4.0, 4.0)
+
+            assignee = str(self.block_data.get('ASSIGNED TO', '')).strip().upper()
+            all_colors = self.block_data.get('ALL_COLORS', [])
+
+            if self.is_parent and assignee == "MULTIPLE" and len(all_colors) > 1:
+                painter.save()
+                painter.setClipPath(path)
+
+                req = str(self.block_data.get('REQUIREMENT', '')).strip().upper()
+
+                # Check for PROD pattern to determine opacity
+                alpha = 120 if re.search(AppConstants.PROD_REQ_PATTERN, req) else 60
+
+                w = self.rect.width()
+                h = self.rect.height()
+                step = w / len(all_colors)
+
                 painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(Qt.BrushStyle.NoBrush)
-            painter.drawPath(path)
-        else:
-            painter.drawPath(path)
+                for i, c_hex in enumerate(all_colors):
+                    qc = QColor(c_hex)
+                    qc.setAlpha(alpha)
+                    painter.setBrush(QBrush(qc))
+
+                    slice_poly = QPolygonF([
+                        QPointF(i * step, 0),
+                        QPointF((i + 1) * step, 0),
+                        QPointF((i + 1) * step - h, h),
+                        QPointF(i * step - h, h)
+                    ])
+                    painter.drawPolygon(slice_poly)
+
+                painter.restore()
+
+                if self.isSelected():
+                    painter.setPen(QPen(QColor("#FFFFFF"), 2))
+                else:
+                    painter.setPen(Qt.PenStyle.NoPen)
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+                painter.drawPath(path)
+            else:
+                painter.drawPath(path)
+        except Exception as e:
+            logger.error(f"Error drawing shape in GanttBlock: {e}")
 
     def _get_app_signal(self, signal_name: str) -> Any:
+        """
+        Traverses the UI widget hierarchy to find a specific application-level signal.
+
+        Args:
+            signal_name (str): The name of the signal to locate.
+
+        Returns:
+            Any: The signal object if found, otherwise None.
+        """
         try:
             if not self.scene(): return None
             views = self.scene().views()
@@ -282,6 +377,12 @@ class GanttBlock(QGraphicsObject):
         return None
 
     def hoverMoveEvent(self, event: Any) -> None:
+        """
+        Updates the cursor icon based on where the mouse is hovering over the block (move vs resize).
+
+        Args:
+            event (Any): The hover event object.
+        """
         try:
             if not self.can_resize and not self.can_move:
                 self.setCursor(Qt.CursorShape.ArrowCursor)
@@ -297,6 +398,13 @@ class GanttBlock(QGraphicsObject):
             logger.error(f"Error handling hover move event: {e}")
 
     def mousePressEvent(self, event: Any) -> None:
+        """
+        Handles the initiation of a drag or resize action, capturing the current
+        multi-selection state if applicable.
+
+        Args:
+            event (Any): The mouse press event object.
+        """
         try:
             is_multi = self.isSelected() and self.scene() and len(self.scene().selectedItems()) > 1
 
@@ -336,6 +444,12 @@ class GanttBlock(QGraphicsObject):
             logger.error(f"Error handling mouse press event in GanttBlock: {e}")
 
     def mouseMoveEvent(self, event: Any) -> None:
+        """
+        Updates the block's geometry and position dynamically as the mouse is dragged.
+
+        Args:
+            event (Any): The mouse move event object.
+        """
         try:
             if self.is_resizing:
                 delta = event.scenePos().x() - self.start_pos.x()
@@ -362,6 +476,13 @@ class GanttBlock(QGraphicsObject):
             logger.error(f"Error handling mouse move event in GanttBlock: {e}")
 
     def mouseReleaseEvent(self, event: Any) -> None:
+        """
+        Completes a drag or resize operation, calculates the final offsets,
+        and emits the block_dropped signal to commit changes.
+
+        Args:
+            event (Any): The mouse release event object.
+        """
         try:
             self.setCursor(Qt.CursorShape.OpenHandCursor if self.can_move else Qt.CursorShape.ArrowCursor)
 

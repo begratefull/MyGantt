@@ -134,8 +134,17 @@ class GanttDataBuilder:
                 if parent_assignee == "MULTIPLE": parent_color = "#888888"
                 if parent_assignee in [AppConstants.UNASSIGNED_LABEL, "TBD", "NAN", ""]: parent_color = "#555555"
 
+                # --- THE DATA BLEED FIX: Intelligent Requirement Aggregation ---
                 reqs = group['REQUIREMENT'].unique()
-                raw_req = reqs[0] if len(reqs) == 1 else "Multiple"
+                if len(reqs) == 1:
+                    raw_req = reqs[0]
+                else:
+                    valid_reqs = [str(r).strip() for r in reqs if str(r).strip()]
+                    # If all mixed lines are production/re-work lines, group them rather than setting to "Multiple"
+                    if valid_reqs and all(re.search(AppConstants.PROD_REQ_PATTERN, r, re.IGNORECASE) for r in valid_reqs):
+                        raw_req = " / ".join(valid_reqs)
+                    else:
+                        raw_req = "Multiple"
 
                 due_dates = pd.to_datetime(group['ENG DUE DATE'].replace('', None), errors='coerce').dropna()
                 max_due = due_dates.max() if not due_dates.empty else pd.NaT
