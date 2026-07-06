@@ -169,32 +169,6 @@
         "ENG DUE DATE": "7/2/2026"
     },
     {
-        "SMART_ID": "OCL-81716-8-1-QUOTEDRAWING_1",
-        "PROJECT_ID": "OCL-81716-8",
-        "ASSIGNED TO": "Andy C",
-        "EST START DATE": "07/01/2026",
-        "EST END DATE": "07/01/2026",
-        "EST DAYS": "1",
-        "STATUS": "Manager Review",
-        "REQUIREMENT": "Quote Drawing",
-        "QUOTE NO": "OCL-81716-8",
-        "PROJECT NAME": "LAS VEGAS A'S BALLPARK",
-        "ENG DUE DATE": "7/2/2026"
-    },
-    {
-        "SMART_ID": "OCL-81716-8-2-QUOTEDRAWING_1",
-        "PROJECT_ID": "OCL-81716-8",
-        "ASSIGNED TO": "Andy C",
-        "EST START DATE": "07/01/2026",
-        "EST END DATE": "07/01/2026",
-        "EST DAYS": "1",
-        "STATUS": "Manager Review",
-        "REQUIREMENT": "Quote Drawing",
-        "QUOTE NO": "OCL-81716-8",
-        "PROJECT NAME": "LAS VEGAS A'S BALLPARK",
-        "ENG DUE DATE": "7/2/2026"
-    },
-    {
         "SMART_ID": "66430-4.01-PRODUCTION",
         "PROJECT_ID": "66430",
         "ASSIGNED TO": "Andy C",
@@ -351,6 +325,19 @@
         "ENG DUE DATE": "7/9/2026"
     },
     {
+        "SMART_ID": "OCL-87296-1-1-APPROVALDRAWING",
+        "PROJECT_ID": "OCL-87296-1",
+        "ASSIGNED TO": "Adam T",
+        "EST START DATE": "07/09/2026",
+        "EST END DATE": "07/09/2026",
+        "EST DAYS": "1",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Approval Drawing",
+        "QUOTE NO": "OCL-87296-1",
+        "PROJECT NAME": "WITHERS BERGMAN 30 ROCK PLAZA 54FL",
+        "ENG DUE DATE": "7/10/2026"
+    },
+    {
         "SMART_ID": "66617-1.01-PRODUCTION",
         "PROJECT_ID": "66617",
         "ASSIGNED TO": "Andy C",
@@ -383,7 +370,7 @@
         "EST START DATE": "7/1/2026",
         "EST END DATE": "07/06/2026",
         "EST DAYS": "3",
-        "STATUS": "In Process",
+        "STATUS": "Checking",
         "REQUIREMENT": "Production",
         "QUOTE NO": "OCL-90852-3",
         "PROJECT NAME": "ECB3 MOBILITY CENTER (SAMPLE)",
@@ -401,5 +388,44 @@
         "QUOTE NO": "OCL-90852-3",
         "PROJECT NAME": "ECB3 MOBILITY CENTER (SAMPLE)",
         "ENG DUE DATE": "7/24/2026"
+    },
+    {
+        "SMART_ID": "66799-1.01-PRODUCTION",
+        "PROJECT_ID": "66799",
+        "ASSIGNED TO": "Matt M",
+        "EST START DATE": "7/17/2026",
+        "EST END DATE": "07/27/2026",
+        "EST DAYS": "7",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-83220-7",
+        "PROJECT NAME": "BOK NW EXPRESSWAY",
+        "ENG DUE DATE": "7/27/2026"
+    },
+    {
+        "SMART_ID": "66799-2.01-PRODUCTION",
+        "PROJECT_ID": "66799",
+        "ASSIGNED TO": "Matt M",
+        "EST START DATE": "7/17/2026",
+        "EST END DATE": "07/27/2026",
+        "EST DAYS": "7",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-83220-7",
+        "PROJECT NAME": "BOK NW EXPRESSWAY",
+        "ENG DUE DATE": "7/27/2026"
+    },
+    {
+        "SMART_ID": "66799-3.01-PRODUCTION",
+        "PROJECT_ID": "66799",
+        "ASSIGNED TO": "Matt M",
+        "EST START DATE": "7/17/2026",
+        "EST END DATE": "07/27/2026",
+        "EST DAYS": "7",
+        "STATUS": "In Queue",
+        "REQUIREMENT": "Production",
+        "QUOTE NO": "OCL-83220-7",
+        "PROJECT NAME": "BOK NW EXPRESSWAY",
+        "ENG DUE DATE": "7/27/2026"
     }
 ]
