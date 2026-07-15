@@ -12,7 +12,7 @@ from logic.controller import AppController
 from logic.logger import UIQTextLogHandler
 
 # Force Windows to show your app icon in the taskbar instead of the Python logo
-myappid = 'legrand.mygantt.app.2.0.1'
+myappid = 'legrand.mygantt.app.2.1.0'
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
 def get_resource_path(relative_path):

@@ -35,6 +35,9 @@ class DashboardService:
             return float(str(val).replace('days', '').strip())
         except (ValueError, TypeError, AttributeError):
             return np.nan
+        except Exception as e:
+            logger.debug(f"Unexpected error parsing variance '{val}': {e}")
+            return np.nan
 
     @staticmethod
     def _calc_business_days(df: pd.DataFrame, col1: str, col2: str) -> pd.Series:
@@ -49,10 +52,14 @@ class DashboardService:
         Returns:
             pd.Series: A series containing the calculated working day variances.
         """
-        if col1 not in df.columns or col2 not in df.columns:
-            return pd.Series(np.nan, index=df.index, dtype=float)
+        try:
+            if col1 not in df.columns or col2 not in df.columns:
+                return pd.Series(np.nan, index=df.index, dtype=float)
 
-        return CalendarEngine.calculate_variance_vectorized(df[col1], df[col2])
+            return CalendarEngine.calculate_variance_vectorized(df[col1], df[col2])
+        except Exception as e:
+            logger.exception(f"Error calculating business days between {col1} and {col2}")
+            return pd.Series(np.nan, index=df.index, dtype=float)
 
     @staticmethod
     def enrich_dataframe(df: pd.DataFrame) -> pd.DataFrame:
@@ -74,7 +81,7 @@ class DashboardService:
             res['COMPLETION VARIANCE'] = DashboardService._calc_business_days(res, 'COMPLETE DATE', 'ENG DUE DATE')
             return res
         except Exception as e:
-            logger.error(f"Error enriching dataframe in DashboardService: {e}")
+            logger.exception("Error enriching dataframe in DashboardService")
             return df
 
     @staticmethod
@@ -100,7 +107,7 @@ class DashboardService:
             comp_df = enriched_df[enriched_df['STATUS'].str.strip().str.upper() == 'COMPLETE'].copy()
             return active_df, comp_df
         except Exception as e:
-            logger.error(f"Error splitting base data in DashboardService: {e}")
+            logger.exception("Error splitting base data in DashboardService")
             return pd.DataFrame(), pd.DataFrame()
 
     @staticmethod
@@ -144,7 +151,7 @@ class DashboardService:
                 mask = mask & (dates <= end_date)
             return df[mask]
         except Exception as e:
-            logger.error(f"Error filtering completed items by date: {e}")
+            logger.exception("Error filtering completed items by date")
             return pd.DataFrame(columns=comp_df.columns)
 
     @staticmethod
@@ -166,18 +173,18 @@ class DashboardService:
             comp_var = pd.to_numeric(var_series, errors='coerce').dropna()
 
             if not comp_var.empty:
-                metrics['variance'] = comp_var.mean()
-                metrics['on_time'] = ((comp_var >= 0).sum() / len(comp_var)) * 100.0
+                metrics['variance'] = float(comp_var.mean())
+                metrics['on_time'] = float(((comp_var >= 0).sum() / len(comp_var)) * 100.0)
 
-            prod_series = comp_df['PROCESS_DAYS'] if 'PROCESS_DAYS' in comp_df.columns else pd.Series(dtype=float,
-                                                                                                      index=comp_df.index)
+            prod_series = comp_df['PROCESS_DAYS'] if 'PROCESS_DAYS' in comp_df.columns else pd.Series(
+                dtype=float, index=comp_df.index)
             comp_prod = pd.to_numeric(prod_series, errors='coerce').dropna()
 
             if not comp_prod.empty:
-                metrics['productivity'] = comp_prod.mean()
+                metrics['productivity'] = float(comp_prod.mean())
 
         except Exception as e:
-            logger.error(f"Error calculating subset metrics: {e}")
+            logger.exception("Error calculating subset metrics")
 
         return metrics
 
@@ -194,10 +201,14 @@ class DashboardService:
         Returns:
             pd.DataFrame: The filtered dataframe.
         """
-        if df.empty or col not in df.columns:
+        try:
+            if df.empty or col not in df.columns:
+                return pd.DataFrame(columns=df.columns)
+            mask = df[col].str.strip().str.upper() == exact_val.strip().upper()
+            return df[mask]
+        except Exception as e:
+            logger.exception(f"Error applying exact mask for column {col}")
             return pd.DataFrame(columns=df.columns)
-        mask = df[col].str.strip().str.upper() == exact_val.strip().upper()
-        return df[mask]
 
     @staticmethod
     def _apply_regex_mask(df: pd.DataFrame, col: str, search_terms: str) -> pd.DataFrame:
@@ -212,10 +223,14 @@ class DashboardService:
         Returns:
             pd.DataFrame: The filtered dataframe.
         """
-        if df.empty or col not in df.columns:
+        try:
+            if df.empty or col not in df.columns:
+                return pd.DataFrame(columns=df.columns)
+            mask = df[col].str.contains(search_terms, case=False, na=False, regex=True)
+            return df[mask]
+        except Exception as e:
+            logger.exception(f"Error applying regex mask for column {col}")
             return pd.DataFrame(columns=df.columns)
-        mask = df[col].str.contains(search_terms, case=False, na=False, regex=True)
-        return df[mask]
 
     @staticmethod
     def calculate_advanced_kpis(active_df: pd.DataFrame, comp_df: pd.DataFrame, full_df: pd.DataFrame,
@@ -254,7 +269,6 @@ class DashboardService:
 
             sub_regex = r'APP|SUB|QUOT|QUOTE|APPROVAL|SUBMITTAL'
 
-            # The Data Bleed Fix: Utilizing AppConstants.PROD_REQ_PATTERN for Re-work inclusion
             if 'REQUIREMENT' in curr_active_df.columns:
                 is_prod_act = curr_active_df['REQUIREMENT'].str.contains(AppConstants.PROD_REQ_PATTERN, case=False,
                                                                          na=False, regex=True)
@@ -343,7 +357,7 @@ class DashboardService:
             return kpis
 
         except Exception as e:
-            logger.error(f"Error calculating advanced KPIs: {e}")
+            logger.exception("Error calculating advanced KPIs")
             return default_kpis
 
     @staticmethod
@@ -401,7 +415,7 @@ class DashboardService:
             return dict(sorted(distribution.items(), key=lambda item: item[1]['total'], reverse=True))
 
         except Exception as e:
-            logger.error(f"Error calculating detailed donut data: {e}")
+            logger.exception("Error calculating detailed donut data")
             return distribution
 
     @staticmethod
@@ -505,25 +519,31 @@ class DashboardService:
             return results
 
         except Exception as e:
-            logger.error(f"Error calculating family stats: {e}")
+            logger.exception("Error calculating family stats")
             return []
 
     @staticmethod
-    def prepare_timeline_data(comp_df: pd.DataFrame, active_df: pd.DataFrame, start_date: pd.Timestamp) -> Tuple[
+    def prepare_timeline_data(comp_df: pd.DataFrame, active_df: pd.DataFrame, ui_start_date: pd.Timestamp) -> Tuple[
         List[str], List[str], pd.DataFrame]:
         """
         Combines historical completions and future forecasts into a unified dataframe
         for plotting the trend line chart.
 
+        Note: The `ui_start_date` is intentionally bypassed for data cropping to ensure
+        a 52-week historical buffer. This provides the mathematical anchor points needed
+        for Spline curves to smoothly enter the user's view (Viewport Zooming).
+
         Args:
             comp_df (pd.DataFrame): The completed items dataframe.
             active_df (pd.DataFrame): The active items dataframe (forecasts).
-            start_date (pd.Timestamp): The inclusive start date for historical items.
+            ui_start_date (pd.Timestamp): The UI requested start date (ignored for data pull).
 
         Returns:
             Tuple[List[str], List[str], pd.DataFrame]: (list of weeks, list of reqs, combined df)
         """
         try:
+            today = pd.Timestamp.today().normalize()
+
             # 1. Process Completed Data
             h_df = comp_df.copy()
             if not h_df.empty:
@@ -542,7 +562,6 @@ class DashboardService:
                                                                                                 index=f_df.index)
                 f_df['TARGET_DATE'] = pd.to_datetime(est_col, errors='coerce')
 
-                today = pd.Timestamp.today().normalize()
                 overdue_mask = f_df['TARGET_DATE'] < today
                 if overdue_mask.any():
                     f_df.loc[overdue_mask, 'TARGET_DATE'] = today
@@ -556,9 +575,15 @@ class DashboardService:
                 return [], [], pd.DataFrame()
 
             df = pd.concat([h_df, f_df], ignore_index=True)
+
             if 'TARGET_DATE' in df.columns:
                 df = df.dropna(subset=['TARGET_DATE'])
-                df = df[(df['TARGET_DATE'] >= start_date) | (df['IS_FORECAST'] == True)].copy()
+
+                # IMPLEMENTATION OF VIEWPORT ZOOMING:
+                # Provide a 52-week historical buffer regardless of what the UI asked for.
+                historical_buffer_start = today - pd.Timedelta(weeks=52)
+
+                df = df[(df['TARGET_DATE'] >= historical_buffer_start) | (df['IS_FORECAST'] == True)].copy()
 
             if df.empty:
                 return [], [], pd.DataFrame()
@@ -570,7 +595,7 @@ class DashboardService:
             return weeks, reqs, df
 
         except Exception as e:
-            logger.error(f"Error preparing timeline data: {e}")
+            logger.exception("Error preparing timeline data")
             return [], [], pd.DataFrame()
 
     @staticmethod
@@ -617,7 +642,6 @@ class DashboardService:
 
             eng_df['CLEAN_SELL'] = eng_df.get('SELL $', pd.Series(dtype=float)).apply(parse_sell)
 
-            # Utilizing AppConstants.PROD_REQ_PATTERN for accurate Re-work inclusions
             if 'REQUIREMENT' in eng_df.columns:
                 is_prod = eng_df['REQUIREMENT'].str.contains(AppConstants.PROD_REQ_PATTERN, case=False, na=False,
                                                              regex=True)
@@ -646,7 +670,7 @@ class DashboardService:
                         else:
                             avg_days = pd.to_numeric(type_df['EST DAYS'], errors='coerce').mean()
 
-                        stats[l_type] = {'lines': lines, 'avg_days': avg_days if pd.notna(avg_days) else 0.0}
+                        stats[l_type] = {'lines': lines, 'avg_days': float(avg_days) if pd.notna(avg_days) else 0.0}
                 return stats
 
             throughput = {
@@ -687,7 +711,7 @@ class DashboardService:
                 p_lines = fam_df['LINE_COUNT'].sum() if 'LINE_COUNT' in fam_df.columns else len(fam_df)
 
                 radar_data['categories'].append(fam)
-                radar_data['prod'].append(p_lines)
+                radar_data['prod'].append(int(p_lines))
 
             pad_spaces = 1
             while len(radar_data['categories']) < 5:
@@ -700,11 +724,11 @@ class DashboardService:
                 'projects': top_projects,
                 'radar': radar_data,
                 'kpis': {
-                    'total_prod': total_prod,
-                    'total_sub': total_sub
+                    'total_prod': int(total_prod),
+                    'total_sub': int(total_sub)
                 }
             }
 
         except Exception as e:
-            logger.error(f"Error generating engineer performance payload: {e}")
+            logger.exception("Error generating engineer performance payload")
             return default_payload

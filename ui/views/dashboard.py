@@ -5,18 +5,21 @@ detailed performance grids, queue distributions, and timeline forecasting.
 
 import logging
 import re
-from typing import Dict, Any, List
+import json
+import os
+from typing import Dict, Any, List, Set
 
 import pandas as pd
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QComboBox, QGridLayout, QSizePolicy
 )
 from PySide6.QtCharts import (
-    QChart, QChartView, QPieSeries, QPieSlice, QBarSeries, QBarSet,
-    QBarCategoryAxis, QValueAxis, QLineSeries, QAreaSeries
+    QChart, QChartView, QPieSeries, QPieSlice,
+    QBarCategoryAxis, QValueAxis, QLineSeries, QAreaSeries,
+    QSplineSeries, QScatterSeries, QLegendMarker
 )
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QPainter, QColor, QPen, QFont, QCursor
+from PySide6.QtCore import Qt, QPointF
+from PySide6.QtGui import QPainter, QColor, QPen, QFont, QCursor, QBrush
 
 from logic.dashboard_service import DashboardService
 from logic.constants import AppConstants
@@ -43,6 +46,10 @@ class DashboardWidget(QWidget):
 
         self._timeline_df: pd.DataFrame = pd.DataFrame()
         self._timeline_weeks: List[str] = []
+
+        # Maps requirement category to its active QtSeries for interactive toggling
+        self.series_map: Dict[str, Dict[str, Any]] = {}
+        self.hidden_series: Set[str] = self._load_hidden_series()
 
         self.dynamic_color_map: Dict[str, str] = {}
         self.chart_palette: List[str] = [
@@ -132,6 +139,38 @@ class DashboardWidget(QWidget):
             self.tooltip_layout.addWidget(self.tooltip_content)
         except Exception as e:
             logger.error(f"Failed to setup dashboard UI: {e}")
+
+    # ---------------------------------------------------------
+    # Configuration & Persistence
+    # ---------------------------------------------------------
+
+    def _load_hidden_series(self) -> Set[str]:
+        """Loads the user's hidden dashboard categories from the configuration file."""
+        try:
+            config_path = AppConstants.get_config_path()
+            if os.path.exists(config_path):
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    return set(data.get('hidden_dashboard_series', []))
+        except Exception as e:
+            logger.warning(f"Could not load hidden series config, defaulting to empty: {e}")
+        return set()
+
+    def _save_hidden_series(self) -> None:
+        """Saves the user's hidden dashboard categories to the configuration file."""
+        try:
+            config_path = AppConstants.get_config_path()
+            data = {}
+            if os.path.exists(config_path):
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+
+            data['hidden_dashboard_series'] = list(self.hidden_series)
+
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4)
+        except Exception as e:
+            logger.error(f"Failed to save hidden series config: {e}")
 
     # ---------------------------------------------------------
     # UI Component Builders
@@ -436,11 +475,18 @@ class DashboardWidget(QWidget):
     def get_req_color(self, req_name: str) -> str:
         """Determines the UI color for a given requirement string."""
         try:
-            req_upper = req_name.upper()
-            if re.search(AppConstants.PROD_REQ_PATTERN, req_upper): return "#4CAF50"
-            if 'SUPPORT' in req_upper or 'DOC' in req_upper: return "#F44336"
-            if 'QUOT' in req_upper: return "#2196F3"
-            if 'APP' in req_upper or 'SUB' in req_upper: return "#FF9800"
+            req_upper = req_name.upper().strip()
+            # Explicit category routing to guarantee correct mapping before generic pattern
+            if 'RE-WORK' in req_upper or 'REWORK' in req_upper: return "#9C27B0" # Purple
+            if 'NEW PRODUCT' in req_upper: return "#8BC34A" # Light Green
+            if 'QUOTE' in req_upper or 'QUOT' in req_upper: return "#2196F3" # Blue
+            if 'APPROVAL' in req_upper or 'APP' in req_upper: return "#FF9800" # Orange
+            if 'REVISION' in req_upper or 'REV' in req_upper: return "#FFB300" # Amber
+            if 'PRE-WORK' in req_upper or 'PRE' in req_upper: return "#00BCD4" # Cyan
+            if 'SUPPORT' in req_upper or 'DOC' in req_upper: return "#F44336" # Red
+            if 'JDE' in req_upper: return "#795548" # Brown
+            if 'PRODUCTION' in req_upper or re.search(AppConstants.PROD_REQ_PATTERN, req_upper): return "#4CAF50" # Green
+
             return self.get_dynamic_color(req_upper)
         except Exception as e:
             logger.error(f"Error determining requirement color for {req_name}: {e}")
@@ -451,8 +497,12 @@ class DashboardWidget(QWidget):
         """Abbreviates requirement strings for pie chart labels."""
         try:
             r = req.upper().strip()
-            if re.search(AppConstants.PROD_REQ_PATTERN, r):
-                return 'RWK' if 'WORK' in r else 'PROD'
+            if 'RE-WORK' in r or 'REWORK' in r: return 'RWK'
+            if 'NEW PRODUCT' in r: return 'NEW'
+            if 'PRODUCTION' in r or re.search(AppConstants.PROD_REQ_PATTERN, r): return 'PROD'
+            if 'REVISION' in r or 'REV' in r: return 'REV'
+            if 'PRE-WORK' in r or 'PRE' in r: return 'PRE'
+            if 'JDE' in r: return 'JDE'
             if 'APP' in r: return 'APP'
             if 'SUB' in r: return 'SUB'
             if 'QUOT' in r: return 'QUOT'
@@ -782,25 +832,28 @@ class DashboardWidget(QWidget):
             logger.error(f"Error rendering req pie: {e}")
 
     def render_timeline_row(self, active_df: pd.DataFrame, comp_df: pd.DataFrame) -> None:
-        """Renders the timeline forecast bar chart."""
+        """Renders the timeline forecast as an interactive Spline/Scatter chart with Viewport Zooming."""
         try:
             chart = self.timeline_ui['chart']
             chart.removeAllSeries()
             for ax in chart.axes(): chart.removeAxis(ax)
+            self.series_map.clear()
 
             date_filter_val = self.timeline_ui['date_filter'].currentText()
             today = pd.Timestamp.today().normalize()
 
+            # Define the viewport target date
             if date_filter_val == "Last 4 Weeks":
-                start_date = today - pd.Timedelta(weeks=4)
+                target_start_date = today - pd.Timedelta(weeks=4)
             elif date_filter_val == "Last 8 Weeks":
-                start_date = today - pd.Timedelta(weeks=8)
+                target_start_date = today - pd.Timedelta(weeks=8)
             elif date_filter_val == "Year to Date":
-                start_date = pd.Timestamp(year=today.year, month=1, day=1)
+                target_start_date = pd.Timestamp(year=today.year, month=1, day=1)
             else:
-                start_date = pd.Timestamp(year=2000, month=1, day=1)
+                target_start_date = pd.Timestamp(year=2000, month=1, day=1)
 
-            weeks, reqs, df = DashboardService.prepare_timeline_data(comp_df, active_df, start_date)
+            # Backend ignores target_start_date and provides up to a 52-week buffer to anchor splines
+            weeks, reqs, df = DashboardService.prepare_timeline_data(comp_df, active_df, target_start_date)
 
             if not weeks or df.empty:
                 return
@@ -808,6 +861,18 @@ class DashboardWidget(QWidget):
             self._timeline_df = df
             self._timeline_weeks = weeks
 
+            # Calculate Viewport bounds based on target_start_date
+            target_year, target_week, _ = target_start_date.isocalendar()
+            target_yw = f"{target_year}-{target_week:02d}"
+
+            start_idx = 0
+            for i, w in enumerate(weeks):
+                if w >= target_yw:
+                    start_idx = i
+                    break
+            end_idx = len(weeks) - 1
+
+            # --- Configure X-Axis (Category Labels) ---
             axis_x = QBarCategoryAxis()
             display_weeks = [self.get_relative_week_label(w) for w in weeks]
             axis_x.append(display_weeks)
@@ -815,80 +880,120 @@ class DashboardWidget(QWidget):
             axis_x.setLinePenColor(QColor("#454548"))
             chart.addAxis(axis_x, Qt.AlignmentFlag.AlignBottom)
 
+            # Restrict visual bounds for Viewport Zooming
+            if display_weeks and start_idx <= end_idx:
+                axis_x.setRange(display_weeks[start_idx], display_weeks[end_idx])
+
+            # --- Configure Y-Axis (Variance Values) ---
             axis_y = QValueAxis()
             axis_y.setLabelsColor(QColor("#AAAAAA"))
             axis_y.setLinePenColor(QColor("#454548"))
             axis_y.setGridLineColor(QColor("#2E2E32"))
             chart.addAxis(axis_y, Qt.AlignmentFlag.AlignLeft)
 
-            series_comp = QBarSeries()
-            series_fcst = QBarSeries()
+            # --- Configure Hidden Numerical X-Axis (For Spline/Scatter Mapping) ---
+            axis_x_line = QValueAxis()
+            axis_x_line.setRange(start_idx - 0.5, end_idx + 0.5)
+            axis_x_line.setVisible(False)
+            chart.addAxis(axis_x_line, Qt.AlignmentFlag.AlignBottom)
 
             min_val = 0.0
             max_val = 0.0
+            series_list = []
 
+            # Loop over categories to build smooth lines and hover nodes
             for req in reqs:
-                set_c = QBarSet(req)
-                set_c.setColor(QColor(self.get_req_color(req)))
+                req_color = QColor(self.get_req_color(req))
+                is_hidden = req in self.hidden_series
 
-                set_f = QBarSet(f"{req} (Forecast)")
-                fcst_color = QColor(self.get_req_color(req))
-                fcst_color.setAlpha(100)
-                set_f.setColor(fcst_color)
+                # Completed Data (Solid Spline + Opaque Nodes)
+                comp_spline = QSplineSeries()
+                comp_spline.setName(req)
+                comp_spline.setPen(QPen(req_color, 2, Qt.PenStyle.SolidLine))
+                comp_spline.setVisible(not is_hidden)
+
+                comp_scatter = QScatterSeries()
+                comp_scatter.setName(f"{req} Nodes")
+                comp_scatter.setMarkerSize(10)
+                comp_scatter.setColor(req_color)
+                comp_scatter.setBorderColor(QColor("#FFFFFF"))
+                comp_scatter.setVisible(not is_hidden)
+
+                # Forecast Data (Dashed Spline + Transparent Nodes)
+                fcst_color = QColor(req_color)
+                fcst_color.setAlpha(150)
+
+                fcst_spline = QSplineSeries()
+                fcst_spline.setName(f"{req} (Forecast)")
+                fcst_spline.setPen(QPen(fcst_color, 2, Qt.PenStyle.DashLine))
+                fcst_spline.setVisible(not is_hidden)
+
+                fcst_scatter = QScatterSeries()
+                fcst_scatter.setName(f"{req} (Forecast Nodes)")
+                fcst_scatter.setMarkerSize(10)
+                fcst_scatter.setColor(fcst_color)
+                fcst_scatter.setBorderColor(QColor("#AAAAAA"))
+                fcst_scatter.setVisible(not is_hidden)
+
+                self.series_map[req] = {
+                    'comp_spline': comp_spline,
+                    'comp_scatter': comp_scatter,
+                    'fcst_spline': fcst_spline,
+                    'fcst_scatter': fcst_scatter
+                }
 
                 has_comp_data = False
                 has_fcst_data = False
 
-                for w in weeks:
+                for w_idx, w in enumerate(weeks):
                     mask_c = (df['REQUIREMENT'].replace('', 'Uncategorized') == req) & (df['YearWeek'] == w) & (df['IS_FORECAST'] == False)
                     mask_f = (df['REQUIREMENT'].replace('', 'Uncategorized') == req) & (df['YearWeek'] == w) & (df['IS_FORECAST'] == True)
 
                     subset_c = df[mask_c]
                     subset_f = df[mask_f]
 
-                    c_val = float(subset_c['VAR_DAYS'].mean()) if not subset_c.empty else 0.0
-                    f_val = float(subset_f['VAR_DAYS'].mean()) if not subset_f.empty else 0.0
+                    # Note: We safely append to the series using the integer index of the week
+                    if not subset_c.empty:
+                        c_val = float(subset_c['VAR_DAYS'].mean())
+                        comp_spline.append(w_idx, c_val)
+                        comp_scatter.append(w_idx, c_val)
+                        has_comp_data = True
+                        if w_idx >= start_idx:
+                            max_val = max(max_val, c_val)
+                            min_val = min(min_val, c_val)
 
-                    if not subset_c.empty: has_comp_data = True
-                    if not subset_f.empty: has_fcst_data = True
+                    if not subset_f.empty:
+                        f_val = float(subset_f['VAR_DAYS'].mean())
+                        fcst_spline.append(w_idx, f_val)
+                        fcst_scatter.append(w_idx, f_val)
+                        has_fcst_data = True
+                        if w_idx >= start_idx:
+                            max_val = max(max_val, f_val)
+                            min_val = min(min_val, f_val)
 
-                    set_c.append(c_val)
-                    set_f.append(f_val)
+                if has_comp_data:
+                    comp_scatter.hovered.connect(lambda point, state, r=req: self._on_node_hovered(point, state, r, False)) # type: ignore
+                    series_list.extend([comp_spline, comp_scatter])
 
-                set_c.hovered.connect(lambda status, index, r=req: self._on_bar_hovered(status, index, r, False)) # type: ignore
-                set_f.hovered.connect(lambda status, index, r=req: self._on_bar_hovered(status, index, r, True)) # type: ignore
+                if has_fcst_data:
+                    fcst_scatter.hovered.connect(lambda point, state, r=req: self._on_node_hovered(point, state, r, True)) # type: ignore
+                    series_list.extend([fcst_spline, fcst_scatter])
 
-                if has_comp_data: series_comp.append(set_c)
-                if has_fcst_data: series_fcst.append(set_f)
-
-            chart.addSeries(series_comp)
-            chart.addSeries(series_fcst)
-
-            series_comp.attachAxis(axis_x)
-            series_comp.attachAxis(axis_y)
-            series_fcst.attachAxis(axis_x)
-            series_fcst.attachAxis(axis_y)
-
-            for s in [series_comp, series_fcst]:
-                for bar_set in s.barSets():
-                    for i in range(bar_set.count()):
-                        val = bar_set.at(i)
-                        max_val = max(max_val, val)
-                        min_val = min(min_val, val)
+            # Attach all populated series to the shared axes
+            for s in series_list:
+                chart.addSeries(s)
+                s.attachAxis(axis_x_line)
+                s.attachAxis(axis_y)
 
             y_padding = max(abs(max_val), abs(min_val)) * 0.2
             if y_padding == 0: y_padding = 2
             axis_y.setRange(min_val - y_padding - 1, max_val + y_padding + 1)
             axis_y.applyNiceNumbers()
 
-            axis_x_line = QValueAxis()
-            axis_x_line.setRange(-0.5, len(weeks) - 0.5)
-            axis_x_line.setVisible(False)
-            chart.addAxis(axis_x_line, Qt.AlignmentFlag.AlignBottom)
-
             today_year, today_week, _ = today.isocalendar()
             curr_year_week = f"{today_year}-{today_week:02d}"
 
+            # Future area highlighting
             if curr_year_week in weeks:
                 curr_idx = weeks.index(curr_year_week)
 
@@ -913,6 +1018,7 @@ class DashboardWidget(QWidget):
                 future_area.attachAxis(axis_x_line)
                 future_area.attachAxis(axis_y)
 
+            # Target / Zero Line
             zero_line = QLineSeries()
             zero_line.setName("Target")
             zero_line.append(-0.5, 0)
@@ -922,22 +1028,86 @@ class DashboardWidget(QWidget):
             zero_line.attachAxis(axis_x_line)
             zero_line.attachAxis(axis_y)
 
+            # Legend interactive cleanup
             chart.legend().show()
             chart.legend().setAlignment(Qt.AlignmentFlag.AlignBottom)
             for marker in chart.legend().markers():
                 label = marker.label()
-                if "(Forecast)" in label or label == "Target" or label == "Future Highlight":
+                if "(Forecast)" in label or "Nodes" in label or label == "Target" or label == "Future Highlight":
                     marker.setVisible(False)
+                else:
+                    req_name = label
+                    is_hidden = req_name in self.hidden_series
+
+                    # Force the marker to stay visible so we can toggle it back on
+                    marker.setVisible(True)
+
+                    brush = marker.labelBrush()
+                    brush.setColor(QColor("#666666") if is_hidden else QColor("#FFFFFF"))
+                    marker.setLabelBrush(brush)
+
+                    marker.clicked.connect(lambda checked=False, m=marker, r=req_name: self._on_legend_marker_clicked(m, r))
+                    marker.hovered.connect(self._on_legend_hovered)
+
         except Exception as e:
             logger.error(f"Error rendering timeline row: {e}")
 
-    def _on_bar_hovered(self, status: bool, index: int, req_name: str, is_forecast: bool) -> None:
-        """Handles tooltip rendering when hovering over bar chart segments."""
-        if not status:
+    def _on_legend_hovered(self, state: bool) -> None:
+        """Changes the mouse cursor to a pointing hand when hovering over legend items."""
+        try:
+            if state:
+                self.setCursor(Qt.CursorShape.PointingHandCursor)
+            else:
+                self.unsetCursor()
+        except Exception as e:
+            logger.error(f"Error handling legend hover: {e}")
+
+    def _on_legend_marker_clicked(self, marker: QLegendMarker, req_name: str) -> None:
+        """Handles toggling series visibility, saving user preference, and cleaning up auto-generated markers."""
+        try:
+            if req_name in self.hidden_series:
+                self.hidden_series.remove(req_name)
+                is_hidden = False
+            else:
+                self.hidden_series.add(req_name)
+                is_hidden = True
+
+            self._save_hidden_series()
+
+            if req_name in self.series_map:
+                s_dict = self.series_map[req_name]
+                for s in s_dict.values():
+                    if s: s.setVisible(not is_hidden)
+
+            # Force the marker to remain visible after hiding its linked series
+            marker.setVisible(True)
+
+            brush = marker.labelBrush()
+            brush.setColor(QColor("#666666") if is_hidden else QColor("#FFFFFF"))
+            marker.setLabelBrush(brush)
+
+            # --- NEW FIX: Re-hide the sub-markers that Qt auto-unhides ---
+            chart = self.timeline_ui['chart']
+            for m in chart.legend().markers():
+                label = m.label()
+                if "(Forecast)" in label or "Nodes" in label or label == "Target" or label == "Future Highlight":
+                    m.setVisible(False)
+
+        except Exception as e:
+            logger.error(f"Error toggling legend marker: {e}")
+
+    def _on_node_hovered(self, point: QPointF, state: bool, req_name: str, is_forecast: bool) -> None:
+        """Handles tooltip rendering with dynamic window bounds clamping."""
+        if not state:
             self.chart_tooltip.hide()
             return
 
         try:
+            # Map the point's exact X coordinate back to the list index integer
+            index = int(round(point.x()))
+            if index < 0 or index >= len(self._timeline_weeks):
+                return
+
             target_week = self._timeline_weeks[index]
             week_label = self.get_relative_week_label(target_week)
 
@@ -956,9 +1126,13 @@ class DashboardWidget(QWidget):
             title_type = "Forecast" if is_forecast else "Completed"
             self.tooltip_header.setText(f"{req_name} ({title_type}) | {week_label}")
 
+            # Explicit, readable variance translations
+            trend_text = "Behind by" if avg_var < 0 else "Ahead by"
+            trend_color = "#FF5252" if avg_var < 0 else "#4CAF50"
+
             details = [
                 f"<b>Total Lines:</b> {int(total_lines)}",
-                f"<b>Avg Variance:</b> {avg_var:+.1f} days",
+                f"<b>Avg Variance:</b> <span style='color:{trend_color};'>{trend_text} {abs(avg_var):.1f} days</span>",
                 "<br><b>Projects:</b>"
             ]
 
@@ -967,19 +1141,42 @@ class DashboardWidget(QWidget):
 
             projects = list(proj_vars.items())
             for p_name, p_var in projects[:5]:
-                color = "#FF5252" if p_var < 0 else "#4CAF50"
-                details.append(f"• {str(p_name)}: <span style='color:{color};'>{p_var:+.1f}d</span>")
+                p_color = "#FF5252" if p_var < 0 else "#4CAF50"
+                p_trend = "Behind" if p_var < 0 else "Ahead"
+                details.append(f"• {str(p_name)[:30]}: <span style='color:{p_color};'>{abs(p_var):.1f}d {p_trend}</span>")
 
             if len(projects) > 5:
                 details.append(f"<i>...and {len(projects) - 5} more</i>")
 
             self.tooltip_content.setText("<br>".join(details))
 
+            # Recalculate physical size before moving to ensure accurate math
+            self.chart_tooltip.adjustSize()
+
             global_pos = QCursor.pos()
             local_pos = self.mapFromGlobal(global_pos)
 
-            self.chart_tooltip.move(local_pos.x() + 15, local_pos.y() + 15)
-            self.chart_tooltip.adjustSize()
+            # --- Tooltip Bounds Clamping Logic ---
+            tt_width = self.chart_tooltip.width()
+            tt_height = self.chart_tooltip.height()
+
+            # Default placement (bottom-right of cursor)
+            target_x = local_pos.x() + 15
+            target_y = local_pos.y() + 15
+
+            # Clamp to left edge if colliding with right window border
+            if target_x + tt_width > self.width():
+                target_x = local_pos.x() - tt_width - 15
+
+            # Clamp to top edge if colliding with bottom window border
+            if target_y + tt_height > self.height():
+                target_y = local_pos.y() - tt_height - 15
+
+            # Ensure the inversion didn't push it off the left/top edges
+            target_x = max(0, target_x)
+            target_y = max(0, target_y)
+
+            self.chart_tooltip.move(target_x, target_y)
             self.chart_tooltip.show()
             self.chart_tooltip.raise_()
 

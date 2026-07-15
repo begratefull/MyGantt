@@ -15,7 +15,7 @@ class AppConstants:
     """
 
     # --- App Metadata ---
-    APP_VERSION = 'v2.0.1'
+    APP_VERSION = 'v2.2.0'
 
     # --- Smart Pathing (Single Source of Truth) ---
     @staticmethod
@@ -92,10 +92,21 @@ class AppConstants:
     MASTER_SHEET_NAME = f'ENG WORKLOAD MASTER {CURRENT_YEAR}'
     HOLIDAY_SHEET_NAME = f'HOLIDAY DATES {CURRENT_YEAR}'
 
-    # --- Task Estimation Defaults ---
+    # --- Task Estimation Defaults & Chart Classifications ---
     # Regex patterns to identify phase requirements from the 'REQUIREMENT' column
+
+    # Global categories (Used for backend aggregations & KPI groupings)
     QUOTE_REQ_PATTERN = r'QUOT|APP'
-    PROD_REQ_PATTERN = r'PROD|RE-?WORK'
+    PROD_REQ_PATTERN = r'PROD|RE-?WORK' # Re-work is grouped into production for total KPI counting
+
+    # Specific sub-categories (Used primarily for decoupled dashboard color/chart mapping)
+    REWORK_REQ_PATTERN = r'RE-?WORK'
+    NEW_PROD_REQ_PATTERN = r'NEW PRODUCT'
+    PRE_WORK_REQ_PATTERN = r'PRE-?WORK'
+    JDE_REQ_PATTERN = r'JDE'
+    SUPPORT_REQ_PATTERN = r'SUPPORT|DOC'
+    REVISION_REQ_PATTERN = r'REV'
+    APPROVAL_REQ_PATTERN = r'APP|APPROVAL'
 
     # Default estimated days to complete standard tasks vs quotes
     DEFAULT_EST_DAYS = 5
