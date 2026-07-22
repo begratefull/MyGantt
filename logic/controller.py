@@ -7,7 +7,8 @@ routing background signals, and managing application state.
 import json
 import logging
 import os
-from typing import Any, Optional, List, Set
+import uuid
+from typing import Any, Optional
 
 import pandas as pd
 from PySide6.QtGui import QShortcut, QKeySequence
@@ -23,24 +24,38 @@ from logic.web_publisher import WebPublisher
 from logic.workers import SyncWorker, DataRefreshWorker
 from ui.components.gantt_components import GanttBlock
 
+try:
+    from ui.dialogs.task_dialog import TaskDialog  # pyrefly: ignore[missing-import]
+except ImportError:
+    TaskDialog = None
+
 logger = logging.getLogger(__name__)
+
 
 class AppController:
     """
     Manages the flow of data between the UI components and the SQLite/Excel backend.
+    Handles user inputs, triggers threaded workers, and maintains undo/redo history.
     """
     def __init__(self, view: Any, model: Any) -> None:
+        """
+        Initializes the controller, binds view signals, and starts the initial data load.
+
+        Args:
+            view (Any): The main QMainWindow reference.
+            model (Any): The WorkloadManager data model reference.
+        """
         self.view = view
         self.model = model
         self.history = HistoryManager()
 
-        # Declare all instance attributes upfront for strict typing
+        # Declares all instance attributes upfront for strict typing.
         self.shortcut_undo: Optional[QShortcut] = None
         self.shortcut_redo: Optional[QShortcut] = None
         self.shortcut_save: Optional[QShortcut] = None
 
-        # Upgraded to List for multi-select state restoration
-        self.selected_ids_to_restore: List[str] = []
+        # Upgraded to list for multi-select state restoration.
+        self.selected_ids_to_restore: list[str] = []
         self.is_maintaining_state: bool = False
         self.sync_worker: Optional[SyncWorker] = None
 
@@ -62,7 +77,7 @@ class AppController:
 
         self.initial_scroll_done = False
         self.refresh_worker: Optional[DataRefreshWorker] = None
-        self._old_workers: List[DataRefreshWorker] = []
+        self._old_workers: list[DataRefreshWorker] = []
 
         self.pto_path = self.config_data.get('pto_path', '')
         if not self.pto_path or not os.path.exists(self.pto_path):
@@ -86,15 +101,19 @@ class AppController:
         self.view.filter_status.currentTextChanged.connect(lambda text: self.on_gantt_filter_changed())
         self.view.gantt_screen.sort_by.currentTextChanged.connect(lambda text: self.on_gantt_filter_changed())
 
-        # Cross-component Selection Syncing Signals
+        # Cross-component selection syncing signals.
         self.view.gantt_scene.selectionChanged.connect(self.handle_block_selection)
         self.view.info_table.itemSelectionChanged.connect(self.handle_table_selection)
         self.view.gantt_view.empty_clicked.connect(self.clear_all_selections)
         self.view.info_table.cellDoubleClicked.connect(self.handle_table_double_click)
 
-        # Threaded Bulk Dispatch Signal from View -> Controller
+        # Threaded bulk dispatch signal from view to controller.
         self.view.gantt_screen.bulk_kpi_update_signal.connect(self.handle_bulk_kpi_update)
         self.view.gantt_screen.block_dropped_signal.connect(self.handle_block_dropped)
+
+        # Manual side-work task signal.
+        if hasattr(self.view, 'btn_create_task'):
+            self.view.btn_create_task.clicked.connect(self.handle_create_task)
 
         self.inject_startup_defaults()
 
@@ -110,6 +129,7 @@ class AppController:
     # ---------------------------------------------------------
 
     def load_config(self) -> dict:
+        """Loads user preferences and file paths from the JSON config."""
         if os.path.exists(self.config_file):
             try:
                 with open(self.config_file, 'r') as f:
@@ -119,6 +139,7 @@ class AppController:
         return {}
 
     def save_config(self) -> None:
+        """Saves current user preferences and file paths to the JSON config."""
         try:
             with open(self.config_file, 'w') as f:
                 json.dump(self.config_data, f, indent=4)
@@ -126,6 +147,7 @@ class AppController:
             logger.error("Failed to save config: %s", e)
 
     def save_preferences(self) -> None:
+        """Captures the current state of UI filters and saves them."""
         prefs = {
             'gantt_team': self.view.filter_team.currentText() if hasattr(self.view, 'filter_team') else "All Teams",
             'dash_team': self.view.dash_screen.filter_team.currentText() if hasattr(self.view, 'dash_screen') else "All Teams",
@@ -137,13 +159,16 @@ class AppController:
         self.save_config()
 
     def on_dash_filter_changed(self) -> None:
+        """Triggered when dashboard filters change to auto-save preferences."""
         self.save_preferences()
 
     def on_gantt_filter_changed(self) -> None:
+        """Triggered when Gantt filters change to auto-save preferences and update the view."""
         self.save_preferences()
         self.refresh_tables(maintain_state=False)
 
     def prompt_for_excel(self) -> str:
+        """Prompts the user to select the master engineering Excel file."""
         file_path, _ = QFileDialog.getOpenFileName(
             self.view, "Select Engineering Workload Excel File", "", "Excel Files (*.xlsx *.xls)"
         )
@@ -154,6 +179,7 @@ class AppController:
         return ""
 
     def prompt_for_pto(self) -> str:
+        """Prompts the user to select the Power Automate PTO CSV."""
         file_path, _ = QFileDialog.getOpenFileName(
             self.view, "Select Power Automate PTO CSV", "", "CSV Files (*.csv)"
         )
@@ -163,7 +189,16 @@ class AppController:
             return file_path
         return ""
 
+    def _set_combo_box_value(self, combo_box: Any, value: str) -> None:
+        """Safely updates a combo box value without triggering active state signals."""
+        combo_box.blockSignals(True)
+        if combo_box.findText(value) == -1:
+            combo_box.addItem(value)
+        combo_box.setCurrentText(value)
+        combo_box.blockSignals(False)
+
     def inject_startup_defaults(self) -> None:
+        """Applies saved filter states to the UI dropdowns upon boot."""
         prefs = self.config_data.get('filters', {})
         gantt_team_pref = prefs.get('gantt_team', 'Custom Team')
         dash_team_pref = prefs.get('dash_team', 'Custom Team')
@@ -173,39 +208,19 @@ class AppController:
         sort_pref = prefs.get('sort', 'Start Date')
 
         if hasattr(self.view, 'dash_screen'):
-            self.view.dash_screen.filter_team.blockSignals(True)
-            if self.view.dash_screen.filter_team.findText(dash_team_pref) == -1:
-                self.view.dash_screen.filter_team.addItem(dash_team_pref)
-            self.view.dash_screen.filter_team.setCurrentText(dash_team_pref)
-            self.view.dash_screen.filter_team.blockSignals(False)
+            self._set_combo_box_value(self.view.dash_screen.filter_team, dash_team_pref)
 
         if hasattr(self.view, 'filter_team'):
-            self.view.filter_team.blockSignals(True)
-            if self.view.filter_team.findText(gantt_team_pref) == -1:
-                self.view.filter_team.addItem(gantt_team_pref)
-            self.view.filter_team.setCurrentText(gantt_team_pref)
-            self.view.filter_team.blockSignals(False)
+            self._set_combo_box_value(self.view.filter_team, gantt_team_pref)
 
         if hasattr(self.view, 'filter_req'):
-            self.view.filter_req.blockSignals(True)
-            if self.view.filter_req.findText(req_pref) == -1:
-                self.view.filter_req.addItem(req_pref)
-            self.view.filter_req.setCurrentText(req_pref)
-            self.view.filter_req.blockSignals(False)
+            self._set_combo_box_value(self.view.filter_req, req_pref)
 
         if hasattr(self.view, 'filter_status'):
-            self.view.filter_status.blockSignals(True)
-            if self.view.filter_status.findText(status_pref) == -1:
-                self.view.filter_status.addItem(status_pref)
-            self.view.filter_status.setCurrentText(status_pref)
-            self.view.filter_status.blockSignals(False)
+            self._set_combo_box_value(self.view.filter_status, status_pref)
 
         if hasattr(self.view, 'gantt_screen') and hasattr(self.view.gantt_screen, 'sort_by'):
-            self.view.gantt_screen.sort_by.blockSignals(True)
-            if self.view.gantt_screen.sort_by.findText(sort_pref) == -1:
-                self.view.gantt_screen.sort_by.addItem(sort_pref)
-            self.view.gantt_screen.sort_by.setCurrentText(sort_pref)
-            self.view.gantt_screen.sort_by.blockSignals(False)
+            self._set_combo_box_value(self.view.gantt_screen.sort_by, sort_pref)
 
         self.refresh_tables()
 
@@ -214,6 +229,7 @@ class AppController:
     # ---------------------------------------------------------
 
     def setup_shortcuts(self) -> None:
+        """Binds global keyboard shortcuts for Undo, Redo, and Save."""
         self.shortcut_undo = QShortcut(QKeySequence("Ctrl+Z"), self.view)
         self.shortcut_undo.activated.connect(self.handle_undo)
 
@@ -223,19 +239,24 @@ class AppController:
         self.shortcut_save = QShortcut(QKeySequence("Ctrl+S"), self.view)
         self.shortcut_save.activated.connect(self.handle_global_save)
 
-    def handle_undo(self) -> None:
-        if self.history.undo():
+    def _execute_history_action(self, action_type: str) -> None:
+        """Executes an undo or redo action and redraws the UI dynamically."""
+        success = self.history.undo() if action_type == 'undo' else self.history.redo()
+        if success:
             self.refresh_tables(maintain_state=True)
             if hasattr(self.view, 'show_status'):
-                self.view.show_status("Undo successful. Press Ctrl+S to save.", 3000)
+                self.view.show_status(f"{action_type.capitalize()} successful. Press Ctrl+S to save.", 3000)
+
+    def handle_undo(self) -> None:
+        """Executes an undo action and redraws the UI."""
+        self._execute_history_action('undo')
 
     def handle_redo(self) -> None:
-        if self.history.redo():
-            self.refresh_tables(maintain_state=True)
-            if hasattr(self.view, 'show_status'):
-                self.view.show_status("Redo successful. Press Ctrl+S to save.", 3000)
+        """Executes a redo action and redraws the UI."""
+        self._execute_history_action('redo')
 
     def handle_global_save(self) -> None:
+        """Commits all staged edits to the database and attempts to publish to the web portal."""
         if self.history.has_changes():
             self.model.commit_overrides(self.history.get_staged_edits())
             self.history.clear()
@@ -301,8 +322,19 @@ class AppController:
         self.refresh_worker.data_ready.connect(self.on_data_refreshed)
         self.refresh_worker.start()
 
+    def _replace_combo_items(self, combo_box: Any, items: list[str], current_value: str) -> None:
+        """Clears and replaces items in a combo box while preserving the active selection."""
+        combo_box.blockSignals(True)
+        combo_box.clear()
+        combo_box.addItems(items)
+        if current_value in items:
+            combo_box.setCurrentText(current_value)
+        combo_box.blockSignals(False)
+
     def update_dynamic_dropdowns(self, df: pd.DataFrame) -> None:
-        if df.empty: return
+        """Updates filter dropdowns to only show options relevant to the current dataset."""
+        if df.empty:
+            return
 
         eng_df = self.model.db.get_engineers_df()
         unique_teams = ["All Teams"]
@@ -310,7 +342,7 @@ class AppController:
         color_map = {}
 
         if not eng_df.empty:
-            team_names: List[str] = [str(x) for x in eng_df['team_name'].unique() if str(x).strip()]
+            team_names: list[str] = [str(x) for x in eng_df['team_name'].unique() if str(x).strip()]
             unique_teams += sorted(team_names)
 
             team_map = {str(k).strip().upper(): str(v).strip().upper() for k, v in zip(eng_df['name'], eng_df['team_name'])}
@@ -319,50 +351,29 @@ class AppController:
         if hasattr(self.view, 'dash_screen'):
             self.view.dash_screen.team_map = team_map
             self.view.dash_screen.color_map = color_map
-            dash_combo = self.view.dash_screen.filter_team
-            current_dash_team = dash_combo.currentText()
-
-            dash_combo.blockSignals(True)
-            dash_combo.clear()
-            dash_combo.addItems(unique_teams)
-            if current_dash_team in unique_teams: dash_combo.setCurrentText(current_dash_team)
-            dash_combo.blockSignals(False)
+            self._replace_combo_items(self.view.dash_screen.filter_team, unique_teams, self.view.dash_screen.filter_team.currentText())
 
         if hasattr(self.view, 'filter_team'):
-            current_gantt_team = self.view.filter_team.currentText()
-            self.view.filter_team.blockSignals(True)
-            self.view.filter_team.clear()
-            self.view.filter_team.addItems(unique_teams)
-            if current_gantt_team in unique_teams: self.view.filter_team.setCurrentText(current_gantt_team)
-            self.view.filter_team.blockSignals(False)
+            self._replace_combo_items(self.view.filter_team, unique_teams, self.view.filter_team.currentText())
 
         current_req = self.view.filter_req.currentText()
-        req_names: List[str] = [str(x) for x in df['REQUIREMENT'].replace('', 'Uncategorized').unique() if str(x).strip() and str(x).strip() != 'Uncategorized']
+        req_names: list[str] = [str(x) for x in df['REQUIREMENT'].replace('', 'Uncategorized').unique() if str(x).strip() and str(x).strip() != 'Uncategorized']
         unique_reqs = ["All Reqs"] + sorted(req_names)
-
-        self.view.filter_req.blockSignals(True)
-        self.view.filter_req.clear()
-        self.view.filter_req.addItems(unique_reqs)
-        if current_req in unique_reqs: self.view.filter_req.setCurrentText(current_req)
-        self.view.filter_req.blockSignals(False)
+        self._replace_combo_items(self.view.filter_req, unique_reqs, current_req)
 
         current_assignee = self.view.inp_assignee.currentText()
-        assignee_names: List[str] = [str(x) for x in df['ASSIGNED TO'].unique() if str(x).strip()]
+        assignee_names: list[str] = [str(x) for x in df['ASSIGNED TO'].unique() if str(x).strip()]
         unique_assignees = ["Unassigned"] + sorted(assignee_names)
-
-        self.view.inp_assignee.blockSignals(True)
-        self.view.inp_assignee.clear()
-        self.view.inp_assignee.addItems(unique_assignees)
-        if current_assignee in unique_assignees: self.view.inp_assignee.setCurrentText(current_assignee)
-        self.view.inp_assignee.blockSignals(False)
+        self._replace_combo_items(self.view.inp_assignee, unique_assignees, current_assignee)
 
     def is_target_parent(self, target_id: str) -> bool:
+        """Determines if a given ID corresponds to a parent project group."""
         for row in self.current_visual_rows:
             if row.get('IS_PARENT') and row.get('PROJECT_ID') == target_id:
                 return True
         return False
 
-    def _rebuild_and_render_canvas(self, target_ids_to_restore: Optional[List[str]] = None) -> None:
+    def _rebuild_and_render_canvas(self, target_ids_to_restore: Optional[list[str]] = None) -> None:
         """Forces a pure recalculation of the visual hierarchy to prevent UI feedback loops."""
         eng_df = self.model.db.get_engineers_df()
         color_map = {str(k).strip().upper(): str(v).strip().upper() for k, v in
@@ -382,17 +393,20 @@ class AppController:
         self.restore_selection(target_ids_to_restore)
 
     def on_data_refreshed(self, raw_df: pd.DataFrame, plan_df: pd.DataFrame, actual_df: pd.DataFrame, full_plan_df: pd.DataFrame) -> None:
+        """Callback triggered when the DataRefreshWorker completes its background calculations."""
         if hasattr(self.view, 'display_dataframe') and hasattr(self.view, 'raw_table'):
             self.view.display_dataframe(self.view.raw_table, raw_df)
 
-        if actual_df.empty: return
+        if actual_df.empty:
+            return
 
         self.update_dynamic_dropdowns(actual_df)
 
         self.actual_df = actual_df
         self.full_plan_df = full_plan_df
 
-        if plan_df.empty: return
+        if plan_df.empty:
+            return
         self.current_plan_df = plan_df
 
         targets = self.selected_ids_to_restore if self.is_maintaining_state else None
@@ -405,6 +419,7 @@ class AppController:
             self.view.kpi_panel.hide()
 
     def handle_table_double_click(self, row: int, _col: int) -> None:
+        """Toggles the expanded/collapsed state of a project group."""
         if row < len(self.current_visual_rows):
             row_data = self.current_visual_rows[row]
             if row_data.get('IS_PARENT', False):
@@ -418,9 +433,10 @@ class AppController:
                 if not self.current_plan_df.empty:
                     self._rebuild_and_render_canvas(self.selected_ids_to_restore)
 
-    def restore_selection(self, target_ids: Optional[List[str]]) -> None:
+    def restore_selection(self, target_ids: Optional[list[str]]) -> None:
         """Iterates through all known selected IDs and reapplies highlight to Table and Canvas without infinite loops."""
-        if not target_ids: return
+        if not target_ids:
+            return
 
         try:
             self.view.info_table.blockSignals(True)
@@ -428,13 +444,13 @@ class AppController:
 
             selected_data = []
 
-            # 1. Restore Table Highlights
+            # 1. Restores table highlights.
             for row_idx, r in enumerate(self.current_visual_rows):
                 tid = r.get('SMART_ID') if not r.get('IS_PARENT') else r.get('PROJECT_ID')
                 if tid in target_ids:
                     self.view.info_table.selectRow(row_idx)
 
-            # 2. Restore Canvas Highlights
+            # 2. Restores canvas highlights.
             if self.view.isVisible():
                 for item in self.view.gantt_scene.items():
                     if isinstance(item, GanttBlock):
@@ -446,7 +462,7 @@ class AppController:
             self.view.info_table.blockSignals(False)
             self.view.gantt_scene.blockSignals(False)
 
-            # 3. Restore KPI Panel Data Context
+            # 3. Restores KPI panel data context.
             if selected_data:
                 self.view.gantt_screen.populate_kpi_inspector(selected_data)
                 self.view.kpi_panel.show()
@@ -457,7 +473,8 @@ class AppController:
     def clear_all_selections(self) -> None:
         """Safely clears highlights from both the table and the canvas."""
         try:
-            if not self.view.isVisible(): return
+            if not self.view.isVisible():
+                return
             self.view.info_table.blockSignals(True)
             self.view.info_table.clearSelection()
             self.view.info_table.blockSignals(False)
@@ -474,7 +491,8 @@ class AppController:
     def handle_block_selection(self) -> None:
         """Triggers when the canvas is dragged. Programmatically selects the matching table rows."""
         try:
-            if not self.view.isVisible(): return
+            if not self.view.isVisible():
+                return
             selected_items = self.view.gantt_scene.selectedItems()
 
             self.view.info_table.blockSignals(True)
@@ -509,7 +527,8 @@ class AppController:
     def handle_table_selection(self) -> None:
         """Triggers when the table is dragged. Programmatically selects the matching canvas blocks."""
         try:
-            if not self.view.isVisible(): return
+            if not self.view.isVisible():
+                return
             selected_rows = self.view.info_table.selectionModel().selectedRows()
 
             self.view.gantt_scene.blockSignals(True)
@@ -544,11 +563,18 @@ class AppController:
         except RuntimeError:
             pass
 
-    def handle_bulk_kpi_update(self, target_ids: List[str], field_name: str, new_value: Any) -> None:
+    def handle_bulk_kpi_update(self, target_ids: list[str], field_name: str, new_value: Any) -> None:
         """Dispatches data changes, applies local vectorized math safely, and redraws UI."""
         try:
             bulk_edits = {}
-            history_key = 'MAN_EST_DAYS' if field_name == 'EST DAYS' else 'MAN_ASSIGNED'
+            if field_name == 'EST DAYS':
+                history_key = 'MAN_EST_DAYS'
+            elif field_name == 'STATUS':
+                history_key = 'MAN_STATUS'
+            elif field_name == 'ASSIGNED TO':
+                history_key = 'MAN_ASSIGNED'
+            else:
+                history_key = 'UNKNOWN'
 
             for tid in target_ids:
                 if self.is_target_parent(tid):
@@ -565,7 +591,7 @@ class AppController:
             if bulk_edits:
                 self.history.stage_bulk_edits(bulk_edits)
 
-            # FAST PATH: Vectorized Math in memory
+            # Fast path: Vectorized math in memory.
             if field_name == 'EST DAYS' or field_name == 'ASSIGNED TO':
                 affected_mask = self.current_plan_df['SMART_ID'].isin(bulk_edits.keys())
 
@@ -585,17 +611,62 @@ class AppController:
                         pto
                     )
 
-            # FIX: Pass the target_ids list directly to maintain selection instead of reading the empty fallback variable
+            # Passes the target_ids list directly to maintain selection instead of reading the empty fallback variable.
             self._rebuild_and_render_canvas(target_ids)
 
             if hasattr(self.view, 'show_status'):
                 self.view.show_status(f"Unsaved Bulk Edit ({len(target_ids)} items). Press Ctrl+S to Calculate & Save.",
                                       5000)
 
-        except Exception as e:
+        except Exception as e:  # pyrefly: ignore[broad-except]
             logger.error(f"Error handling bulk KPI update: {e}")
 
+    def handle_create_task(self) -> None:
+        """Launches the dialog to create a new manual side-work task and saves it to the database."""
+        try:
+            if TaskDialog is None:
+                if hasattr(self.view, 'show_warning'):
+                    self.view.show_warning("Not Implemented", "TaskDialog module is missing. Please implement the dialog file.")
+                return
+
+            eng_df = self.model.db.get_engineers_df()
+            # Stop uppercasing names here so they match exactly what is in the database.
+            configured_names = [str(x).strip() for x in eng_df['name'].unique()] if not eng_df.empty else []
+
+            dialog = TaskDialog(self.view, configured_names)
+            if dialog.exec():
+                task_data = dialog.get_task_data()
+
+                # Generates unique identifiers.
+                short_hash = uuid.uuid4().hex[:6].upper()
+                smart_id = f"{AppConstants.MANUAL_TASK_PREFIX}{short_hash}"
+                project_id = f"SW-{short_hash}"
+
+                # Enriches payload with backend defaults.
+                task_data['SMART_ID'] = smart_id
+                task_data['PROJECT_ID'] = project_id
+                task_data['REQUIREMENT'] = 'SIDE WORK'
+                task_data['TYPE'] = 'CUS'
+                task_data['STATUS'] = 'ACTIVE'
+
+                # Saves directly to persistence layer.
+                success = self.model.db.upsert_manual_task(task_data)
+
+                if success:
+                    if hasattr(self.view, 'show_status'):
+                        self.view.show_status(f"Task '{task_data.get('PROJECT NAME')}' created successfully.", 4000)
+                    # Triggers a hard refresh to pull the new database rows.
+                    self.refresh_tables(maintain_state=True)
+                else:
+                    if hasattr(self.view, 'show_warning'):
+                        self.view.show_warning("Error", "Failed to create manual task in the database.")
+        except Exception as e:  # pyrefly: ignore[broad-except]
+            logger.exception(f"Error handling task creation: {e}")
+            if hasattr(self.view, 'show_warning'):
+                self.view.show_warning("Error", f"An unexpected error occurred while creating the task: {e}")
+
     def handle_sync(self) -> None:
+        """Triggers the Excel parsing worker to update the database."""
         if not self.excel_path or not os.path.exists(self.excel_path):
             self.excel_path = self.prompt_for_excel()
 
@@ -615,6 +686,7 @@ class AppController:
         self.sync_worker.start()
 
     def on_sync_finished(self, success: bool, error_msg: str) -> None:
+        """Callback for when the Excel sync worker completes."""
         if hasattr(self.view, 'nav_sync_btn'):
             self.view.nav_sync_btn.setEnabled(True)
 
@@ -635,36 +707,39 @@ class AppController:
             self.refresh_tables(maintain_state=False)
 
     def refresh_team_view(self) -> None:
+        """Updates the roster and assignments available in the Team Management screen."""
         try:
             eng_df = self.model.db.get_engineers_df()
             self.view.team_screen.populate_roster(eng_df)
 
             raw_df = self.model.get_raw_df()
             if not raw_df.empty and 'RAW_ASSIGNED' in raw_df.columns:
-                raw_names: Set[str] = {str(x).strip().upper() for x in raw_df['RAW_ASSIGNED'].unique() if
+                raw_names: set[str] = {str(x).strip().upper() for x in raw_df['RAW_ASSIGNED'].unique() if
                                        str(x).strip().upper() not in ('', 'UNASSIGNED', 'NAN')}
 
-                configured_names: Set[str] = {str(x).strip().upper() for x in
+                configured_names: set[str] = {str(x).strip().upper() for x in
                                               eng_df['name'].unique()} if not eng_df.empty else set()
 
-                unconfigured: List[str] = sorted(list(raw_names - configured_names))
-                configured_list: List[str] = sorted(list(configured_names))
+                unconfigured: list[str] = sorted(list(raw_names - configured_names))
+                configured_list: list[str] = sorted(list(configured_names))
 
                 combo = self.view.team_screen.inp_name
                 combo.blockSignals(True)
                 combo.clear()
                 combo.addItems(unconfigured + configured_list)
                 combo.blockSignals(False)
-        except Exception as e:
-            logger.exception("CRITICAL ERROR in refresh_team_view: %s", e)
+        except Exception as e:  # pyrefly: ignore[broad-except]
+            logger.exception(f"CRITICAL ERROR in refresh_team_view: {e}")
 
     def handle_save_engineer(self, name: str, team: str, color: str) -> None:
+        """Saves engineer configurations from the Team Management screen."""
         self.model.db.upsert_team(team, 0.0)
         self.model.db.upsert_engineer(name, team, color)
         if hasattr(self.view, 'show_status'): self.view.show_status(f"Saved configuration for {name}.", 3000)
         self.refresh_team_view()
 
     def handle_engineer_selected(self, engineer_name: str) -> None:
+        """Generates analytics for a specifically selected engineer."""
         if not hasattr(self, 'actual_df') or self.actual_df.empty:
             return
 
@@ -683,9 +758,11 @@ class AppController:
             primary_color=primary_color
         )
 
-    def update_kpi_variances_locally(self, start_x: float, est_days_str: str, pto_dates: Optional[List[str]] = None) -> None:
+    def update_kpi_variances_locally(self, start_x: float, est_days_str: str, pto_dates: Optional[list[str]] = None) -> None:
+        """Locally updates the KPI panel text during a visual drag event."""
         day_zero = self.view.gantt_screen.day_zero
-        if not day_zero: return
+        if not day_zero:
+            return
 
         start_date_raw = day_zero + pd.tseries.offsets.BusinessDay(round(start_x / self.day_width))
         days = int(est_days_str) if est_days_str.isdigit() else 5
@@ -701,22 +778,26 @@ class AppController:
             try:
                 var = CalendarEngine.get_working_days_variance(end_date, pd.to_datetime(due_date_str), pto_dates)
                 self.view.kpi_eng_var.setText(f"{var} days")
-            except ValueError: pass
+            except ValueError:
+                pass
 
         esd_str = self.view.kpi_esd.text()
         if esd_str and esd_str != '--':
             try:
                 var_esd = CalendarEngine.get_working_days_variance(end_date, pd.to_datetime(esd_str), pto_dates)
                 self.view.kpi_esd_var.setText(f"{var_esd} days")
-            except ValueError: pass
+            except ValueError:
+                pass
 
     def handle_block_dropped(self, target_id: str, new_x: float, new_width: float, is_parent: bool,
                              delta_x: float = 0.0, delta_w: float = 0.0) -> None:
+        """Processes logic for when a Gantt block finishes being visually dragged."""
         day_zero = self.view.gantt_screen.day_zero
-        if not day_zero: return
+        if not day_zero:
+            return
         day_width = self.view.gantt_screen.day_width
 
-        # --- FIX: Capture the multi-selection from the scene to prevent dropping it on redraw ---
+        # Captures the multi-selection from the scene to prevent dropping it on redraw.
         restore_ids = [target_id]
         try:
             if self.view.gantt_scene:
@@ -727,9 +808,8 @@ class AppController:
                 scene_selected = [tid for tid in scene_selected if tid and str(tid).lower() != 'nan']
                 if scene_selected:
                     restore_ids = list(set(scene_selected + [target_id]))
-        except Exception:
+        except Exception:  # pyrefly: ignore[broad-except]
             pass
-        # ----------------------------------------------------------------------------------------
 
         mask = self.current_plan_df['SMART_ID'] == target_id
         assignee = self.current_plan_df.loc[mask, 'ASSIGNED TO'].values[0] if not is_parent else ""
@@ -809,7 +889,8 @@ class AppController:
                     continue
 
                 old_child_start = pd.to_datetime(child.get('EST START DATE', pd.NaT))
-                if pd.isna(old_child_start): continue
+                if pd.isna(old_child_start):
+                    continue
 
                 new_child_pd = CalendarEngine.shift_date(old_child_start, shift_working_days)
 
@@ -825,7 +906,7 @@ class AppController:
             if bulk_edits:
                 self.history.stage_bulk_edits(bulk_edits)
 
-        # Restore the group selection after the math calculates
+        # Restores the group selection after the math calculates.
         self._rebuild_and_render_canvas(restore_ids)
 
         if hasattr(self.view, 'show_status'):

@@ -112,6 +112,10 @@ class AppConstants:
     DEFAULT_EST_DAYS = 5
     DEFAULT_QUOTE_DAYS = 1
 
+    # --- Manual Task Generation ---
+    # Prefix used when generating unique SMART_IDs for side-work
+    MANUAL_TASK_PREFIX = 'SIDEWORK-'
+
     # --- UI & Display Defaults ---
     UNASSIGNED_LABEL = 'UNASSIGNED'
     STANDARD_TEAM_LABEL = 'STANDARD TEAM'

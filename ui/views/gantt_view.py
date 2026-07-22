@@ -316,6 +316,9 @@ class GanttScreenWidget(QWidget):
             self.inp_assignee = QComboBox()
             self.inp_assignee.addItem("Unassigned")
 
+            self.inp_status = QComboBox()
+            self.inp_status.addItems(["Active", "In Queue", "Started", "Complete"])
+
             self.kpi_order = QLabel("--")
             self.kpi_quote = QLabel("--")
             self.kpi_req = QLabel("--")
@@ -337,6 +340,7 @@ class GanttScreenWidget(QWidget):
             form_layout.addRow("Requirement:", self.kpi_req)
             form_layout.addRow(self.lbl_est_days, self.inp_est_days)
             form_layout.addRow("Assign To:", self.inp_assignee)
+            form_layout.addRow("Task Status:", self.inp_status)
 
             line = QFrame()
             line.setFrameShape(QFrame.Shape.HLine)
@@ -359,6 +363,7 @@ class GanttScreenWidget(QWidget):
             # Connect bidirectional update signals
             self.inp_est_days.editingFinished.connect(self._on_est_days_changed)
             self.inp_assignee.activated.connect(self._on_assignee_changed)
+            self.inp_status.activated.connect(self._on_status_changed)
         except Exception as e:
             logger.error(f"Error setting up Gantt Screen UI: {e}")
 
@@ -405,6 +410,36 @@ class GanttScreenWidget(QWidget):
         except Exception as e:
             logger.error(f"Error emitting bulk assignee update: {e}")
 
+    def _on_status_changed(self, index: int) -> None:
+        """Dispatches bulk status updates derived from KPI combo box selection."""
+        try:
+            val = self.inp_status.itemText(index)
+
+            if val == "Multiple":
+                return
+
+            if val == "Active":
+                val = ""  # Emptied override strings allow the backend logic to default back to the raw status
+            elif val == "Complete":
+                val = "COMPLETE"
+            elif val == "In Queue":
+                val = "IN QUEUE"
+            elif val == "Started":
+                val = "STARTED"
+
+            items = [item for item in self.gantt_scene.selectedItems() if isinstance(item, GanttBlock)]
+            target_ids = []
+            for item in items:
+                tid = str(item.block_data.get('PROJECT_ID', '')) if item.is_parent else str(
+                    item.block_data.get('SMART_ID', ''))
+                if tid and tid.lower() != 'nan':
+                    target_ids.append(tid)
+
+            if target_ids:
+                self.bulk_kpi_update_signal.emit(target_ids, 'STATUS', val)
+        except Exception as e:
+            logger.error(f"Error emitting bulk status update: {e}")
+
     def populate_kpi_inspector(self, data_list: List[Dict[str, Any]]) -> None:
         """
         Populates the KPI panel, rendering single details or multi-select averages and masks.
@@ -420,6 +455,7 @@ class GanttScreenWidget(QWidget):
             self.kpi_panel.show()
             self.inp_assignee.blockSignals(True)
             self.inp_est_days.blockSignals(True)
+            self.inp_status.blockSignals(True)
 
             if len(data_list) == 1:
                 data = data_list[0]
@@ -443,6 +479,16 @@ class GanttScreenWidget(QWidget):
                 self.inp_est_days.setToolTip(
                     "Parent durations are calculated automatically." if is_parent else "Type a number of days to override the duration."
                 )
+
+                raw_status = str(data.get('STATUS', '')).strip().upper()
+                if raw_status == 'COMPLETE':
+                    status_to_show = "Complete"
+                elif raw_status == 'IN QUEUE':
+                    status_to_show = "In Queue"
+                elif raw_status == 'STARTED':
+                    status_to_show = "Started"
+                else:
+                    status_to_show = "Active"
 
                 self.kpi_eng_due.setText(str(data.get('ENG DUE DATE', '--')))
                 self.kpi_esd.setText(str(data.get('ESD', '--')))
@@ -479,6 +525,20 @@ class GanttScreenWidget(QWidget):
                 else:
                     assignee = "UNASSIGNED"
 
+                statuses = set(str(d.get('STATUS', '')).strip().upper() for d in data_list)
+                if len(statuses) == 1:
+                    raw_status = list(statuses)[0]
+                    if raw_status == 'COMPLETE':
+                        status_to_show = "Complete"
+                    elif raw_status == 'IN QUEUE':
+                        status_to_show = "In Queue"
+                    elif raw_status == 'STARTED':
+                        status_to_show = "Started"
+                    else:
+                        status_to_show = "Active"
+                else:
+                    status_to_show = "Multiple"
+
                 self.kpi_eng_due.setText("Multiple")
                 self.kpi_esd.setText("Multiple")
                 self.kpi_eng_var.setText("--")
@@ -495,8 +555,24 @@ class GanttScreenWidget(QWidget):
             else:
                 self.inp_assignee.setCurrentIndex(0)
 
-            self.inp_assignee.setEnabled(True)
+            if status_to_show == "Multiple":
+                if self.inp_status.findText("Multiple") == -1:
+                    self.inp_status.addItem("Multiple")
+            else:
+                idx = self.inp_status.findText("Multiple")
+                if idx != -1:
+                    self.inp_status.removeItem(idx)
 
+            match_status_idx = self.inp_status.findText(status_to_show)
+            if match_status_idx >= 0:
+                self.inp_status.setCurrentIndex(match_status_idx)
+            else:
+                self.inp_status.setCurrentIndex(0)
+
+            self.inp_assignee.setEnabled(True)
+            self.inp_status.setEnabled(True)
+
+            self.inp_status.blockSignals(False)
             self.inp_est_days.blockSignals(False)
             self.inp_assignee.blockSignals(False)
 
