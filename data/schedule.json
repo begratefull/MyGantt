@@ -106,9 +106,9 @@
     {
         "SMART_ID": "68370-1.01-PRODUCTION",
         "PROJECT_ID": "68370",
-        "ASSIGNED TO": "Matt M",
+        "ASSIGNED TO": "Adam T",
         "EST START DATE": "11/2/2026",
-        "EST END DATE": "11/10/2026",
+        "EST END DATE": "11/06/2026",
         "EST DAYS": "5",
         "STATUS": "In Queue",
         "REQUIREMENT": "Production",
@@ -171,9 +171,9 @@
     {
         "SMART_ID": "68405-1.01-PRODUCTION",
         "PROJECT_ID": "68405",
-        "ASSIGNED TO": "Adam T",
+        "ASSIGNED TO": "Matt M",
         "EST START DATE": "11/2/2026",
-        "EST END DATE": "11/06/2026",
+        "EST END DATE": "11/10/2026",
         "EST DAYS": "5",
         "STATUS": "On Hold",
         "REQUIREMENT": "Production",
