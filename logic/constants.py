@@ -15,7 +15,7 @@ class AppConstants:
     """
 
     # --- App Metadata ---
-    APP_VERSION = 'v2.2.0'
+    APP_VERSION = 'v2.3.0'
 
     # --- Smart Pathing (Single Source of Truth) ---
     @staticmethod
