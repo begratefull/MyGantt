@@ -15,10 +15,11 @@ logger = logging.getLogger(__name__)
 class WorkloadManager:
     """
     Manages the processing, synthesis, and synchronization of raw Excel data
-    with manual application overrides and side-work tasks.
+    with manual application overrides, projects, and side-work tasks.
     """
 
     def __init__(self) -> None:
+        """Initializes the WorkloadManager, establishing database connections and parsing rules."""
         self.db = DatabaseManager()
         self.parser = ExcelParser()
         self.db.init_db(self.parser.unique_expected_cols)
@@ -65,7 +66,7 @@ class WorkloadManager:
     def get_application_data(self, staged_edits: Optional[Dict[str, Any]] = None,
                              ignore_overrides: bool = False) -> pd.DataFrame:
         """
-        Builds the final DataFrame for the app by appending manual tasks
+        Builds the final DataFrame for the app by appending manual projects and tasks,
         and injecting user overrides line by line using fast vectorized operations.
 
         Args:
@@ -77,7 +78,66 @@ class WorkloadManager:
         """
         try:
             raw_df = self.db.get_raw_df()
-            manual_df = self.db.get_manual_tasks_df()
+            tasks_df = self.db.get_manual_tasks_df()
+            projects_df = self.db.get_manual_projects_df()
+
+            manual_df = pd.DataFrame()
+
+            # Process parent projects and sub-tasks
+            if not projects_df.empty:
+
+                # Concatenate PROJECT_NAME and DESCRIPTION before the outer merge prevents data loss
+                def format_project_name(row: pd.Series) -> str:
+                    name = str(row.get('PROJECT_NAME', '')).strip()
+                    if name.lower() == 'nan': name = ''
+
+                    desc = str(row.get('DESCRIPTION', '')).strip()
+                    if desc.lower() == 'nan': desc = ''
+
+                    if name and desc:
+                        return f"{name} - {desc}"
+                    return name or desc
+
+                projects_df['PROJECT_NAME'] = projects_df.apply(format_project_name, axis=1)
+
+                # Align project headers for the outer merge
+                projects_df = projects_df.rename(columns={'PROJECT_NAME': 'PROJECT NAME', 'STATUS': 'PROJECT_STATUS'})
+
+                if not tasks_df.empty:
+                    manual_df = pd.merge(tasks_df, projects_df, on='PROJECT_ID', how='outer')
+                else:
+                    manual_df = projects_df.copy()
+                    manual_df['SMART_ID'] = np.nan
+
+                # Intercept empty projects and generate a visual placeholder task
+                empty_mask = manual_df['SMART_ID'].isna()
+                if empty_mask.any():
+                    # Cast SMART_ID to object to prevent LossySetitemError in Pandas 2.0+
+                    manual_df['SMART_ID'] = manual_df['SMART_ID'].astype(object)
+                    manual_df.loc[empty_mask, 'SMART_ID'] = manual_df.loc[empty_mask, 'PROJECT_ID'].astype(str).apply(
+                        lambda x: f"{x}-EMPTY")
+
+                    manual_df.loc[empty_mask, 'TASK_NAME'] = "No tasks assigned"
+                    manual_df.loc[empty_mask, 'EST START DATE'] = pd.Timestamp.today().strftime('%m/%d/%Y')
+                    manual_df.loc[empty_mask, 'EST DAYS'] = "1"
+                    manual_df.loc[empty_mask, 'REQUIREMENT'] = "Side Work"
+                    manual_df.loc[empty_mask, 'TYPE'] = "CUS"
+                    manual_df.loc[empty_mask, 'ASSIGNED TO'] = ""
+
+                # Reconcile status: Task status takes priority over Project status
+                if 'STATUS' in manual_df.columns:
+                    manual_df['STATUS'] = manual_df.apply(
+                        lambda r: r['PROJECT_STATUS'] if pd.isna(r['STATUS']) or str(r['STATUS']).strip() == '' else r[
+                            'STATUS'],
+                        axis=1
+                    )
+                else:
+                    manual_df['STATUS'] = manual_df['PROJECT_STATUS']
+
+                manual_df = manual_df.drop(columns=['PROJECT_STATUS', 'DESCRIPTION'], errors='ignore')
+
+            elif not tasks_df.empty:
+                manual_df = tasks_df.copy()
 
             # Safely combine raw Excel workload with manually created side-work tasks
             if not manual_df.empty:
@@ -169,12 +229,21 @@ class WorkloadManager:
 
             df['EST DAYS'] = np.where(cond_man_est, man_est_np, fallback_days).tolist()
 
-            # Resolve Project Grouping Identifiers
-            df['PROJECT_ID'] = df.apply(
-                lambda x: str(x.get('ORDER NUMBER', '')).strip() if str(x.get('ORDER NUMBER', '')).strip() else str(
-                    x.get('QUOTE NO', '')).strip(),
-                axis=1)
-            df['PROJECT_ID'] = df.apply(lambda x: x['PROJECT_ID'] if x['PROJECT_ID'] else x.get('SMART_ID', ''), axis=1)
+            # Resolve Project Grouping Identifiers Safely
+            def resolve_project_id(row: pd.Series) -> str:
+                pid = str(row.get('PROJECT_ID', '')).strip()
+                if pid and pid.upper() != 'NAN':
+                    return pid
+                order = str(row.get('ORDER NUMBER', '')).strip()
+                if order and order.upper() != 'NAN':
+                    return order
+                quote = str(row.get('QUOTE NO', '')).strip()
+                if quote and quote.upper() != 'NAN':
+                    return quote
+                sid = str(row.get('SMART_ID', '')).strip()
+                return sid
+
+            df['PROJECT_ID'] = df.apply(resolve_project_id, axis=1)
             df['LINE_COUNT'] = 1
 
             # Execute Vectorized End Date Generation
@@ -224,7 +293,7 @@ class WorkloadManager:
                 "EST ESD VARIANCE", "EST ENG VARIANCE", "COMPLETION VARIANCE",
                 "QUEUE_DAYS", "PROCESS_DAYS", "SELL $", "LINE_COUNT",
                 "LUMINARIE SPECIFICATION", "PART NUMBER", "FAMILY", "CATALOG CODE", "CATALOG",
-                "FAMILY_PREFIX"
+                "FAMILY_PREFIX", "TASK_NAME"
             ]
 
             available_cols = [c for c in planning_headers if c in df.columns]

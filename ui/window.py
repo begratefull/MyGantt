@@ -9,8 +9,7 @@ import logging
 from typing import Any
 from PySide6.QtWidgets import (QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout,
                                QWidget, QMessageBox, QTableWidgetItem, QHeaderView,
-                               QStackedWidget, QFrame, QPlainTextEdit, QTableWidget, QLabel,
-                               QBoxLayout)
+                               QStackedWidget, QFrame, QPlainTextEdit, QTableWidget, QLabel)
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon
 
@@ -149,22 +148,6 @@ class MyGanttWindow(QMainWindow):
             self.nav_data_btn.clicked.connect(lambda: self.switch_view(3))
 
             self.nav_log_btn.clicked.connect(self.toggle_log_console)
-
-            # Dynamically injects the create task button into the Gantt header.
-            self.btn_create_task = QPushButton("+ Create Task")
-            self.btn_create_task.setObjectName("PrimaryButton")
-            self.btn_create_task.setMinimumHeight(28)
-            self.btn_create_task.setCursor(Qt.CursorShape.PointingHandCursor)
-
-            gantt_layout = self.gantt_screen.layout()
-            if gantt_layout and gantt_layout.count() > 0:
-                header_item = gantt_layout.itemAt(0)
-                if header_item is not None:
-                    header_layout = header_item.layout()
-                    # Evaluates type structure to resolve Pyrefly linter warnings.
-                    if isinstance(header_layout, QBoxLayout):
-                        header_layout.insertWidget(2, self.btn_create_task)
-                        header_layout.insertSpacing(3, 15)
 
             self.raw_table = self.data_screen.raw_table
             self.filter_team = self.gantt_screen.filter_team

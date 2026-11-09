@@ -3,7 +3,7 @@ import os
 import logging
 import contextlib
 import pandas as pd
-from typing import Dict, Any, List
+from typing import Any
 from logic.constants import AppConstants
 
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ class DatabaseManager:
         return sqlite3.connect(self.db_path)
 
     def _ensure_static_tables(self) -> None:
-        """Silently creates teams, engineers, holidays, and manual task tables on startup if they don't exist."""
+        """Silently creates teams, engineers, holidays, and manual task/project tables on startup if they don't exist."""
         try:
             # Using contextlib.closing ensures the connection is actually CLOSED
             # and released back to OneDrive so it can sync safely without locking.
@@ -36,76 +36,50 @@ class DatabaseManager:
                 with conn:  # This inner context manages the transaction (commit/rollback)
                     cursor = conn.cursor()
                     cursor.execute('''
-                                   CREATE TABLE IF NOT EXISTS teams
-                                   (
-                                       "team_name"
-                                       TEXT
-                                       PRIMARY
-                                       KEY,
-                                       "hourly_rate"
-                                       REAL
-                                   )
-                                   ''')
+                        CREATE TABLE IF NOT EXISTS teams (
+                            "team_name" TEXT PRIMARY KEY,
+                            "hourly_rate" REAL
+                        )
+                    ''')
                     cursor.execute('''
-                                   CREATE TABLE IF NOT EXISTS engineers
-                                   (
-                                       "name"
-                                       TEXT
-                                       PRIMARY
-                                       KEY,
-                                       "team_name"
-                                       TEXT,
-                                       "hex_color"
-                                       TEXT,
-                                       FOREIGN
-                                       KEY
-                                   (
-                                       "team_name"
-                                   ) REFERENCES teams
-                                   (
-                                       "team_name"
-                                   )
-                                       )
-                                   ''')
+                        CREATE TABLE IF NOT EXISTS engineers (
+                            "name" TEXT PRIMARY KEY,
+                            "team_name" TEXT,
+                            "hex_color" TEXT,
+                            FOREIGN KEY("team_name") REFERENCES teams("team_name")
+                        )
+                    ''')
                     cursor.execute('''
-                                   CREATE TABLE IF NOT EXISTS company_holidays
-                                   (
-                                       "holiday_date"
-                                       TEXT
-                                       PRIMARY
-                                       KEY
-                                   )
-                                   ''')
+                        CREATE TABLE IF NOT EXISTS company_holidays (
+                            "holiday_date" TEXT PRIMARY KEY
+                        )
+                    ''')
                     cursor.execute('''
-                                   CREATE TABLE IF NOT EXISTS manual_tasks
-                                   (
-                                       "SMART_ID"
-                                       TEXT
-                                       PRIMARY
-                                       KEY,
-                                       "PROJECT_ID"
-                                       TEXT,
-                                       "PROJECT NAME"
-                                       TEXT,
-                                       "ASSIGNED TO"
-                                       TEXT,
-                                       "EST START DATE"
-                                       TEXT,
-                                       "EST DAYS"
-                                       TEXT,
-                                       "REQUIREMENT"
-                                       TEXT,
-                                       "TYPE"
-                                       TEXT,
-                                       "STATUS"
-                                       TEXT
-                                   )
-                                   ''')
+                        CREATE TABLE IF NOT EXISTS manual_projects (
+                            "PROJECT_ID" TEXT PRIMARY KEY,
+                            "PROJECT_NAME" TEXT,
+                            "DESCRIPTION" TEXT,
+                            "STATUS" TEXT
+                        )
+                    ''')
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS manual_tasks (
+                            "SMART_ID" TEXT PRIMARY KEY,
+                            "PROJECT_ID" TEXT,
+                            "TASK_NAME" TEXT,
+                            "ASSIGNED TO" TEXT,
+                            "EST START DATE" TEXT,
+                            "EST DAYS" TEXT,
+                            "REQUIREMENT" TEXT,
+                            "TYPE" TEXT,
+                            "STATUS" TEXT
+                        )
+                    ''')
         except sqlite3.Error as e:
             logger.error(f"Database Initialization Error: Could not verify static tables. ({e})")
 
-    def init_db(self, unique_cols: List[str]) -> None:
-        """Creates the raw_workload table dynamically during an Excel sync and migrates overrides schema."""
+    def init_db(self, unique_cols: list[str]) -> None:
+        """Creates the raw_workload table dynamically during an Excel sync and migrates schemas."""
         self._ensure_static_tables()
         try:
             with contextlib.closing(self.get_connection()) as conn:
@@ -121,29 +95,28 @@ class DatabaseManager:
                     ''')
 
                     cursor.execute('''
-                                   CREATE TABLE IF NOT EXISTS user_overrides
-                                   (
-                                       "SMART_ID"
-                                       TEXT
-                                       PRIMARY
-                                       KEY,
-                                       "MAN_ASSIGNED"
-                                       TEXT,
-                                       "MAN_EST_DAYS"
-                                       TEXT,
-                                       "MAN_START_DATE"
-                                       TEXT,
-                                       "MAN_STATUS"
-                                       TEXT
-                                   )
-                                   ''')
+                        CREATE TABLE IF NOT EXISTS user_overrides (
+                            "SMART_ID" TEXT PRIMARY KEY,
+                            "MAN_ASSIGNED" TEXT,
+                            "MAN_EST_DAYS" TEXT,
+                            "MAN_START_DATE" TEXT,
+                            "MAN_STATUS" TEXT
+                        )
+                    ''')
 
                     # Safe schema migration: Add MAN_STATUS to older database files if it is missing
                     cursor.execute("PRAGMA table_info(user_overrides)")
                     columns = [info[1] for info in cursor.fetchall()]
-                    if "MAN_STATUS" not in columns:
+                    if columns and "MAN_STATUS" not in columns:
                         cursor.execute('ALTER TABLE user_overrides ADD COLUMN "MAN_STATUS" TEXT')
                         logger.info("Migrated existing user_overrides schema to include MAN_STATUS.")
+
+                    # Safe schema migration: Add TASK_NAME to older manual_tasks if it is missing
+                    cursor.execute("PRAGMA table_info(manual_tasks)")
+                    mt_columns = [info[1] for info in cursor.fetchall()]
+                    if mt_columns and "TASK_NAME" not in mt_columns:
+                        cursor.execute('ALTER TABLE manual_tasks ADD COLUMN "TASK_NAME" TEXT')
+                        logger.info("Migrated existing manual_tasks schema to include TASK_NAME.")
 
                     logger.info("Database schemas initialized successfully.")
         except sqlite3.Error as e:
@@ -167,8 +140,17 @@ class DatabaseManager:
             logger.warning(f"Failed to load user overrides: {e}")
             return pd.DataFrame()
 
+    def get_manual_projects_df(self) -> pd.DataFrame:
+        """Retrieves all manually created projects as a Pandas DataFrame."""
+        try:
+            with contextlib.closing(self.get_connection()) as conn:
+                return pd.read_sql_query('SELECT * FROM manual_projects', conn).fillna("")
+        except sqlite3.Error as e:
+            logger.warning(f"Failed to load manual projects: {e}")
+            return pd.DataFrame()
+
     def get_manual_tasks_df(self) -> pd.DataFrame:
-        """Retrieves all manually created side-work tasks as a Pandas DataFrame."""
+        """Retrieves all manually created sub-tasks as a Pandas DataFrame."""
         try:
             with contextlib.closing(self.get_connection()) as conn:
                 return pd.read_sql_query('SELECT * FROM manual_tasks', conn).fillna("")
@@ -194,7 +176,7 @@ class DatabaseManager:
             logger.warning(f"Failed to load teams: {e}")
             return pd.DataFrame(columns=["team_name", "hourly_rate"])
 
-    def save_overrides(self, staged_edits_dict: Dict[str, Dict[str, Any]]) -> None:
+    def save_overrides(self, staged_edits_dict: dict[str, dict[str, Any]]) -> None:
         """Commits dictionary of staged UI edits (Assignee, Dates, Durations, Status) into the database."""
         if not staged_edits_dict or not isinstance(staged_edits_dict, dict):
             return
@@ -210,59 +192,96 @@ class DatabaseManager:
                         man_status = edit_data.get('MAN_STATUS', '')
 
                         cursor.execute('''
-                                       INSERT INTO user_overrides ("SMART_ID", "MAN_ASSIGNED", "MAN_EST_DAYS",
-                                                                   "MAN_START_DATE", "MAN_STATUS")
-                                       VALUES (?, ?, ?, ?, ?) ON CONFLICT("SMART_ID") DO
-                                       UPDATE SET
-                                           "MAN_ASSIGNED" = CASE WHEN excluded."MAN_ASSIGNED" != '' THEN excluded."MAN_ASSIGNED" ELSE user_overrides."MAN_ASSIGNED" END,
-                                           "MAN_EST_DAYS" = CASE WHEN excluded."MAN_EST_DAYS" != '' THEN excluded."MAN_EST_DAYS" ELSE user_overrides."MAN_EST_DAYS"
-                                       END,
-                                "MAN_START_DATE" = CASE WHEN excluded."MAN_START_DATE" != '' THEN excluded."MAN_START_DATE" ELSE user_overrides."MAN_START_DATE"
-                                       END,
-                                "MAN_STATUS" = CASE WHEN excluded."MAN_STATUS" != '' THEN excluded."MAN_STATUS" ELSE user_overrides."MAN_STATUS"
-                                       END
-                                       ''', (smart_id, assignee, est_days, start_date, man_status))
+                            INSERT INTO user_overrides ("SMART_ID", "MAN_ASSIGNED", "MAN_EST_DAYS", "MAN_START_DATE", "MAN_STATUS")
+                            VALUES (?, ?, ?, ?, ?) ON CONFLICT("SMART_ID") DO UPDATE SET
+                                "MAN_ASSIGNED" = CASE WHEN excluded."MAN_ASSIGNED" != '' THEN excluded."MAN_ASSIGNED" ELSE user_overrides."MAN_ASSIGNED" END,
+                                "MAN_EST_DAYS" = CASE WHEN excluded."MAN_EST_DAYS" != '' THEN excluded."MAN_EST_DAYS" ELSE user_overrides."MAN_EST_DAYS" END,
+                                "MAN_START_DATE" = CASE WHEN excluded."MAN_START_DATE" != '' THEN excluded."MAN_START_DATE" ELSE user_overrides."MAN_START_DATE" END,
+                                "MAN_STATUS" = CASE WHEN excluded."MAN_STATUS" != '' THEN excluded."MAN_STATUS" ELSE user_overrides."MAN_STATUS" END
+                        ''', (smart_id, assignee, est_days, start_date, man_status))
                     logger.info(f"Successfully saved {len(staged_edits_dict)} edits to the database.")
         except sqlite3.Error as e:
             logger.error(f"Failed to save manual edits: {e}")
 
-    def upsert_manual_task(self, task_data: Dict[str, Any]) -> bool:
-        """Inserts or updates a manually created side-work task in the persistence table."""
+    def upsert_manual_project(self, project_data: dict[str, Any]) -> bool:
+        """Inserts or updates a manually created project container."""
         self._ensure_static_tables()
         try:
             with contextlib.closing(self.get_connection()) as conn:
                 with conn:
                     cursor = conn.cursor()
                     cursor.execute('''
-                                   INSERT INTO manual_tasks ("SMART_ID", "PROJECT_ID", "PROJECT NAME", "ASSIGNED TO",
-                                                             "EST START DATE", "EST DAYS", "REQUIREMENT", "TYPE",
-                                                             "STATUS")
-                                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT("SMART_ID") DO
-                                   UPDATE SET
-                                       "PROJECT NAME" = excluded."PROJECT NAME",
-                                       "ASSIGNED TO" = excluded."ASSIGNED TO",
-                                       "EST START DATE" = excluded."EST START DATE",
-                                       "EST DAYS" = excluded."EST DAYS",
-                                       "STATUS" = excluded."STATUS"
-                                   ''', (
-                                       task_data.get('SMART_ID', ''),
-                                       task_data.get('PROJECT_ID', ''),
-                                       task_data.get('PROJECT NAME', ''),
-                                       task_data.get('ASSIGNED TO', ''),
-                                       task_data.get('EST START DATE', ''),
-                                       task_data.get('EST DAYS', ''),
-                                       task_data.get('REQUIREMENT', 'SIDE WORK'),
-                                       task_data.get('TYPE', 'CUS'),
-                                       task_data.get('STATUS', 'ACTIVE')
-                                   ))
-                    logger.info(f"Manual task {task_data.get('SMART_ID')} saved successfully.")
+                        INSERT INTO manual_projects (
+                            "PROJECT_ID", "PROJECT_NAME", "DESCRIPTION", "STATUS"
+                        ) VALUES (?, ?, ?, ?) ON CONFLICT("PROJECT_ID") DO UPDATE SET
+                            "PROJECT_NAME" = excluded."PROJECT_NAME",
+                            "DESCRIPTION" = excluded."DESCRIPTION",
+                            "STATUS" = excluded."STATUS"
+                    ''', (
+                        project_data.get('PROJECT_ID', ''),
+                        project_data.get('PROJECT_NAME', ''),
+                        project_data.get('DESCRIPTION', ''),
+                        project_data.get('STATUS', 'ACTIVE')
+                    ))
+                    logger.info(f"Manual project {project_data.get('PROJECT_ID')} saved successfully.")
+                    return True
+        except sqlite3.Error as e:
+            logger.error(f"Failed to upsert manual project: {e}")
+            return False
+
+    def upsert_manual_task(self, task_data: dict[str, Any]) -> bool:
+        """Inserts or updates a manually created sub-task in the persistence table."""
+        self._ensure_static_tables()
+        try:
+            with contextlib.closing(self.get_connection()) as conn:
+                with conn:
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        INSERT INTO manual_tasks (
+                            "SMART_ID", "PROJECT_ID", "TASK_NAME", "ASSIGNED TO",
+                            "EST START DATE", "EST DAYS", "REQUIREMENT", "TYPE", "STATUS"
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT("SMART_ID") DO UPDATE SET
+                            "PROJECT_ID" = excluded."PROJECT_ID",
+                            "TASK_NAME" = excluded."TASK_NAME",
+                            "ASSIGNED TO" = excluded."ASSIGNED TO",
+                            "EST START DATE" = excluded."EST START DATE",
+                            "EST DAYS" = excluded."EST DAYS",
+                            "STATUS" = excluded."STATUS"
+                    ''', (
+                        task_data.get('SMART_ID', ''),
+                        task_data.get('PROJECT_ID', ''),
+                        task_data.get('TASK_NAME', ''),
+                        task_data.get('ASSIGNED TO', ''),
+                        task_data.get('EST START DATE', ''),
+                        task_data.get('EST DAYS', ''),
+                        task_data.get('REQUIREMENT', 'Side Work'),
+                        task_data.get('TYPE', 'CUS'),
+                        task_data.get('STATUS', 'ACTIVE')
+                    ))
+                    logger.info(f"Manual sub-task {task_data.get('SMART_ID')} saved successfully.")
                     return True
         except sqlite3.Error as e:
             logger.error(f"Failed to upsert manual task: {e}")
             return False
 
+    def delete_manual_project(self, project_id: str) -> bool:
+        """Deletes a manual project and all of its associated sub-tasks from the database."""
+        try:
+            with contextlib.closing(self.get_connection()) as conn:
+                with conn:
+                    cursor = conn.cursor()
+                    # Cascading delete: Remove child tasks assigned to this project ID first
+                    cursor.execute('DELETE FROM manual_tasks WHERE "PROJECT_ID" = ?', (project_id,))
+                    # Remove the parent project container
+                    cursor.execute('DELETE FROM manual_projects WHERE "PROJECT_ID" = ?', (project_id,))
+                    logger.info(f"Manual project {project_id} and associated tasks deleted successfully.")
+                    return True
+        except sqlite3.Error as e:
+            logger.error(f"Failed to delete manual project {project_id}: {e}")
+            return False
+
     def delete_manual_task(self, smart_id: str) -> bool:
-        """Deletes a manual side-work task from the persistence table based on its SMART_ID."""
+        """Deletes a manual side-work sub-task from the database."""
         try:
             with contextlib.closing(self.get_connection()) as conn:
                 with conn:
@@ -282,12 +301,11 @@ class DatabaseManager:
                 with conn:
                     cursor = conn.cursor()
                     cursor.execute('''
-                                   INSERT INTO engineers ("name", "team_name", "hex_color")
-                                   VALUES (?, ?, ?) ON CONFLICT("name") DO
-                                   UPDATE SET
-                                       "team_name" = excluded."team_name",
-                                       "hex_color" = excluded."hex_color"
-                                   ''', (name, team_name, hex_color))
+                        INSERT INTO engineers ("name", "team_name", "hex_color")
+                        VALUES (?, ?, ?) ON CONFLICT("name") DO UPDATE SET
+                            "team_name" = excluded."team_name",
+                            "hex_color" = excluded."hex_color"
+                    ''', (name, team_name, hex_color))
                     logger.info(f"Engineer '{name}' saved successfully.")
         except sqlite3.Error as e:
             logger.error(f"Failed to save engineer '{name}': {e}")
@@ -300,15 +318,14 @@ class DatabaseManager:
                 with conn:
                     cursor = conn.cursor()
                     cursor.execute('''
-                                   INSERT INTO teams ("team_name", "hourly_rate")
-                                   VALUES (?, ?) ON CONFLICT("team_name") DO
-                                   UPDATE SET
-                                       "hourly_rate" = excluded."hourly_rate"
-                                   ''', (team_name, hourly_rate))
+                        INSERT INTO teams ("team_name", "hourly_rate")
+                        VALUES (?, ?) ON CONFLICT("team_name") DO UPDATE SET
+                            "hourly_rate" = excluded."hourly_rate"
+                    ''', (team_name, hourly_rate))
         except sqlite3.Error as e:
             logger.error(f"Failed to save team '{team_name}': {e}")
 
-    def replace_raw_workload(self, df: pd.DataFrame, expected_cols: List[str], final_cols: List[str]) -> None:
+    def replace_raw_workload(self, df: pd.DataFrame, expected_cols: list[str], final_cols: list[str]) -> None:
         """Replaces the entire raw_workload table with freshly parsed Excel data."""
         try:
             with contextlib.closing(self.get_connection()) as conn:
@@ -330,7 +347,7 @@ class DatabaseManager:
         except sqlite3.Error as e:
             logger.error(f"Critical Database Error during sync: {e}")
 
-    def replace_holidays(self, dates: list) -> None:
+    def replace_holidays(self, dates: list[str]) -> None:
         """Wipes the old holidays and saves the newly synced ones."""
         try:
             with contextlib.closing(self.get_connection()) as conn:
@@ -343,7 +360,7 @@ class DatabaseManager:
         except sqlite3.Error as e:
             logger.error(f"Failed to save holidays: {e}")
 
-    def get_holidays(self) -> list:
+    def get_holidays(self) -> list[str]:
         """Returns a list of holiday date strings."""
         try:
             with contextlib.closing(self.get_connection()) as conn:

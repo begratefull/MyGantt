@@ -108,6 +108,9 @@ QPushButton:pressed { background-color: #1E1E1E; }
 QPushButton#PrimaryButton { background-color: #1F6AA5; border: none; color: white; }
 QPushButton#PrimaryButton:hover { background-color: #144870; }
 
+QPushButton#DeleteButton { background-color: #C62828; border: none; color: white; }
+QPushButton#DeleteButton:hover { background-color: #B71C1C; }
+
 QPushButton#NavButton { background-color: transparent; border: none; border-radius: 8px; text-align: left; padding-left: 10px; }
 QPushButton#NavButton:hover { background-color: #3E3E42; }
 

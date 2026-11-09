@@ -12,7 +12,7 @@ from typing import Any, Optional
 
 import pandas as pd
 from PySide6.QtGui import QShortcut, QKeySequence
-from PySide6.QtWidgets import QFileDialog
+from PySide6.QtWidgets import QFileDialog, QMessageBox
 
 from logic.calendar_engine import CalendarEngine
 from logic.constants import AppConstants
@@ -25,9 +25,9 @@ from logic.workers import SyncWorker, DataRefreshWorker
 from ui.components.gantt_components import GanttBlock
 
 try:
-    from ui.dialogs.task_dialog import TaskDialog  # pyrefly: ignore[missing-import]
+    from ui.dialogs.project_dialog import ProjectDialog
 except ImportError:
-    TaskDialog = None
+    ProjectDialog = None
 
 logger = logging.getLogger(__name__)
 
@@ -111,9 +111,17 @@ class AppController:
         self.view.gantt_screen.bulk_kpi_update_signal.connect(self.handle_bulk_kpi_update)
         self.view.gantt_screen.block_dropped_signal.connect(self.handle_block_dropped)
 
+        # Manual item deletion signal.
+        if hasattr(self.view, 'gantt_screen') and hasattr(self.view.gantt_screen, 'delete_item_signal'):
+            self.view.gantt_screen.delete_item_signal.connect(self.handle_delete_item)
+
         # Manual side-work task signal.
-        if hasattr(self.view, 'btn_create_task'):
-            self.view.btn_create_task.clicked.connect(self.handle_create_task)
+        if hasattr(self.view, 'gantt_screen') and hasattr(self.view.gantt_screen, 'btn_create_project'):
+            self.view.gantt_screen.btn_create_project.clicked.connect(self.handle_create_project)
+
+        # Sub-task form save signal.
+        if hasattr(self.view, 'gantt_screen') and hasattr(self.view.gantt_screen, 'btn_save_task'):
+            self.view.gantt_screen.btn_save_task.clicked.connect(self.handle_create_subtask)
 
         self.inject_startup_defaults()
 
@@ -362,8 +370,9 @@ class AppController:
         self._replace_combo_items(self.view.filter_req, unique_reqs, current_req)
 
         current_assignee = self.view.inp_assignee.currentText()
-        assignee_names: list[str] = [str(x) for x in df['ASSIGNED TO'].unique() if str(x).strip()]
-        unique_assignees = ["Unassigned"] + sorted(assignee_names)
+        # Ensure all assignee names are title cased for the UI dropdowns
+        assignee_names: set[str] = {str(x).strip().title() for x in df['ASSIGNED TO'].unique() if str(x).strip()}
+        unique_assignees = ["Unassigned"] + sorted(list(assignee_names))
         self._replace_combo_items(self.view.inp_assignee, unique_assignees, current_assignee)
 
     def is_target_parent(self, target_id: str) -> bool:
@@ -621,49 +630,155 @@ class AppController:
         except Exception as e:  # pyrefly: ignore[broad-except]
             logger.error(f"Error handling bulk KPI update: {e}")
 
-    def handle_create_task(self) -> None:
-        """Launches the dialog to create a new manual side-work task and saves it to the database."""
+    def handle_create_project(self) -> None:
+        """Launches the dialog to create a new manual project container and saves it to the database."""
         try:
-            if TaskDialog is None:
+            if ProjectDialog is None:
                 if hasattr(self.view, 'show_warning'):
-                    self.view.show_warning("Not Implemented", "TaskDialog module is missing. Please implement the dialog file.")
+                    self.view.show_warning("Not Implemented", "ProjectDialog module is missing. Please implement the dialog file.")
                 return
 
-            eng_df = self.model.db.get_engineers_df()
-            # Stop uppercasing names here so they match exactly what is in the database.
-            configured_names = [str(x).strip() for x in eng_df['name'].unique()] if not eng_df.empty else []
-
-            dialog = TaskDialog(self.view, configured_names)
+            dialog = ProjectDialog(self.view)
             if dialog.exec():
-                task_data = dialog.get_task_data()
+                project_data = dialog.get_project_data()
 
                 # Generates unique identifiers.
                 short_hash = uuid.uuid4().hex[:6].upper()
-                smart_id = f"{AppConstants.MANUAL_TASK_PREFIX}{short_hash}"
                 project_id = f"SW-{short_hash}"
 
                 # Enriches payload with backend defaults.
-                task_data['SMART_ID'] = smart_id
-                task_data['PROJECT_ID'] = project_id
-                task_data['REQUIREMENT'] = 'SIDE WORK'
-                task_data['TYPE'] = 'CUS'
-                task_data['STATUS'] = 'ACTIVE'
+                project_data['PROJECT_ID'] = project_id
+                project_data['STATUS'] = 'ACTIVE'
 
                 # Saves directly to persistence layer.
-                success = self.model.db.upsert_manual_task(task_data)
+                success = self.model.db.upsert_manual_project(project_data)
 
                 if success:
                     if hasattr(self.view, 'show_status'):
-                        self.view.show_status(f"Task '{task_data.get('PROJECT NAME')}' created successfully.", 4000)
+                        self.view.show_status(f"Project '{project_data.get('PROJECT_NAME')}' created successfully.", 4000)
                     # Triggers a hard refresh to pull the new database rows.
                     self.refresh_tables(maintain_state=True)
                 else:
                     if hasattr(self.view, 'show_warning'):
-                        self.view.show_warning("Error", "Failed to create manual task in the database.")
+                        self.view.show_warning("Error", "Failed to create manual project in the database.")
         except Exception as e:  # pyrefly: ignore[broad-except]
-            logger.exception(f"Error handling task creation: {e}")
+            logger.exception(f"Error handling project creation: {e}")
             if hasattr(self.view, 'show_warning'):
-                self.view.show_warning("Error", f"An unexpected error occurred while creating the task: {e}")
+                self.view.show_warning("Error", f"An unexpected error occurred while creating the project: {e}")
+
+    def handle_create_subtask(self) -> None:
+        """Captures sub-task form inputs from the KPI panel and saves to the database."""
+        try:
+            gantt_screen = self.view.gantt_screen
+            task_name = gantt_screen.tf_name.text().strip()
+
+            if not task_name:
+                if hasattr(self.view, 'show_warning'):
+                    self.view.show_warning("Validation Error", "Task Name cannot be empty.")
+                gantt_screen.tf_name.setFocus()
+                return
+
+            est_days = gantt_screen.tf_est_days.text().strip()
+            if not est_days.isdigit() or int(est_days) < 1:
+                if hasattr(self.view, 'show_warning'):
+                    self.view.show_warning("Validation Error", "Estimated Days must be a positive integer.")
+                gantt_screen.tf_est_days.setFocus()
+                return
+
+            assignee = gantt_screen.tf_assignee.currentText()
+            if assignee == "Unassigned":
+                assignee = ""
+
+            start_date = gantt_screen.tf_start_date.date().toString("M/d/yyyy")
+
+            # The parent project ID is grabbed from the currently selected row in the inspector.
+            project_id = gantt_screen.kpi_order.text()
+            if project_id == "--" or project_id == "Multiple":
+                if hasattr(self.view, 'show_warning'):
+                    self.view.show_warning("Validation Error", "Invalid parent project selected.")
+                return
+
+            short_hash = uuid.uuid4().hex[:6].upper()
+            smart_id = f"{AppConstants.MANUAL_TASK_PREFIX}{short_hash}"
+
+            task_data = {
+                'SMART_ID': smart_id,
+                'PROJECT_ID': project_id,
+                'TASK_NAME': task_name,
+                'ASSIGNED TO': assignee,
+                'EST START DATE': start_date,
+                'EST DAYS': est_days,
+                'REQUIREMENT': 'Side Work',
+                'TYPE': 'CUS',
+                'STATUS': 'ACTIVE'
+            }
+
+            success = self.model.db.upsert_manual_task(task_data)
+
+            if success:
+                if hasattr(self.view, 'show_status'):
+                    self.view.show_status(f"Sub-task '{task_name}' created successfully.", 4000)
+
+                # Resets the form fields.
+                gantt_screen.tf_name.clear()
+                gantt_screen.tf_est_days.setText("1")
+                gantt_screen.tf_assignee.setCurrentIndex(0)
+
+                # Flips back to the inspector view.
+                gantt_screen.kpi_stack.setCurrentIndex(0)
+
+                # Triggers a hard refresh to pull the new database rows.
+                self.refresh_tables(maintain_state=True)
+            else:
+                if hasattr(self.view, 'show_warning'):
+                    self.view.show_warning("Error", "Failed to create manual sub-task in the database.")
+
+        except Exception as e: # pyrefly: ignore[broad-except]
+            logger.exception(f"Error handling sub-task creation: {e}")
+            if hasattr(self.view, 'show_warning'):
+                self.view.show_warning("Error", f"An unexpected error occurred while creating the sub-task: {e}")
+
+    def handle_delete_item(self, target_id: str, is_parent: bool) -> None:
+        """
+        Prompts the user for confirmation and deletes a manually created project or task.
+        Triggers a hard refresh of the UI afterward to clear the deleted item.
+
+        Args:
+            target_id (str): The SMART_ID or PROJECT_ID of the item to delete.
+            is_parent (bool): True if the item is a project container, False if it is a sub-task.
+        """
+        try:
+            item_type = "Project" if is_parent else "Task"
+            reply = QMessageBox.question(
+                self.view,
+                f"Confirm {item_type} Deletion",
+                f"Are you sure you want to delete this manual {item_type.lower()}?\nThis action cannot be undone.",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
+            )
+
+            if reply == QMessageBox.StandardButton.Yes:
+                if hasattr(self.view, 'show_status'):
+                    self.view.show_status(f"Deleting manual {item_type.lower()}...", 0)
+
+                success = False
+                if is_parent:
+                    success = self.model.db.delete_manual_project(target_id)
+                else:
+                    success = self.model.db.delete_manual_task(target_id)
+
+                if success:
+                    if hasattr(self.view, 'show_status'):
+                        self.view.show_status(f"Manual {item_type.lower()} deleted successfully.", 4000)
+                    # Triggers a hard refresh with maintain_state=False to wipe the item from the canvas
+                    self.refresh_tables(maintain_state=False)
+                else:
+                    if hasattr(self.view, 'show_warning'):
+                        self.view.show_warning("Deletion Failed", f"Failed to delete the {item_type.lower()} from the database.")
+        except Exception as e:
+            logger.exception(f"Error handling item deletion: {e}")
+            if hasattr(self.view, 'show_warning'):
+                self.view.show_warning("Error", f"An unexpected error occurred during deletion: {e}")
 
     def handle_sync(self) -> None:
         """Triggers the Excel parsing worker to update the database."""
@@ -717,17 +832,28 @@ class AppController:
                 raw_names: set[str] = {str(x).strip().upper() for x in raw_df['RAW_ASSIGNED'].unique() if
                                        str(x).strip().upper() not in ('', 'UNASSIGNED', 'NAN')}
 
-                configured_names: set[str] = {str(x).strip().upper() for x in
-                                              eng_df['name'].unique()} if not eng_df.empty else set()
+                # Apply .title() and deduplicate for UI presentation
+                configured_names_proper: list[str] = sorted(list({str(x).strip().title() for x in eng_df['name'].unique()})) if not eng_df.empty else []
+                configured_names_upper: set[str] = {x.upper() for x in configured_names_proper}
 
-                unconfigured: list[str] = sorted(list(raw_names - configured_names))
-                configured_list: list[str] = sorted(list(configured_names))
+                # Convert unconfigured raw names to Title Case for UI display
+                unconfigured_raw: set[str] = raw_names - configured_names_upper
+                unconfigured: list[str] = sorted(list({x.title() for x in unconfigured_raw}))
 
                 combo = self.view.team_screen.inp_name
                 combo.blockSignals(True)
                 combo.clear()
-                combo.addItems(unconfigured + configured_list)
+                combo.addItems(unconfigured + configured_names_proper)
                 combo.blockSignals(False)
+
+                # Populates the sub-task form assignee dropdown with properly cased engineers.
+                if hasattr(self.view, 'gantt_screen') and hasattr(self.view.gantt_screen, 'tf_assignee'):
+                    self._replace_combo_items(
+                        self.view.gantt_screen.tf_assignee,
+                        ["Unassigned"] + configured_names_proper,
+                        self.view.gantt_screen.tf_assignee.currentText()
+                    )
+
         except Exception as e:  # pyrefly: ignore[broad-except]
             logger.exception(f"CRITICAL ERROR in refresh_team_view: {e}")
 

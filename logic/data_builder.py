@@ -22,8 +22,8 @@ class GanttDataBuilder:
     @staticmethod
     def clean_requirement_text(req_text: Any) -> str:
         """
-        Cleans the requirement text by removing the word 'drawing' (case-insensitive)
-        and stripping whitespace.
+        Cleans the requirement text by removing the word 'drawing' (case-insensitive),
+        stripping whitespace, and converting legacy ALL-CAPS text to Title Case.
 
         Args:
             req_text (Any): The raw requirement string.
@@ -32,7 +32,11 @@ class GanttDataBuilder:
             str: The cleaned requirement string.
         """
         try:
-            return re.sub(r'(?i)drawing', '', str(req_text)).strip()
+            cleaned = re.sub(r'(?i)drawing', '', str(req_text)).strip()
+            # Retroactively fix legacy ALL-CAPS database entries
+            if cleaned.isupper():
+                cleaned = cleaned.title()
+            return cleaned
         except Exception as e:
             logger.error(f"Error cleaning requirement text '{req_text}': {e}")
             return str(req_text).strip()
@@ -69,6 +73,19 @@ class GanttDataBuilder:
 
         for project_id, group in grouped:
             try:
+                # Inline helper to actively scan for the first valid string in a given column
+                def get_first_valid(col_name: str) -> str:
+                    if col_name not in group.columns:
+                        return ""
+                    # Convert to string, strip whitespace, and replace pandas 'nan' with actual empty strings
+                    s = group[col_name].astype(str).str.strip()
+                    s = s.replace(re.compile(r'^nan$', re.IGNORECASE), '')
+                    # Drop any truly empty values and return the first valid string found
+                    valid_series = s.replace('', pd.NA).dropna()
+                    if not valid_series.empty:
+                        return str(valid_series.iloc[0])
+                    return ""
+
                 # Maintain index alignment for combine_first by not dropping NA immediately
                 real_starts = pd.to_datetime(group['ENG START DATE'].replace('', None), errors='coerce')
                 real_ends = pd.to_datetime(group['COMPLETE DATE'].replace('', None), errors='coerce')
@@ -92,16 +109,6 @@ class GanttDataBuilder:
                 effective_starts = real_starts.combine_first(est_starts)
                 effective_ends = real_ends.combine_first(est_ends)
 
-                # Phase 1 Debug Logging for Parent Task Bug
-                logger.debug(f"--- Debugging Project: {project_id} ---")
-                logger.debug(f"Real Starts: {real_starts.dt.strftime('%Y-%m-%d').tolist()}")
-                logger.debug(f"Est Starts:  {est_starts.dt.strftime('%Y-%m-%d').tolist()}")
-                logger.debug(f"Real Ends:   {real_ends.dt.strftime('%Y-%m-%d').tolist()}")
-                logger.debug(f"Est Ends:    {est_ends.dt.strftime('%Y-%m-%d').tolist()}")
-                logger.debug(f"Effective Starts: {effective_starts.dt.strftime('%Y-%m-%d').tolist()}")
-                logger.debug(f"Effective Ends:   {effective_ends.dt.strftime('%Y-%m-%d').tolist()}")
-                logger.debug(f"---------------------------------------")
-
                 # Drop NaT elements before finding absolute min and max bounds for the parent
                 valid_effective_starts = effective_starts.dropna()
                 valid_effective_ends = effective_ends.dropna()
@@ -124,23 +131,24 @@ class GanttDataBuilder:
                 all_complete = all(group['STATUS'].str.strip().str.upper() == 'COMPLETE')
                 parent_status = 'COMPLETE' if all_complete else 'ACTIVE'
 
-                assignees = [str(x).strip().upper() for x in group['ASSIGNED TO'].unique() if
-                             str(x).strip().upper() not in ('', AppConstants.UNASSIGNED_LABEL, 'NAN')]
-                parent_assignee = assignees[0] if len(assignees) == 1 else "MULTIPLE" if len(assignees) > 1 else AppConstants.UNASSIGNED_LABEL
+                # Preserve proper casing for UI display while extracting unique assignees
+                assignees_display = [str(x).strip().title() for x in group['ASSIGNED TO'].unique() if
+                             str(x).strip().upper() not in ('', AppConstants.UNASSIGNED_LABEL.upper(), 'NAN')]
 
-                all_colors = [color_map.get(a, "#555555") for a in assignees] if assignees else ["#555555"]
+                parent_assignee = assignees_display[0] if len(assignees_display) == 1 else "Multiple" if len(assignees_display) > 1 else AppConstants.UNASSIGNED_LABEL.title()
 
-                parent_color = color_map.get(parent_assignee, "#555555")
-                if parent_assignee == "MULTIPLE": parent_color = "#888888"
-                if parent_assignee in [AppConstants.UNASSIGNED_LABEL, "TBD", "NAN", ""]: parent_color = "#555555"
+                # Lookup hex colors using strictly uppercase strings
+                all_colors = [color_map.get(a.upper(), "#555555") for a in assignees_display] if assignees_display else ["#555555"]
 
-                # --- THE DATA BLEED FIX: Intelligent Requirement Aggregation ---
+                parent_color = color_map.get(parent_assignee.upper(), "#555555")
+                if parent_assignee.upper() == "MULTIPLE": parent_color = "#888888"
+                if parent_assignee.upper() in [AppConstants.UNASSIGNED_LABEL.upper(), "TBD", "NAN", ""]: parent_color = "#555555"
+
                 reqs = group['REQUIREMENT'].unique()
                 if len(reqs) == 1:
                     raw_req = reqs[0]
                 else:
                     valid_reqs = [str(r).strip() for r in reqs if str(r).strip()]
-                    # If all mixed lines are production/re-work lines, group them rather than setting to "Multiple"
                     if valid_reqs and all(re.search(AppConstants.PROD_REQ_PATTERN, r, re.IGNORECASE) for r in valid_reqs):
                         raw_req = " / ".join(valid_reqs)
                     else:
@@ -162,22 +170,29 @@ class GanttDataBuilder:
                     var = CalendarEngine.get_working_days_variance(max_end, min_esd)
                     parent_esd_var = f"{var} days"
 
+                # Safely resolve the project name avoiding nan strings by scanning the entire group
+                p_name = get_first_valid('PROJECT NAME')
+                if not p_name:
+                    p_name = get_first_valid('PROJECT_NAME')
+                if not p_name:
+                    p_name = get_first_valid('TASK_NAME')
+
+                final_project_name_display = f"{p_name} ({len(group)})" if p_name else f"({len(group)})"
+
                 parent_row = {
                     'IS_PARENT': True,
                     'PROJECT_ID': project_id,
                     'SMART_ID': project_id,
                     'REQUIREMENT': GanttDataBuilder.clean_requirement_text(raw_req),
-                    'QUOTE NO': first_row.get('QUOTE NO', ''),
-                    'PROJECT NAME': f"{first_row.get('PROJECT NAME', '')} ({len(group)})",
+                    'QUOTE NO': get_first_valid('QUOTE NO'),
+                    'PROJECT NAME': final_project_name_display,
                     'STATUS': parent_status,
                     'ASSIGNED TO': parent_assignee,
                     'HEX_COLOR': parent_color,
-                    'ALL_ASSIGNEES': assignees,
+                    'ALL_ASSIGNEES': assignees_display,
                     'ALL_COLORS': all_colors,
-
                     'ENG START DATE': parent_eng_start.strftime('%m/%d/%Y') if pd.notna(parent_eng_start) else "",
                     'COMPLETE DATE': parent_comp_date.strftime('%m/%d/%Y') if pd.notna(parent_comp_date) else "",
-
                     'EST START DATE': min_start.strftime('%m/%d/%Y') if pd.notna(min_start) else "",
                     'EST END DATE': max_end.strftime('%m/%d/%Y') if pd.notna(max_end) else "",
                     'EST DAYS': str(parent_days),
@@ -206,12 +221,13 @@ class GanttDataBuilder:
                                 est_fallback = child_row.get('EST DAYS', AppConstants.DEFAULT_EST_DAYS)
                                 child_row['VISUAL_DAYS'] = int(est_fallback) if str(est_fallback).isdigit() else 5
 
-                            child_assignee = str(child_row.get('ASSIGNED TO', '')).strip().upper()
+                            child_assignee = str(child_row.get('ASSIGNED TO', '')).strip().title()
+                            child_assignee_upper = child_assignee.upper()
 
-                            if child_assignee in ["", AppConstants.UNASSIGNED_LABEL, "NAN", "TBD"]:
+                            if child_assignee_upper in ["", AppConstants.UNASSIGNED_LABEL.upper(), "NAN", "TBD"]:
                                 child_color = "#555555"
                             else:
-                                child_color = color_map.get(child_assignee, "#555555")
+                                child_color = color_map.get(child_assignee_upper, "#555555")
 
                             if str(child_row.get('STATUS', '')).strip().upper() == 'COMPLETE':
                                 child_row['REQUIREMENT'] = f"✓ {child_row['REQUIREMENT']}"
@@ -229,6 +245,7 @@ class GanttDataBuilder:
                                     except ValueError:
                                         pass
 
+                            child_row['ASSIGNED TO'] = child_assignee
                             child_row['HEX_COLOR'] = child_color
                             child_row['ALL_ASSIGNEES'] = [child_assignee] if child_assignee else []
                             child_row['ALL_COLORS'] = [child_color]

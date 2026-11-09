@@ -4703,3 +4703,292 @@ ValueError: Non-business day date in busday_offset
 09:13:16 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
 09:13:17 - [INFO] - Displaying Main Window...
 09:13:17 - [INFO] - Launch sequence complete!
+11:57:42 - [INFO] - =========================================
+11:57:42 - [INFO] - Starting MyGantt Application...
+11:57:42 - [INFO] - Initializing Data Model...
+11:57:42 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+11:57:42 - [INFO] - Migrated existing manual_tasks schema to include TASK_NAME.
+11:57:42 - [INFO] - Database schemas initialized successfully.
+11:57:42 - [INFO] - Initializing Application Controller...
+11:57:42 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+11:57:43 - [INFO] - Displaying Main Window...
+11:57:43 - [INFO] - Launch sequence complete!
+12:21:59 - [INFO] - =========================================
+12:21:59 - [INFO] - Starting MyGantt Application...
+12:21:59 - [INFO] - Initializing Data Model...
+12:21:59 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+12:21:59 - [INFO] - Database schemas initialized successfully.
+12:21:59 - [INFO] - Initializing Application Controller...
+12:21:59 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+12:22:00 - [INFO] - Displaying Main Window...
+12:22:00 - [INFO] - Launch sequence complete!
+14:27:42 - [INFO] - =========================================
+14:27:42 - [INFO] - Starting MyGantt Application...
+14:27:42 - [INFO] - Initializing Data Model...
+14:27:42 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+14:27:42 - [INFO] - Database schemas initialized successfully.
+14:27:42 - [INFO] - Initializing Application Controller...
+14:27:42 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+14:27:43 - [INFO] - Displaying Main Window...
+14:27:43 - [INFO] - Launch sequence complete!
+14:29:37 - [INFO] - Manual project SW-3C3414 deleted successfully.
+08:26:13 - [INFO] - =========================================
+08:26:13 - [INFO] - Starting MyGantt Application...
+08:26:13 - [INFO] - Initializing Data Model...
+08:26:13 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+08:26:13 - [INFO] - Database schemas initialized successfully.
+08:26:13 - [INFO] - Initializing Application Controller...
+08:26:13 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+08:26:14 - [INFO] - Displaying Main Window...
+08:26:14 - [INFO] - Launch sequence complete!
+08:27:35 - [INFO] - Manual project SW-F56619 saved successfully.
+08:29:30 - [INFO] - Manual project SW-3C3414 deleted successfully.
+09:24:40 - [INFO] - =========================================
+09:24:40 - [INFO] - Starting MyGantt Application...
+09:24:40 - [INFO] - Initializing Data Model...
+09:24:40 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+09:24:40 - [INFO] - Database schemas initialized successfully.
+09:24:40 - [INFO] - Initializing Application Controller...
+09:24:40 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+09:24:41 - [INFO] - Displaying Main Window...
+09:24:41 - [INFO] - Launch sequence complete!
+09:28:33 - [INFO] - Manual project SW-F56619 and associated tasks deleted successfully.
+09:30:24 - [INFO] - Manual sub-task SIDEWORK-1F366A saved successfully.
+09:33:07 - [INFO] - Manual task SIDEWORK-3C3414 deleted successfully.
+09:33:53 - [INFO] - Manual sub-task SIDEWORK-2ECC44 saved successfully.
+10:04:10 - [INFO] - =========================================
+10:04:10 - [INFO] - Starting MyGantt Application...
+10:04:10 - [INFO] - Initializing Data Model...
+10:04:10 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+10:04:10 - [INFO] - Database schemas initialized successfully.
+10:04:10 - [INFO] - Initializing Application Controller...
+10:04:10 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+10:04:11 - [INFO] - Displaying Main Window...
+10:04:12 - [INFO] - Launch sequence complete!
+10:04:31 - [INFO] - Manual project SW-3C3414 and associated tasks deleted successfully.
+10:04:41 - [INFO] - Copying Excel file to local shadow copy...
+10:04:41 - [INFO] - Reading Excel file into Pandas...
+10:04:45 - [INFO] - Generating SMART_IDs...
+10:04:49 - [INFO] - Looking for holiday sheet: HOLIDAY DATES 2026...
+10:04:49 - [INFO] - Found 23 company holidays in column 2.
+10:04:49 - [INFO] - Database sync complete: 2170 raw workload rows inserted.
+10:05:14 - [INFO] - Manual project SW-A6EB2D saved successfully.
+10:05:14 - [ERROR] - Critical error building application data matrix: Invalid value '<StringArray>
+['SW-A6EB2D-EMPTY']
+Length: 1, dtype: str' for dtype 'float64'
+Traceback (most recent call last):
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\blocks.py", line 1115, in setitem
+    casted = np_can_hold_element(values.dtype, value)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\dtypes\cast.py", line 1775, in np_can_hold_element
+    raise LossySetitemError
+pandas.errors.LossySetitemError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\dev\MyGantt\data\workload_manager.py", line 115, in get_application_data
+    manual_df.loc[empty_mask, 'SMART_ID'] = manual_df.loc[empty_mask, 'PROJECT_ID'] + "-EMPTY"
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\indexing.py", line 938, in __setitem__
+    iloc._setitem_with_indexer(indexer, value, self.name)
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\indexing.py", line 1953, in _setitem_with_indexer
+    self._setitem_with_indexer_split_path(indexer, value, name)
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\indexing.py", line 1997, in _setitem_with_indexer_split_path
+    self._setitem_single_column(ilocs[0], value, pi)
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\indexing.py", line 2181, in _setitem_single_column
+    self.obj._mgr.column_setitem(loc, plane_indexer, value)
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\managers.py", line 1520, in column_setitem
+    new_mgr = col_mgr.setitem((idx,), value)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\managers.py", line 604, in setitem
+    return self.apply("setitem", indexer=indexer, value=value)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\managers.py", line 442, in apply
+    applied = getattr(b, f)(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\blocks.py", line 1118, in setitem
+    nb = self.coerce_to_target_dtype(value, raise_on_upcast=True)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\blocks.py", line 468, in coerce_to_target_dtype
+    raise TypeError(f"Invalid value '{other}' for dtype '{self.values.dtype}'")
+TypeError: Invalid value '<StringArray>
+['SW-A6EB2D-EMPTY']
+Length: 1, dtype: str' for dtype 'float64'
+10:05:14 - [ERROR] - Critical error building application data matrix: Invalid value '<StringArray>
+['SW-A6EB2D-EMPTY']
+Length: 1, dtype: str' for dtype 'float64'
+Traceback (most recent call last):
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\blocks.py", line 1115, in setitem
+    casted = np_can_hold_element(values.dtype, value)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\dtypes\cast.py", line 1775, in np_can_hold_element
+    raise LossySetitemError
+pandas.errors.LossySetitemError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\dev\MyGantt\data\workload_manager.py", line 115, in get_application_data
+    manual_df.loc[empty_mask, 'SMART_ID'] = manual_df.loc[empty_mask, 'PROJECT_ID'] + "-EMPTY"
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\indexing.py", line 938, in __setitem__
+    iloc._setitem_with_indexer(indexer, value, self.name)
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\indexing.py", line 1953, in _setitem_with_indexer
+    self._setitem_with_indexer_split_path(indexer, value, name)
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\indexing.py", line 1997, in _setitem_with_indexer_split_path
+    self._setitem_single_column(ilocs[0], value, pi)
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\indexing.py", line 2181, in _setitem_single_column
+    self.obj._mgr.column_setitem(loc, plane_indexer, value)
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\managers.py", line 1520, in column_setitem
+    new_mgr = col_mgr.setitem((idx,), value)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\managers.py", line 604, in setitem
+    return self.apply("setitem", indexer=indexer, value=value)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\managers.py", line 442, in apply
+    applied = getattr(b, f)(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\blocks.py", line 1118, in setitem
+    nb = self.coerce_to_target_dtype(value, raise_on_upcast=True)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\blocks.py", line 468, in coerce_to_target_dtype
+    raise TypeError(f"Invalid value '{other}' for dtype '{self.values.dtype}'")
+TypeError: Invalid value '<StringArray>
+['SW-A6EB2D-EMPTY']
+Length: 1, dtype: str' for dtype 'float64'
+10:07:00 - [INFO] - =========================================
+10:07:00 - [INFO] - Starting MyGantt Application...
+10:07:00 - [INFO] - Initializing Data Model...
+10:07:00 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+10:07:00 - [INFO] - Database schemas initialized successfully.
+10:07:00 - [INFO] - Initializing Application Controller...
+10:07:00 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+10:07:00 - [INFO] - Displaying Main Window...
+10:07:01 - [INFO] - Launch sequence complete!
+10:07:01 - [ERROR] - Critical error building application data matrix: Invalid value '<StringArray>
+['SW-A6EB2D-EMPTY']
+Length: 1, dtype: str' for dtype 'float64'
+Traceback (most recent call last):
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\blocks.py", line 1115, in setitem
+    casted = np_can_hold_element(values.dtype, value)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\dtypes\cast.py", line 1775, in np_can_hold_element
+    raise LossySetitemError
+pandas.errors.LossySetitemError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\dev\MyGantt\data\workload_manager.py", line 115, in get_application_data
+    manual_df.loc[empty_mask, 'SMART_ID'] = manual_df.loc[empty_mask, 'PROJECT_ID'] + "-EMPTY"
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\indexing.py", line 938, in __setitem__
+    iloc._setitem_with_indexer(indexer, value, self.name)
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\indexing.py", line 1953, in _setitem_with_indexer
+    self._setitem_with_indexer_split_path(indexer, value, name)
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\indexing.py", line 1997, in _setitem_with_indexer_split_path
+    self._setitem_single_column(ilocs[0], value, pi)
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\indexing.py", line 2181, in _setitem_single_column
+    self.obj._mgr.column_setitem(loc, plane_indexer, value)
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\managers.py", line 1520, in column_setitem
+    new_mgr = col_mgr.setitem((idx,), value)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\managers.py", line 604, in setitem
+    return self.apply("setitem", indexer=indexer, value=value)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\managers.py", line 442, in apply
+    applied = getattr(b, f)(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\blocks.py", line 1118, in setitem
+    nb = self.coerce_to_target_dtype(value, raise_on_upcast=True)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\blocks.py", line 468, in coerce_to_target_dtype
+    raise TypeError(f"Invalid value '{other}' for dtype '{self.values.dtype}'")
+TypeError: Invalid value '<StringArray>
+['SW-A6EB2D-EMPTY']
+Length: 1, dtype: str' for dtype 'float64'
+10:07:01 - [ERROR] - Critical error building application data matrix: Invalid value '<StringArray>
+['SW-A6EB2D-EMPTY']
+Length: 1, dtype: str' for dtype 'float64'
+Traceback (most recent call last):
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\blocks.py", line 1115, in setitem
+    casted = np_can_hold_element(values.dtype, value)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\dtypes\cast.py", line 1775, in np_can_hold_element
+    raise LossySetitemError
+pandas.errors.LossySetitemError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\dev\MyGantt\data\workload_manager.py", line 115, in get_application_data
+    manual_df.loc[empty_mask, 'SMART_ID'] = manual_df.loc[empty_mask, 'PROJECT_ID'] + "-EMPTY"
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\indexing.py", line 938, in __setitem__
+    iloc._setitem_with_indexer(indexer, value, self.name)
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\indexing.py", line 1953, in _setitem_with_indexer
+    self._setitem_with_indexer_split_path(indexer, value, name)
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\indexing.py", line 1997, in _setitem_with_indexer_split_path
+    self._setitem_single_column(ilocs[0], value, pi)
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\indexing.py", line 2181, in _setitem_single_column
+    self.obj._mgr.column_setitem(loc, plane_indexer, value)
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\managers.py", line 1520, in column_setitem
+    new_mgr = col_mgr.setitem((idx,), value)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\managers.py", line 604, in setitem
+    return self.apply("setitem", indexer=indexer, value=value)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\managers.py", line 442, in apply
+    applied = getattr(b, f)(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\blocks.py", line 1118, in setitem
+    nb = self.coerce_to_target_dtype(value, raise_on_upcast=True)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\MyGantt\.venv\Lib\site-packages\pandas\core\internals\blocks.py", line 468, in coerce_to_target_dtype
+    raise TypeError(f"Invalid value '{other}' for dtype '{self.values.dtype}'")
+TypeError: Invalid value '<StringArray>
+['SW-A6EB2D-EMPTY']
+Length: 1, dtype: str' for dtype 'float64'
+10:29:11 - [INFO] - =========================================
+10:29:11 - [INFO] - Starting MyGantt Application...
+10:29:11 - [INFO] - Initializing Data Model...
+10:29:11 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+10:29:11 - [INFO] - Database schemas initialized successfully.
+10:29:11 - [INFO] - Initializing Application Controller...
+10:29:11 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+10:29:12 - [INFO] - Displaying Main Window...
+10:29:12 - [INFO] - Launch sequence complete!
+10:51:03 - [INFO] - =========================================
+10:51:03 - [INFO] - Starting MyGantt Application...
+10:51:03 - [INFO] - Initializing Data Model...
+10:51:03 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+10:51:03 - [INFO] - Database schemas initialized successfully.
+10:51:03 - [INFO] - Initializing Application Controller...
+10:51:03 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+10:51:04 - [INFO] - Displaying Main Window...
+10:51:05 - [INFO] - Launch sequence complete!
+10:51:52 - [INFO] - Manual sub-task SIDEWORK-108F69 saved successfully.
+10:58:33 - [INFO] - =========================================
+10:58:33 - [INFO] - Starting MyGantt Application...
+10:58:33 - [INFO] - Initializing Data Model...
+10:58:33 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+10:58:33 - [INFO] - Database schemas initialized successfully.
+10:58:33 - [INFO] - Initializing Application Controller...
+10:58:33 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+10:58:33 - [INFO] - Displaying Main Window...
+10:58:33 - [INFO] - Launch sequence complete!
+10:58:45 - [INFO] - Manual task SIDEWORK-108F69 deleted successfully.
+10:59:00 - [INFO] - Manual sub-task SIDEWORK-ABECF6 saved successfully.
+11:09:42 - [INFO] - =========================================
+11:09:42 - [INFO] - Starting MyGantt Application...
+11:09:42 - [INFO] - Initializing Data Model...
+11:09:42 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+11:09:42 - [INFO] - Database schemas initialized successfully.
+11:09:42 - [INFO] - Initializing Application Controller...
+11:09:42 - [INFO] - SUCCESS: Resolving data directory to -> C:\Users\fgibil1a\OneDrive - Legrand France\Development\MyGantt_Data
+11:09:43 - [INFO] - Displaying Main Window...
+11:09:43 - [INFO] - Launch sequence complete!
+11:10:01 - [INFO] - Manual project SW-A6EB2D and associated tasks deleted successfully.
+11:10:18 - [INFO] - Manual project SW-E3970C saved successfully.
+11:10:29 - [INFO] - Manual sub-task SIDEWORK-506578 saved successfully.

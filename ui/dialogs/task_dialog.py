@@ -67,7 +67,11 @@ class TaskDialog(QDialog):
             # Assignee Dropdown
             self.inp_assignee = QComboBox()
             self.inp_assignee.addItem("Unassigned")
-            self.inp_assignee.addItems(sorted(self.configured_names))
+
+            # Sanitize, deduplicate, and enforce Title Case for UI presentation
+            cased_names = sorted(list({str(name).strip().title() for name in self.configured_names if str(name).strip()}))
+            self.inp_assignee.addItems(cased_names)
+
             form_layout.addRow("Assign To:", self.inp_assignee)
 
             # Start Date Input

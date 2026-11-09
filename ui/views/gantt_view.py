@@ -8,7 +8,7 @@ from typing import Optional, List, Dict, Any
 
 import numpy as np
 import pandas as pd
-from PySide6.QtCore import Qt, Signal, QRectF, QRect, QTimer, QPointF
+from PySide6.QtCore import Qt, Signal, QRectF, QRect, QTimer, QPointF, QDate
 from PySide6.QtGui import (
     QPainter, QColor, QPen, QMouseEvent, QFont, QWheelEvent,
     QBrush, QPolygonF, QPainterPath, QPixmap, QIcon
@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QComboBox, QSplitter, QTableWidget, QAbstractItemView,
     QGraphicsView, QGraphicsScene, QFormLayout, QLineEdit,
-    QTableWidgetItem, QHeaderView
+    QTableWidgetItem, QHeaderView, QStackedWidget, QDateEdit, QPushButton
 )
 
 from logic.constants import AppConstants
@@ -47,7 +47,7 @@ class GanttView(QGraphicsView):
             self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
             self.setObjectName("CanvasView")
 
-            # Enable native rubber-band multi-selection dragging
+            # Enables native rubber-band multi-selection dragging.
             self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
         except Exception as e:
             logger.error(f"Error initializing GanttView: {e}")
@@ -62,11 +62,11 @@ class GanttView(QGraphicsView):
             event (QMouseEvent): The captured mouse event.
         """
         try:
-            # Native QGraphicsView handling initiates the RubberBandDrag
+            # Native QGraphicsView handling initiates the RubberBandDrag.
             super().mousePressEvent(event)
 
             if event.button() == Qt.MouseButton.LeftButton:
-                # If no specific graphics item is under the cursor, notify the controller
+                # If no specific graphics item is under the cursor, notify the controller.
                 if not self.itemAt(event.pos()):
                     self.empty_clicked.emit()
         except Exception as e:
@@ -120,20 +120,20 @@ class GanttGridScene(QGraphicsScene):
             rect (QRect | QRectF): The bounding rectangle to draw within.
         """
         try:
-            # Paint the absolute background color first
+            # Paints the absolute background color first.
             painter.fillRect(rect, QColor("#1E1E1E"))
 
             row_pen = QPen(QColor("#252526"))
             col_pen = QPen(QColor("#3E3E42"))
             col_pen.setStyle(Qt.PenStyle.DotLine)
 
-            # Clamp drawing so grid lines do not bleed past the final data row
+            # Clamps drawing so grid lines do not bleed past the final data row.
             scene_bottom = int(self.sceneRect().bottom())
             draw_bottom = min(int(rect.bottom()), scene_bottom)
 
             top_y = int(rect.top()) - (int(rect.top()) % self.row_height)
 
-            # Only draw horizontal lines if our current view is above the bottom of the data
+            # Only draws horizontal lines if our current view is above the bottom of the data.
             if top_y <= scene_bottom:
                 for y in range(top_y, draw_bottom + 1, self.row_height):
                     painter.setPen(row_pen)
@@ -141,7 +141,7 @@ class GanttGridScene(QGraphicsScene):
 
             left_x = int(rect.left()) - (int(rect.left()) % self.day_width)
 
-            # Only draw vertical lines if our current view is above the bottom of the data
+            # Only draws vertical lines if our current view is above the bottom of the data.
             if int(rect.top()) < scene_bottom:
                 for x in range(left_x, int(rect.right()), self.day_width):
                     painter.setPen(col_pen)
@@ -155,11 +155,12 @@ class GanttScreenWidget(QWidget):
     """
     The main container widget for the Gantt view, combining the info table,
     the interactive canvas, filters, and the KPI inspector panel.
-    Now supports multi-select data binding and bulk threaded updates.
+    Now supports multi-select data binding, bulk threaded updates, and manual deletion.
     """
     block_dropped_signal = Signal(str, float, float, bool, float, float)
     assignee_changed_signal = Signal(str, str)
     bulk_kpi_update_signal = Signal(list, str, object)
+    delete_item_signal = Signal(str, bool)
 
     def __init__(self) -> None:
         """Initializes the main Gantt layout and variables."""
@@ -169,6 +170,9 @@ class GanttScreenWidget(QWidget):
         self.row_height: int = 36
         self.initial_scroll_done: bool = False
         self.day_zero: Optional[pd.Timestamp] = None
+
+        self._current_inspected_id: str = ""
+        self._current_inspected_is_parent: bool = False
 
         self._setup_ui()
 
@@ -243,7 +247,7 @@ class GanttScreenWidget(QWidget):
             self.info_table.setShowGrid(False)
             self.info_table.setFrameShape(QFrame.Shape.NoFrame)
 
-            # Force horizontal scrollbar to Always On so viewport heights match perfectly
+            # Forces horizontal scrollbar to Always On so viewport heights match perfectly.
             self.info_table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
             self.info_table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
             self.info_table.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
@@ -271,7 +275,7 @@ class GanttScreenWidget(QWidget):
             self.gantt_view = GanttView(self.gantt_scene)
             self.gantt_view.setFrameShape(QFrame.Shape.NoFrame)
 
-            # Ensure Gantt View also strictly respects the scrollbar policy
+            # Ensures Gantt View also strictly respects the scrollbar policy.
             self.gantt_view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
 
             self.gantt_view.horizontalScrollBar().valueChanged.connect(self.header_view.horizontalScrollBar().setValue)
@@ -286,16 +290,25 @@ class GanttScreenWidget(QWidget):
             self.gantt_splitter.addWidget(self.canvas_container)
             self.gantt_splitter.setStretchFactor(0, 0)
             self.gantt_splitter.setStretchFactor(1, 1)
-
             self.gantt_splitter.setSizes([650, 800])
-            unified_layout.addWidget(self.gantt_splitter)
 
+            unified_layout.addWidget(self.gantt_splitter, 1)
+
+            # Configures the right-hand side KPI Panel utilizing a QStackedWidget.
             self.kpi_panel = QFrame()
             self.kpi_panel.setObjectName("TableWell")
             self.kpi_panel.setFixedWidth(300)
             self.kpi_panel.hide()
 
-            kpi_layout = QVBoxLayout(self.kpi_panel)
+            kpi_base_layout = QVBoxLayout(self.kpi_panel)
+            kpi_base_layout.setContentsMargins(0, 0, 0, 0)
+
+            self.kpi_stack = QStackedWidget()
+            kpi_base_layout.addWidget(self.kpi_stack)
+
+            # Stack 0: Job Inspector
+            self.inspector_widget = QWidget()
+            kpi_layout = QVBoxLayout(self.inspector_widget)
             kpi_layout.setContentsMargins(20, 20, 20, 20)
             kpi_layout.setSpacing(15)
 
@@ -355,17 +368,109 @@ class GanttScreenWidget(QWidget):
             kpi_layout.addLayout(form_layout)
             kpi_layout.addStretch()
 
+            self.btn_show_task_form = QPushButton("+ Create Task")
+            self.btn_show_task_form.setObjectName("PrimaryButton")
+            self.btn_show_task_form.setMinimumHeight(28)
+            self.btn_show_task_form.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.btn_show_task_form.hide()
+            kpi_layout.addWidget(self.btn_show_task_form)
+
+            # Delete button for manual tasks and projects
+            self.btn_delete_item = QPushButton("Delete Manual Item")
+            self.btn_delete_item.setObjectName("DeleteButton")
+            self.btn_delete_item.setMinimumHeight(28)
+            self.btn_delete_item.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.btn_delete_item.hide()
+            kpi_layout.addWidget(self.btn_delete_item)
+
+            self.kpi_stack.addWidget(self.inspector_widget)
+
+            # Stack 1: Sub-Task Form
+            self.task_form_widget = QWidget()
+            tf_layout = QVBoxLayout(self.task_form_widget)
+            tf_layout.setContentsMargins(20, 20, 20, 20)
+            tf_layout.setSpacing(15)
+
+            tf_header = QLabel("Create Sub-Task")
+            tf_header.setObjectName("Header")
+            tf_layout.addWidget(tf_header)
+
+            tf_form = QFormLayout()
+            tf_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+            tf_form.setVerticalSpacing(15)
+
+            self.tf_name = QLineEdit()
+            self.tf_name.setPlaceholderText("Task name...")
+            self.tf_assignee = QComboBox()
+            self.tf_assignee.addItem("Unassigned")
+
+            self.tf_start_date = QDateEdit()
+            self.tf_start_date.setCalendarPopup(True)
+            self.tf_start_date.setDate(QDate.currentDate())
+            self.tf_start_date.setDisplayFormat("M/d/yyyy")
+
+            self.tf_est_days = QLineEdit("1")
+
+            tf_form.addRow("Task Name:", self.tf_name)
+            tf_form.addRow("Assign To:", self.tf_assignee)
+            tf_form.addRow("Start Date:", self.tf_start_date)
+            tf_form.addRow("Est. Days:", self.tf_est_days)
+
+            tf_layout.addLayout(tf_form)
+
+            tf_btns = QHBoxLayout()
+            self.btn_cancel_task = QPushButton("Cancel")
+            self.btn_cancel_task.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.btn_save_task = QPushButton("Create")
+            self.btn_save_task.setObjectName("PrimaryButton")
+            self.btn_save_task.setCursor(Qt.CursorShape.PointingHandCursor)
+
+            tf_btns.addStretch()
+            tf_btns.addWidget(self.btn_cancel_task)
+            tf_btns.addWidget(self.btn_save_task)
+
+            tf_layout.addLayout(tf_btns)
+            tf_layout.addStretch()
+
+            self.kpi_stack.addWidget(self.task_form_widget)
+
             gantt_body_layout.addWidget(self.unified_gantt_card, 1)
             gantt_body_layout.addWidget(self.kpi_panel)
 
             gantt_main_layout.addLayout(gantt_body_layout, 1)
 
-            # Connect bidirectional update signals
+            # Bottom control bar for project creation (Moved outside unified card).
+            bottom_bar = QHBoxLayout()
+            bottom_bar.setContentsMargins(10, 10, 10, 10)
+            self.btn_create_project = QPushButton("+ Create Project")
+            self.btn_create_project.setObjectName("PrimaryButton")
+            self.btn_create_project.setMinimumHeight(28)
+            self.btn_create_project.setCursor(Qt.CursorShape.PointingHandCursor)
+            bottom_bar.addWidget(self.btn_create_project)
+            bottom_bar.addStretch()
+            gantt_main_layout.addLayout(bottom_bar)
+
+            # Connects UI interaction signals.
+            self.btn_cancel_task.clicked.connect(lambda: self.kpi_stack.setCurrentIndex(0))
+            self.btn_show_task_form.clicked.connect(lambda: self.kpi_stack.setCurrentIndex(1))
+
             self.inp_est_days.editingFinished.connect(self._on_est_days_changed)
             self.inp_assignee.activated.connect(self._on_assignee_changed)
             self.inp_status.activated.connect(self._on_status_changed)
+
+            # Connect the new delete button
+            self.btn_delete_item.clicked.connect(self._on_delete_clicked)
+
         except Exception as e:
             logger.error(f"Error setting up Gantt Screen UI: {e}")
+
+    def _on_delete_clicked(self) -> None:
+        """Emits the delete signal for the currently inspected item."""
+        try:
+            if hasattr(self, '_current_inspected_id') and self._current_inspected_id:
+                self.delete_item_signal.emit(self._current_inspected_id, self._current_inspected_is_parent)
+        except Exception as e:
+            logger.error(f"Error handling delete click: {e}")
 
     def _on_est_days_changed(self) -> None:
         """Dispatches bulk duration updates derived from KPI text input."""
@@ -443,6 +548,7 @@ class GanttScreenWidget(QWidget):
     def populate_kpi_inspector(self, data_list: List[Dict[str, Any]]) -> None:
         """
         Populates the KPI panel, rendering single details or multi-select averages and masks.
+        Also dynamically toggles the visibility of the delete button for manual tasks/projects.
 
         Args:
             data_list (List[Dict[str, Any]]): The list of data dictionaries representing the current selection.
@@ -453,6 +559,7 @@ class GanttScreenWidget(QWidget):
                 return
 
             self.kpi_panel.show()
+            self.kpi_stack.setCurrentIndex(0)
             self.inp_assignee.blockSignals(True)
             self.inp_est_days.blockSignals(True)
             self.inp_status.blockSignals(True)
@@ -463,6 +570,18 @@ class GanttScreenWidget(QWidget):
 
                 is_parent = data.get('IS_PARENT', False)
                 prefix = "Order: " if is_parent else "Line: "
+
+                tid = str(data.get('PROJECT_ID', '')) if is_parent else str(data.get('SMART_ID', ''))
+                self._current_inspected_id = tid
+                self._current_inspected_is_parent = is_parent
+
+                # Toggle visibility of the delete button depending on manual prefixes
+                if (is_parent and tid.startswith("SW-")) or (not is_parent and tid.startswith("SIDEWORK-")):
+                    self.btn_delete_item.setVisible(True)
+                else:
+                    self.btn_delete_item.setVisible(False)
+
+                self.btn_show_task_form.setVisible(is_parent)
 
                 self.kpi_title.setText(f"{prefix}{str(data.get('PROJECT NAME', 'Unknown'))[:15]}...")
                 self.kpi_order.setText(str(data.get('PROJECT_ID', '--')))
@@ -496,6 +615,11 @@ class GanttScreenWidget(QWidget):
                 self.kpi_esd_var.setText(str(data.get('EST ESD VARIANCE', '--')))
 
             else:
+                self._current_inspected_id = ""
+                self._current_inspected_is_parent = False
+                self.btn_delete_item.setVisible(False)
+
+                self.btn_show_task_form.setVisible(False)
                 self.inp_smart_id.setText("MULTIPLE")
                 self.kpi_title.setText(f"Multiple Lines Selected [{len(data_list)}]")
                 self.kpi_order.setText("Multiple")
@@ -619,10 +743,10 @@ class GanttScreenWidget(QWidget):
                     req_text = str(row.get('REQUIREMENT', ''))
                     project_text = str(row.get('PROJECT NAME', ''))
 
-                    # Generate the geometric icon
+                    # Generates the geometric icon.
                     is_expanded = row.get('PROJECT_ID') in expanded_projects
 
-                    # Ensure Re-work is evaluated identically to Production lines
+                    # Ensures Re-work is evaluated identically to Production lines.
                     is_prod = bool(re.search(AppConstants.PROD_REQ_PATTERN, req_text, re.IGNORECASE))
                     icon_color = "#E0E0E0" if is_prod else "#888888"
 
@@ -645,12 +769,16 @@ class GanttScreenWidget(QWidget):
                         item.setFont(font_parent)
                         table.setItem(row_idx, col, item)
                 else:
-                    part_no = str(row.get('LUMINARIE SPECIFICATION',
-                                          row.get('CONFIGURED STRING',
-                                                  row.get('PART NUMBER',
-                                                          row.get('CATALOG CODE',
-                                                                  row.get('CATALOG',
-                                                                          row.get('FAMILY', ''))))))).strip()
+                    task_name = str(row.get('TASK_NAME', '')).strip()
+                    if task_name and task_name.lower() != 'nan':
+                        part_no = task_name
+                    else:
+                        part_no = str(row.get('LUMINARIE SPECIFICATION',
+                                              row.get('CONFIGURED STRING',
+                                                      row.get('PART NUMBER',
+                                                              row.get('CATALOG CODE',
+                                                                      row.get('CATALOG',
+                                                                              row.get('FAMILY', ''))))))).strip()
 
                     if not part_no or part_no.lower() == 'nan':
                         part_no = "Unknown Specification"
