@@ -16,16 +16,34 @@ from logic.calendar_engine import CalendarEngine
 
 logger = logging.getLogger(__name__)
 
+HOLD_STATUS_VARIANTS = {'ON HOLD', 'HOLD', 'ON-HOLD'}
+CANCELED_STATUS_VARIANTS = {'CANCELED', 'CANCELLED'}
+
 
 class SyncWorker(QThread):
+    """
+    Background worker thread for reading, parsing, and persisting
+    workload and holiday datasets from the master Excel spreadsheet.
+    """
     finished = Signal(bool, str)
 
     def __init__(self, model: Any, excel_path: str) -> None:
+        """
+        Initializes the SyncWorker thread.
+
+        Args:
+            model (Any): WorkloadManager reference responsible for database interactions.
+            excel_path (str): File system path to the target Excel workbook.
+        """
         super().__init__()
         self.model = model
         self.excel_path = excel_path
 
     def run(self) -> None:
+        """
+        Executes Excel parsing and SQLite data persistence on a background thread.
+        Emits finished signal with a status boolean and error message upon completion.
+        """
         try:
             success, error_msg = self.model.sync_from_excel(self.excel_path)
             self.finished.emit(success, error_msg)
@@ -35,11 +53,29 @@ class SyncWorker(QThread):
 
 
 class DataRefreshWorker(QThread):
+    """
+    Background worker thread for processing raw schedule rows, applying user overrides,
+    calculating calendar boundaries, evaluating team/requirement/status filters,
+    and sorting data rows for UI consumption.
+    """
     data_ready = Signal(object, object, object, object)
 
     def __init__(self, model: Any, staged_edits: Dict[str, Any], team_filter: str,
                  req_filter: str, status_filter: str, sort_by: str,
                  maintain_ids: Optional[List[str]], pto_dict: Optional[Dict[str, List[str]]] = None) -> None:
+        """
+        Initializes the DataRefreshWorker thread.
+
+        Args:
+            model (Any): WorkloadManager instance for data matrix retrieval.
+            staged_edits (Dict[str, Any]): Dictionary of unsaved user modifications.
+            team_filter (str): Active team selection ('All Teams', 'Custom Team', etc.).
+            req_filter (str): Active requirement filter ('All Reqs', 'Production', etc.).
+            status_filter (str): Active status filter ('All Status', 'Active', 'On Hold', 'Complete').
+            sort_by (str): Field to sort dataset by ('Start Date', 'Eng Due Date', 'ESD').
+            maintain_ids (Optional[List[str]]): List of SMART_IDs to maintain stable row order.
+            pto_dict (Optional[Dict[str, List[str]]]): PTO calendar mappings by normalized engineer name.
+        """
         super().__init__()
         self.model = model
         self.staged_edits = staged_edits
@@ -54,6 +90,12 @@ class DataRefreshWorker(QThread):
         """
         Locks the estimated days and recalculates the estimated end date
         when an actual engineering start date is populated, factoring in PTO and Holidays.
+
+        Args:
+            df (pd.DataFrame): Application workload dataframe.
+
+        Returns:
+            pd.DataFrame: Workload dataframe with anchored start and adjusted end dates.
         """
         if df.empty or 'ENG START DATE' not in df.columns or 'EST DAYS' not in df.columns:
             return df
@@ -81,6 +123,11 @@ class DataRefreshWorker(QThread):
         return df
 
     def run(self) -> None:
+        """
+        Executes the data transformation pipeline: joins database tables, resolves team routing,
+        evaluates requirement regexes and multi-state status filters, excludes canceled rows from
+        active tracking, applies sorting, and emits formatted DataFrames to the controller.
+        """
         try:
             raw_df = self.model.get_raw_df()
 
@@ -121,7 +168,7 @@ class DataRefreshWorker(QThread):
                 plan_df = plan_df[plan_df['CALC_TEAM'] == self.team_filter.strip().upper()].copy()
                 plan_df = plan_df.drop(columns=['CALC_TEAM'])
 
-            # --- THE DATA BLEED FIX: Regex Filter interception ---
+            # --- Regex Filter Interception ---
             if self.req_filter != "All Reqs":
                 if re.search(AppConstants.PROD_REQ_PATTERN, self.req_filter, re.IGNORECASE):
                     plan_df = plan_df[plan_df['REQUIREMENT'].str.contains(AppConstants.PROD_REQ_PATTERN, case=False, na=False, regex=True)]
@@ -129,16 +176,28 @@ class DataRefreshWorker(QThread):
                     plan_df = plan_df[plan_df['REQUIREMENT'].str.contains(self.req_filter, case=False, na=False)]
 
             # === Project-Aware Status Filtering ===
+            # In 'Active' mode, exclude canceled lines first, then isolate active (non-complete) projects
             if self.status_filter == "Active":
+                not_canceled_mask = ~plan_df['STATUS'].str.strip().str.upper().isin(CANCELED_STATUS_VARIANTS)
+                plan_df = plan_df[not_canceled_mask].copy()
+
                 active_mask = plan_df['STATUS'].str.strip().str.upper() != 'COMPLETE'
                 active_projects = plan_df[active_mask]['PROJECT_ID'].unique()
                 plan_df = plan_df[plan_df['PROJECT_ID'].isin(active_projects)]
 
+            # In 'On Hold' mode, isolate projects that have at least one line on hold
+            elif self.status_filter == "On Hold":
+                hold_mask = plan_df['STATUS'].str.strip().str.upper().isin(HOLD_STATUS_VARIANTS)
+                hold_projects = plan_df[hold_mask]['PROJECT_ID'].unique()
+                plan_df = plan_df[plan_df['PROJECT_ID'].isin(hold_projects)]
+
+            # In 'Complete' mode, isolate projects where all remaining lines have finished
             elif self.status_filter == "Complete":
                 active_mask = plan_df['STATUS'].str.strip().str.upper() != 'COMPLETE'
                 active_projects = plan_df[active_mask]['PROJECT_ID'].unique()
                 plan_df = plan_df[~plan_df['PROJECT_ID'].isin(active_projects)]
 
+            # Stable row order vs dynamic date sorting
             if self.maintain_ids is not None:
                 current_ids = self.maintain_ids
                 plan_df = plan_df.set_index('SMART_ID')

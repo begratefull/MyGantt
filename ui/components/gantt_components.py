@@ -1,7 +1,8 @@
 """
 Contains custom QGraphicsItems used for rendering the interactive Gantt chart.
 These components handle their own mathematical drawing via QPainter, hover states,
-and complex drag-and-drop timeline interactions supporting multi-selection.
+PART-MC label tagging, On Hold grey hazard hatch fills, and drag-and-drop timeline
+interactions supporting multi-selection.
 """
 
 import logging
@@ -20,6 +21,8 @@ from logic.constants import AppConstants
 
 logger = logging.getLogger(__name__)
 
+HOLD_STATUS_VARIANTS = {'ON HOLD', 'HOLD', 'ON-HOLD'}
+
 
 class DueDateMarker(QGraphicsItem):
     """
@@ -33,7 +36,7 @@ class DueDateMarker(QGraphicsItem):
         Args:
             x (float): The horizontal position on the scene.
             y (float): The vertical position on the scene.
-            _height (float): The height of the row (unused for the marker itself, but kept for signature compatibility).
+            _height (float): The height of the row.
         """
         super().__init__()
         try:
@@ -81,6 +84,7 @@ class GanttBlock(QGraphicsObject):
     A custom QGraphicsObject representing a task or project parent on the Gantt grid.
     Handles rendering, drag-to-move, drag-to-resize, and robust bulk operations
     by preserving multi-selection states and bypassing C++ deletion limits during scene redraws.
+    Features neutral grey diagonal hatching for On Hold tasks and white outlines solely for selections.
     """
     block_dropped = Signal(str, float, float, bool, float, float)  # type: ignore
     assignee_changed = Signal(str, str)  # type: ignore
@@ -107,6 +111,8 @@ class GanttBlock(QGraphicsObject):
             self.setPos(x, y)
 
             self.block_data: Dict[str, Any] = project_data
+            self.setData(0, self.block_data)
+
             self.day_width: float = day_width
             self.rect: QRectF = QRectF(0, 0, width, height)
 
@@ -131,6 +137,8 @@ class GanttBlock(QGraphicsObject):
             self.can_move: bool = True
             self.can_resize: bool = True
             self.is_started: bool = False
+            self.is_on_hold: bool = False
+            self.is_part_mc: bool = False
 
             self.setAcceptHoverEvents(True)
             self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
@@ -140,7 +148,7 @@ class GanttBlock(QGraphicsObject):
             logger.error(f"Error initializing GanttBlock: {e}")
 
     @property
-    def data(self) -> Dict[str, Any]:  # type: ignore # noqa
+    def data(self) -> Dict[str, Any]:  # pyrefly: ignore[bad-override]  # type: ignore
         """
         Allows the controller to access the payload via item.data natively.
 
@@ -149,10 +157,32 @@ class GanttBlock(QGraphicsObject):
         """
         return self.block_data
 
+    def _get_shape_path(self) -> QPainterPath:
+        """
+        Constructs and returns the geometric path corresponding to the block's current dimensions.
+
+        Returns:
+            QPainterPath: The polygon path for parent items or rounded rect for child tasks.
+        """
+        path = QPainterPath()
+        if self.is_parent:
+            poly = QPolygonF([
+                QPointF(0, 0),
+                QPointF(self.rect.width(), 0),
+                QPointF(self.rect.width(), self.rect.height()),
+                QPointF(self.rect.width() - 8, self.rect.height() - 8),
+                QPointF(8, self.rect.height() - 8),
+                QPointF(0, self.rect.height())
+            ])
+            path.addPolygon(poly)
+        else:
+            path.addRoundedRect(self.rect, 4.0, 4.0)
+        return path
+
     def refresh_visuals(self) -> None:
         """
-        Updates the colors, opacity, and interaction states of the block based on its data payload.
-        Utilizes the centralized PROD_REQ_PATTERN to identify production and re-work items.
+        Updates colors, opacity, hold states, PART-MC classifications, and interaction
+        capabilities based on the block's underlying data payload.
         """
         try:
             assignee = str(self.block_data.get('ASSIGNED TO', '')).strip().upper()
@@ -163,6 +193,16 @@ class GanttBlock(QGraphicsObject):
             req = str(self.block_data.get('REQUIREMENT', '')).strip().upper()
 
             self.is_started = bool(raw_start)
+            self.is_on_hold = status in HOLD_STATUS_VARIANTS
+
+            # PART-MC detection across parent aggregates and child tasks
+            if self.is_parent:
+                self.is_part_mc = bool(self.block_data.get('HAS_PART_MC', False))
+            else:
+                self.is_part_mc = bool(self.block_data.get('IS_PART_MC', False)) or (
+                    str(self.block_data.get('TYPE', '')).strip().upper() == 'PART-MC'
+                )
+
             hex_color = str(self.block_data.get('HEX_COLOR', '#007ACC')).strip()
 
             self.base_color = QColor(hex_color)
@@ -232,7 +272,7 @@ class GanttBlock(QGraphicsObject):
     def paint(self, painter: QPainter, option: Any, widget: Optional[QWidget] = None) -> None:
         """
         Draws the visual representation of the block, including selection outlines,
-        progress bars (started tasks), and text labels.
+        On Hold grey diagonal hazard hatch patterns, progress bars, and text labels.
 
         Args:
             painter (QPainter): The active painter context.
@@ -242,14 +282,30 @@ class GanttBlock(QGraphicsObject):
         try:
             painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-            painter.setBrush(self.brush)
-            if self.isSelected():
-                painter.setPen(QPen(QColor("#FFFFFF"), 2))
-            else:
-                painter.setPen(Qt.PenStyle.NoPen)
+            path = self._get_shape_path()
 
+            # 1. Base Block Fill
+            painter.setBrush(self.brush)
+            painter.setPen(Qt.PenStyle.NoPen)
             self._draw_shape(painter)
 
+            # 2. On Hold Grey Hazard Hatch Overlay (No Outline)
+            if self.is_on_hold:
+                painter.save()
+                painter.setClipPath(path)
+                hatch_brush = QBrush(QColor(150, 150, 150, 80), Qt.BrushStyle.BDiagPattern)
+                painter.fillRect(self.rect, hatch_brush)
+                painter.restore()
+
+            # 3. Block Outline (Rendered strictly when selected)
+            if self.isSelected():
+                painter.save()
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+                painter.setPen(QPen(QColor("#FFFFFF"), 2, Qt.PenStyle.SolidLine))
+                painter.drawPath(path)
+                painter.restore()
+
+            # 4. Actual Start Anchor Marker
             if self.is_started:
                 painter.setPen(QPen(QColor("#A0A0A0"), 4, Qt.PenStyle.SolidLine, Qt.PenCapStyle.FlatCap))
                 y_offset = 2 if not self.is_parent else 0
@@ -258,10 +314,26 @@ class GanttBlock(QGraphicsObject):
                     QPointF(self.rect.x() + 2, self.rect.y() + self.rect.height() - y_offset)
                 )
 
+            # 5. Text Label Construction
             if self.is_parent:
                 label_text = str(self.block_data.get('PROJECT NAME', 'Unknown Project')).strip()
+                if self.is_part_mc and not label_text.startswith("[PART-MC]"):
+                    label_text = f"[PART-MC] {label_text}"
+                if self.is_on_hold and not label_text.startswith("⏸"):
+                    label_text = f"⏸ {label_text}"
             else:
-                label_text = str(self.block_data.get('ASSIGNED TO', '')).strip()
+                assignee_text = str(self.block_data.get('ASSIGNED TO', '')).strip()
+                prefix_parts = []
+                if self.is_on_hold:
+                    prefix_parts.append("⏸ [HOLD]")
+                if self.is_part_mc:
+                    prefix_parts.append("[PART-MC]")
+
+                if prefix_parts:
+                    prefix_str = " ".join(prefix_parts)
+                    label_text = f"{prefix_str} {assignee_text}".strip()
+                else:
+                    label_text = assignee_text
 
             if label_text:
                 painter.setPen(QPen(self.text_color))
@@ -288,26 +360,14 @@ class GanttBlock(QGraphicsObject):
 
     def _draw_shape(self, painter: QPainter) -> None:
         """
-        Constructs and paints the geometric path of the block (polygon for parents, rounded rect for children).
+        Constructs and paints the geometric body of the block.
         Handles drawing multi-colored segment slices for parent items with multiple assignees.
 
         Args:
             painter (QPainter): The active painter context.
         """
         try:
-            path = QPainterPath()
-            if self.is_parent:
-                poly = QPolygonF([
-                    QPointF(0, 0),
-                    QPointF(self.rect.width(), 0),
-                    QPointF(self.rect.width(), self.rect.height()),
-                    QPointF(self.rect.width() - 8, self.rect.height() - 8),
-                    QPointF(8, self.rect.height() - 8),
-                    QPointF(0, self.rect.height())
-                ])
-                path.addPolygon(poly)
-            else:
-                path.addRoundedRect(self.rect, 4.0, 4.0)
+            path = self._get_shape_path()
 
             assignee = str(self.block_data.get('ASSIGNED TO', '')).strip().upper()
             all_colors = self.block_data.get('ALL_COLORS', [])
@@ -340,11 +400,7 @@ class GanttBlock(QGraphicsObject):
                     painter.drawPolygon(slice_poly)
 
                 painter.restore()
-
-                if self.isSelected():
-                    painter.setPen(QPen(QColor("#FFFFFF"), 2))
-                else:
-                    painter.setPen(Qt.PenStyle.NoPen)
+                painter.setPen(Qt.PenStyle.NoPen)
                 painter.setBrush(Qt.BrushStyle.NoBrush)
                 painter.drawPath(path)
             else:
@@ -363,9 +419,11 @@ class GanttBlock(QGraphicsObject):
             Any: The signal object if found, otherwise None.
         """
         try:
-            if not self.scene(): return None
+            if not self.scene():
+                return None
             views = self.scene().views()
-            if not views: return None
+            if not views:
+                return None
 
             parent = views[0].parentWidget()
             while parent:
@@ -497,7 +555,7 @@ class GanttBlock(QGraphicsObject):
             if was_resizing or was_moving:
                 global_sig = self._get_app_signal('block_dropped_signal')
 
-                # MUST extract all payloads before emitting to prevent C++ Pointer deletion on scene clear
+                # Extract payloads prior to emission to prevent pointer deletion
                 drop_payloads = []
                 for item, state in self._selection_state.items():
                     cx = item.x()

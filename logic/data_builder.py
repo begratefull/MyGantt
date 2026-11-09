@@ -12,6 +12,9 @@ from logic.calendar_engine import CalendarEngine
 
 logger = logging.getLogger(__name__)
 
+HOLD_STATUS_VARIANTS = {'ON HOLD', 'HOLD', 'ON-HOLD'}
+CANCELED_STATUS_VARIANTS = {'CANCELED', 'CANCELLED'}
+
 
 class GanttDataBuilder:
     """
@@ -22,8 +25,8 @@ class GanttDataBuilder:
     @staticmethod
     def clean_requirement_text(req_text: Any) -> str:
         """
-        Cleans the requirement text by removing the word 'drawing' (case-insensitive)
-        and stripping whitespace.
+        Cleans the requirement text by removing the word 'drawing' (case-insensitive),
+        stripping whitespace, and converting legacy ALL-CAPS text to Title Case.
 
         Args:
             req_text (Any): The raw requirement string.
@@ -32,7 +35,11 @@ class GanttDataBuilder:
             str: The cleaned requirement string.
         """
         try:
-            return re.sub(r'(?i)drawing', '', str(req_text)).strip()
+            cleaned = re.sub(r'(?i)drawing', '', str(req_text)).strip()
+            # Retroactively fix legacy ALL-CAPS database entries
+            if cleaned.isupper():
+                cleaned = cleaned.title()
+            return cleaned
         except Exception as e:
             logger.error(f"Error cleaning requirement text '{req_text}': {e}")
             return str(req_text).strip()
@@ -46,7 +53,9 @@ class GanttDataBuilder:
     ) -> List[Dict[str, Any]]:
         """
         Builds a hierarchical list of dictionaries representing parent and child
-        Gantt chart rows from a flat DataFrame. Applies date calculations and formatting.
+        Gantt chart rows from a flat DataFrame. Applies date calculations, status
+        evaluations including multi-state hold and canceled checks, line type extraction,
+        and formatting.
 
         Args:
             df (pd.DataFrame): The flat database records.
@@ -69,20 +78,38 @@ class GanttDataBuilder:
 
         for project_id, group in grouped:
             try:
-                # Maintain index alignment for combine_first by not dropping NA immediately
-                real_starts = pd.to_datetime(group['ENG START DATE'].replace('', None), errors='coerce')
-                real_ends = pd.to_datetime(group['COMPLETE DATE'].replace('', None), errors='coerce')
-                est_starts = pd.to_datetime(group['EST START DATE'].replace('', None), errors='coerce')
+                # Inline helper to actively scan for the first valid string in a given column
+                def get_first_valid(col_name: str) -> str:
+                    if col_name not in group.columns:
+                        return ""
+                    # Convert to string, strip whitespace, and replace pandas 'nan' with actual empty strings
+                    s = group[col_name].astype(str).str.strip()
+                    s = s.replace(re.compile(r'^nan$', re.IGNORECASE), '')
+                    # Drop any truly empty values and return the first valid string found
+                    valid_series = s.replace('', pd.NA).dropna()
+                    if not valid_series.empty:
+                        return str(valid_series.iloc[0])
+                    return ""
 
-                est_ends = pd.Series(index=group.index, dtype='datetime64[ns]')
+                # Filter out canceled tasks when computing project timeline bounds unless all are canceled
+                raw_status_series = group['STATUS'].astype(str).str.strip().str.upper() if 'STATUS' in group.columns else pd.Series([], dtype=str)
+                non_canceled_mask = ~raw_status_series.isin(CANCELED_STATUS_VARIANTS)
+                date_group = group[non_canceled_mask] if non_canceled_mask.any() else group
+
+                # Maintain index alignment for combine_first by not dropping NA immediately
+                real_starts = pd.to_datetime(date_group['ENG START DATE'].replace('', None), errors='coerce')
+                real_ends = pd.to_datetime(date_group['COMPLETE DATE'].replace('', None), errors='coerce')
+                est_starts = pd.to_datetime(date_group['EST START DATE'].replace('', None), errors='coerce')
+
+                est_ends = pd.Series(index=date_group.index, dtype='datetime64[ns]')
                 valid_idx = est_starts.dropna().index
 
                 if not valid_idx.empty:
-                    est_days = pd.to_numeric(group.loc[valid_idx, 'EST DAYS'], errors='coerce').fillna(AppConstants.DEFAULT_EST_DAYS).astype(int)
+                    est_days = pd.to_numeric(date_group.loc[valid_idx, 'EST DAYS'], errors='coerce').fillna(AppConstants.DEFAULT_EST_DAYS).astype(int)
 
-                    assignee_series = group.loc[valid_idx, 'ASSIGNED TO']
+                    assignee_series = date_group.loc[valid_idx, 'ASSIGNED TO']
                     end_strings = CalendarEngine.calculate_end_dates_vectorized(
-                        group.loc[valid_idx, 'EST START DATE'], est_days, assignee_series, pto_dict
+                        date_group.loc[valid_idx, 'EST START DATE'], est_days, assignee_series, pto_dict
                     )
                     est_ends.loc[valid_idx] = pd.to_datetime(end_strings, errors='coerce')
 
@@ -91,16 +118,6 @@ class GanttDataBuilder:
                 # Combine dates row-by-row. Actual dates override estimated dates.
                 effective_starts = real_starts.combine_first(est_starts)
                 effective_ends = real_ends.combine_first(est_ends)
-
-                # Phase 1 Debug Logging for Parent Task Bug
-                logger.debug(f"--- Debugging Project: {project_id} ---")
-                logger.debug(f"Real Starts: {real_starts.dt.strftime('%Y-%m-%d').tolist()}")
-                logger.debug(f"Est Starts:  {est_starts.dt.strftime('%Y-%m-%d').tolist()}")
-                logger.debug(f"Real Ends:   {real_ends.dt.strftime('%Y-%m-%d').tolist()}")
-                logger.debug(f"Est Ends:    {est_ends.dt.strftime('%Y-%m-%d').tolist()}")
-                logger.debug(f"Effective Starts: {effective_starts.dt.strftime('%Y-%m-%d').tolist()}")
-                logger.debug(f"Effective Ends:   {effective_ends.dt.strftime('%Y-%m-%d').tolist()}")
-                logger.debug(f"---------------------------------------")
 
                 # Drop NaT elements before finding absolute min and max bounds for the parent
                 valid_effective_starts = effective_starts.dropna()
@@ -120,27 +137,47 @@ class GanttDataBuilder:
                 parent_eng_start = valid_real_starts.min() if not valid_real_starts.empty else pd.NaT
                 parent_comp_date = valid_real_ends.max() if not valid_real_ends.empty else pd.NaT
 
-                first_row = group.iloc[0]
-                all_complete = all(group['STATUS'].str.strip().str.upper() == 'COMPLETE')
-                parent_status = 'COMPLETE' if all_complete else 'ACTIVE'
+                # --- Multi-State Status Resolution (Canceled-Aware) ---
+                if raw_status_series.empty:
+                    parent_status = 'ACTIVE'
+                else:
+                    active_candidates = raw_status_series[~raw_status_series.isin(CANCELED_STATUS_VARIANTS)]
+                    if active_candidates.empty:
+                        parent_status = 'CANCELED'
+                    elif (active_candidates == 'COMPLETE').all():
+                        parent_status = 'COMPLETE'
+                    else:
+                        non_complete = active_candidates[active_candidates != 'COMPLETE']
+                        if not non_complete.empty and non_complete.isin(HOLD_STATUS_VARIANTS).all():
+                            parent_status = 'ON HOLD'
+                        elif not non_complete.empty and non_complete.isin(HOLD_STATUS_VARIANTS).any():
+                            parent_status = 'ON HOLD'
+                        else:
+                            parent_status = 'ACTIVE'
 
-                assignees = [str(x).strip().upper() for x in group['ASSIGNED TO'].unique() if
-                             str(x).strip().upper() not in ('', AppConstants.UNASSIGNED_LABEL, 'NAN')]
-                parent_assignee = assignees[0] if len(assignees) == 1 else "MULTIPLE" if len(assignees) > 1 else AppConstants.UNASSIGNED_LABEL
+                # --- PART-MC Hierarchy Detection ---
+                types_series = group['TYPE'].astype(str).str.strip().str.upper() if 'TYPE' in group.columns else pd.Series([], dtype=str)
+                has_part_mc = bool((types_series == 'PART-MC').any())
+                all_part_mc = bool((types_series == 'PART-MC').all()) and not types_series.empty
 
-                all_colors = [color_map.get(a, "#555555") for a in assignees] if assignees else ["#555555"]
+                # Preserve proper casing for UI display while extracting unique assignees
+                assignees_display = [str(x).strip().title() for x in group['ASSIGNED TO'].unique() if
+                                     str(x).strip().upper() not in ('', AppConstants.UNASSIGNED_LABEL.upper(), 'NAN')]
 
-                parent_color = color_map.get(parent_assignee, "#555555")
-                if parent_assignee == "MULTIPLE": parent_color = "#888888"
-                if parent_assignee in [AppConstants.UNASSIGNED_LABEL, "TBD", "NAN", ""]: parent_color = "#555555"
+                parent_assignee = assignees_display[0] if len(assignees_display) == 1 else "Multiple" if len(assignees_display) > 1 else AppConstants.UNASSIGNED_LABEL.title()
 
-                # --- THE DATA BLEED FIX: Intelligent Requirement Aggregation ---
+                # Lookup hex colors using strictly uppercase strings
+                all_colors = [color_map.get(a.upper(), "#555555") for a in assignees_display] if assignees_display else ["#555555"]
+
+                parent_color = color_map.get(parent_assignee.upper(), "#555555")
+                if parent_assignee.upper() == "MULTIPLE": parent_color = "#888888"
+                if parent_assignee.upper() in [AppConstants.UNASSIGNED_LABEL.upper(), "TBD", "NAN", ""]: parent_color = "#555555"
+
                 reqs = group['REQUIREMENT'].unique()
                 if len(reqs) == 1:
                     raw_req = reqs[0]
                 else:
                     valid_reqs = [str(r).strip() for r in reqs if str(r).strip()]
-                    # If all mixed lines are production/re-work lines, group them rather than setting to "Multiple"
                     if valid_reqs and all(re.search(AppConstants.PROD_REQ_PATTERN, r, re.IGNORECASE) for r in valid_reqs):
                         raw_req = " / ".join(valid_reqs)
                     else:
@@ -162,22 +199,32 @@ class GanttDataBuilder:
                     var = CalendarEngine.get_working_days_variance(max_end, min_esd)
                     parent_esd_var = f"{var} days"
 
+                # Safely resolve the project name avoiding nan strings by scanning the entire group
+                p_name = get_first_valid('PROJECT NAME')
+                if not p_name:
+                    p_name = get_first_valid('PROJECT_NAME')
+                if not p_name:
+                    p_name = get_first_valid('TASK_NAME')
+
+                final_project_name_display = f"{p_name} ({len(group)})" if p_name else f"({len(group)})"
+
                 parent_row = {
                     'IS_PARENT': True,
                     'PROJECT_ID': project_id,
                     'SMART_ID': project_id,
+                    'TYPE': get_first_valid('TYPE'),
+                    'HAS_PART_MC': has_part_mc,
+                    'ALL_PART_MC': all_part_mc,
                     'REQUIREMENT': GanttDataBuilder.clean_requirement_text(raw_req),
-                    'QUOTE NO': first_row.get('QUOTE NO', ''),
-                    'PROJECT NAME': f"{first_row.get('PROJECT NAME', '')} ({len(group)})",
+                    'QUOTE NO': get_first_valid('QUOTE NO'),
+                    'PROJECT NAME': final_project_name_display,
                     'STATUS': parent_status,
                     'ASSIGNED TO': parent_assignee,
                     'HEX_COLOR': parent_color,
-                    'ALL_ASSIGNEES': assignees,
+                    'ALL_ASSIGNEES': assignees_display,
                     'ALL_COLORS': all_colors,
-
                     'ENG START DATE': parent_eng_start.strftime('%m/%d/%Y') if pd.notna(parent_eng_start) else "",
                     'COMPLETE DATE': parent_comp_date.strftime('%m/%d/%Y') if pd.notna(parent_comp_date) else "",
-
                     'EST START DATE': min_start.strftime('%m/%d/%Y') if pd.notna(min_start) else "",
                     'EST END DATE': max_end.strftime('%m/%d/%Y') if pd.notna(max_end) else "",
                     'EST DAYS': str(parent_days),
@@ -197,6 +244,29 @@ class GanttDataBuilder:
                             child_row['IS_PARENT'] = False
                             child_row['REQUIREMENT'] = GanttDataBuilder.clean_requirement_text(child_row.get('REQUIREMENT', ''))
 
+                            # Line Type & PART-MC Flag
+                            child_type = str(child_row.get('TYPE', '')).strip().upper()
+                            child_row['TYPE'] = child_type
+                            child_row['IS_PART_MC'] = (child_type == 'PART-MC')
+
+                            # Status Normalization
+                            raw_status = str(child_row.get('STATUS', '')).strip()
+                            raw_status_upper = raw_status.upper()
+                            if raw_status_upper in HOLD_STATUS_VARIANTS:
+                                child_status = 'ON HOLD'
+                            elif raw_status_upper in CANCELED_STATUS_VARIANTS:
+                                child_status = 'CANCELED'
+                            elif raw_status_upper == 'COMPLETE':
+                                child_status = 'COMPLETE'
+                            elif raw_status_upper in ('IN QUEUE', 'STARTED'):
+                                child_status = raw_status_upper
+                            elif not raw_status or raw_status_upper == 'NAN':
+                                child_status = 'ACTIVE'
+                            else:
+                                child_status = raw_status
+
+                            child_row['STATUS'] = child_status
+
                             c_start = pd.to_datetime(child_row.get('EST START DATE', ''), errors='coerce')
                             c_end = pd.to_datetime(child_row.get('EST END DATE', ''), errors='coerce')
 
@@ -206,14 +276,15 @@ class GanttDataBuilder:
                                 est_fallback = child_row.get('EST DAYS', AppConstants.DEFAULT_EST_DAYS)
                                 child_row['VISUAL_DAYS'] = int(est_fallback) if str(est_fallback).isdigit() else 5
 
-                            child_assignee = str(child_row.get('ASSIGNED TO', '')).strip().upper()
+                            child_assignee = str(child_row.get('ASSIGNED TO', '')).strip().title()
+                            child_assignee_upper = child_assignee.upper()
 
-                            if child_assignee in ["", AppConstants.UNASSIGNED_LABEL, "NAN", "TBD"]:
+                            if child_assignee_upper in ["", AppConstants.UNASSIGNED_LABEL.upper(), "NAN", "TBD"]:
                                 child_color = "#555555"
                             else:
-                                child_color = color_map.get(child_assignee, "#555555")
+                                child_color = color_map.get(child_assignee_upper, "#555555")
 
-                            if str(child_row.get('STATUS', '')).strip().upper() == 'COMPLETE':
+                            if child_status == 'COMPLETE':
                                 child_row['REQUIREMENT'] = f"✓ {child_row['REQUIREMENT']}"
 
                                 if child_color.startswith("#") and len(child_color) == 7:
@@ -223,12 +294,13 @@ class GanttDataBuilder:
                                         alpha = 0.3
 
                                         r = int(r * alpha + bg_r * (1 - alpha))
-                                        g = int(g * alpha + bg_g * (1 - alpha))
+                                        g = int(g * alpha + bg_r * (1 - alpha))
                                         b = int(b * alpha + bg_b * (1 - alpha))
                                         child_color = f"#{r:02X}{g:02X}{b:02X}"
                                     except ValueError:
                                         pass
 
+                            child_row['ASSIGNED TO'] = child_assignee
                             child_row['HEX_COLOR'] = child_color
                             child_row['ALL_ASSIGNEES'] = [child_assignee] if child_assignee else []
                             child_row['ALL_COLORS'] = [child_color]

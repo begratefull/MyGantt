@@ -1,5 +1,7 @@
 """
 Provides the Interactive Gantt Chart interface.
+Manages the split-view layout containing the project info table, the custom
+timeline canvas, dynamic filters, and the multi-selection KPI inspector panel.
 """
 
 import logging
@@ -8,7 +10,7 @@ from typing import Optional, List, Dict, Any
 
 import numpy as np
 import pandas as pd
-from PySide6.QtCore import Qt, Signal, QRectF, QRect, QTimer, QPointF
+from PySide6.QtCore import Qt, Signal, QRectF, QRect, QTimer, QPointF, QDate
 from PySide6.QtGui import (
     QPainter, QColor, QPen, QMouseEvent, QFont, QWheelEvent,
     QBrush, QPolygonF, QPainterPath, QPixmap, QIcon
@@ -17,13 +19,16 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QComboBox, QSplitter, QTableWidget, QAbstractItemView,
     QGraphicsView, QGraphicsScene, QFormLayout, QLineEdit,
-    QTableWidgetItem, QHeaderView
+    QTableWidgetItem, QHeaderView, QStackedWidget, QDateEdit, QPushButton
 )
 
 from logic.constants import AppConstants
 from ui.components.gantt_components import GanttBlock, DueDateMarker
 
 logger = logging.getLogger(__name__)
+
+HOLD_STATUS_VARIANTS = {'ON HOLD', 'HOLD', 'ON-HOLD'}
+CANCELED_STATUS_VARIANTS = {'CANCELED', 'CANCELLED'}
 
 
 class GanttView(QGraphicsView):
@@ -47,7 +52,7 @@ class GanttView(QGraphicsView):
             self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
             self.setObjectName("CanvasView")
 
-            # Enable native rubber-band multi-selection dragging
+            # Enables native rubber-band multi-selection dragging.
             self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
         except Exception as e:
             logger.error(f"Error initializing GanttView: {e}")
@@ -62,11 +67,11 @@ class GanttView(QGraphicsView):
             event (QMouseEvent): The captured mouse event.
         """
         try:
-            # Native QGraphicsView handling initiates the RubberBandDrag
+            # Native QGraphicsView handling initiates the RubberBandDrag.
             super().mousePressEvent(event)
 
             if event.button() == Qt.MouseButton.LeftButton:
-                # If no specific graphics item is under the cursor, notify the controller
+                # If no specific graphics item is under the cursor, notify the controller.
                 if not self.itemAt(event.pos()):
                     self.empty_clicked.emit()
         except Exception as e:
@@ -120,20 +125,20 @@ class GanttGridScene(QGraphicsScene):
             rect (QRect | QRectF): The bounding rectangle to draw within.
         """
         try:
-            # Paint the absolute background color first
+            # Paints the absolute background color first.
             painter.fillRect(rect, QColor("#1E1E1E"))
 
             row_pen = QPen(QColor("#252526"))
             col_pen = QPen(QColor("#3E3E42"))
             col_pen.setStyle(Qt.PenStyle.DotLine)
 
-            # Clamp drawing so grid lines do not bleed past the final data row
+            # Clamps drawing so grid lines do not bleed past the final data row.
             scene_bottom = int(self.sceneRect().bottom())
             draw_bottom = min(int(rect.bottom()), scene_bottom)
 
             top_y = int(rect.top()) - (int(rect.top()) % self.row_height)
 
-            # Only draw horizontal lines if our current view is above the bottom of the data
+            # Only draws horizontal lines if our current view is above the bottom of the data.
             if top_y <= scene_bottom:
                 for y in range(top_y, draw_bottom + 1, self.row_height):
                     painter.setPen(row_pen)
@@ -141,7 +146,7 @@ class GanttGridScene(QGraphicsScene):
 
             left_x = int(rect.left()) - (int(rect.left()) % self.day_width)
 
-            # Only draw vertical lines if our current view is above the bottom of the data
+            # Only draws vertical lines if our current view is above the bottom of the data.
             if int(rect.top()) < scene_bottom:
                 for x in range(left_x, int(rect.right()), self.day_width):
                     painter.setPen(col_pen)
@@ -155,11 +160,12 @@ class GanttScreenWidget(QWidget):
     """
     The main container widget for the Gantt view, combining the info table,
     the interactive canvas, filters, and the KPI inspector panel.
-    Now supports multi-select data binding and bulk threaded updates.
+    Supports multi-select data binding, bulk updates, PART-MC tags, and On Hold states.
     """
     block_dropped_signal = Signal(str, float, float, bool, float, float)
     assignee_changed_signal = Signal(str, str)
     bulk_kpi_update_signal = Signal(list, str, object)
+    delete_item_signal = Signal(str, bool)
 
     def __init__(self) -> None:
         """Initializes the main Gantt layout and variables."""
@@ -169,6 +175,9 @@ class GanttScreenWidget(QWidget):
         self.row_height: int = 36
         self.initial_scroll_done: bool = False
         self.day_zero: Optional[pd.Timestamp] = None
+
+        self._current_inspected_id: str = ""
+        self._current_inspected_is_parent: bool = False
 
         self._setup_ui()
 
@@ -197,7 +206,7 @@ class GanttScreenWidget(QWidget):
             self.filter_req.addItem("All Reqs")
 
             self.filter_status = QComboBox()
-            self.filter_status.addItems(["All Status", "Active", "Complete"])
+            self.filter_status.addItems(["All Status", "Active", "On Hold", "Complete"])
             self.filter_status.setCurrentText("Active")
 
             gantt_header_layout.addWidget(self.filter_team)
@@ -243,7 +252,7 @@ class GanttScreenWidget(QWidget):
             self.info_table.setShowGrid(False)
             self.info_table.setFrameShape(QFrame.Shape.NoFrame)
 
-            # Force horizontal scrollbar to Always On so viewport heights match perfectly
+            # Forces horizontal scrollbar to Always On so viewport heights match perfectly.
             self.info_table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
             self.info_table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
             self.info_table.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
@@ -271,7 +280,7 @@ class GanttScreenWidget(QWidget):
             self.gantt_view = GanttView(self.gantt_scene)
             self.gantt_view.setFrameShape(QFrame.Shape.NoFrame)
 
-            # Ensure Gantt View also strictly respects the scrollbar policy
+            # Ensures Gantt View also strictly respects the scrollbar policy.
             self.gantt_view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
 
             self.gantt_view.horizontalScrollBar().valueChanged.connect(self.header_view.horizontalScrollBar().setValue)
@@ -286,16 +295,25 @@ class GanttScreenWidget(QWidget):
             self.gantt_splitter.addWidget(self.canvas_container)
             self.gantt_splitter.setStretchFactor(0, 0)
             self.gantt_splitter.setStretchFactor(1, 1)
-
             self.gantt_splitter.setSizes([650, 800])
-            unified_layout.addWidget(self.gantt_splitter)
 
+            unified_layout.addWidget(self.gantt_splitter, 1)
+
+            # Configures the right-hand side KPI Panel utilizing a QStackedWidget.
             self.kpi_panel = QFrame()
             self.kpi_panel.setObjectName("TableWell")
             self.kpi_panel.setFixedWidth(300)
             self.kpi_panel.hide()
 
-            kpi_layout = QVBoxLayout(self.kpi_panel)
+            kpi_base_layout = QVBoxLayout(self.kpi_panel)
+            kpi_base_layout.setContentsMargins(0, 0, 0, 0)
+
+            self.kpi_stack = QStackedWidget()
+            kpi_base_layout.addWidget(self.kpi_stack)
+
+            # Stack 0: Job Inspector
+            self.inspector_widget = QWidget()
+            kpi_layout = QVBoxLayout(self.inspector_widget)
             kpi_layout.setContentsMargins(20, 20, 20, 20)
             kpi_layout.setSpacing(15)
 
@@ -316,8 +334,12 @@ class GanttScreenWidget(QWidget):
             self.inp_assignee = QComboBox()
             self.inp_assignee.addItem("Unassigned")
 
+            self.inp_status = QComboBox()
+            self.inp_status.addItems(["Active", "In Queue", "Started", "On Hold", "Complete"])
+
             self.kpi_order = QLabel("--")
             self.kpi_quote = QLabel("--")
+            self.kpi_type = QLabel("--")
             self.kpi_req = QLabel("--")
             self.kpi_esd = QLabel("--")
             self.kpi_eng_due = QLabel("--")
@@ -326,6 +348,7 @@ class GanttScreenWidget(QWidget):
 
             self.kpi_order.setObjectName("KpiValue")
             self.kpi_quote.setObjectName("KpiValue")
+            self.kpi_type.setObjectName("KpiValue")
             self.kpi_req.setObjectName("KpiLabel")
             self.kpi_esd.setObjectName("KpiValue")
             self.kpi_eng_due.setObjectName("KpiValue")
@@ -334,9 +357,11 @@ class GanttScreenWidget(QWidget):
 
             form_layout.addRow("Order No:", self.kpi_order)
             form_layout.addRow("Quote No:", self.kpi_quote)
+            form_layout.addRow("Line Type:", self.kpi_type)
             form_layout.addRow("Requirement:", self.kpi_req)
             form_layout.addRow(self.lbl_est_days, self.inp_est_days)
             form_layout.addRow("Assign To:", self.inp_assignee)
+            form_layout.addRow("Task Status:", self.inp_status)
 
             line = QFrame()
             line.setFrameShape(QFrame.Shape.HLine)
@@ -351,16 +376,98 @@ class GanttScreenWidget(QWidget):
             kpi_layout.addLayout(form_layout)
             kpi_layout.addStretch()
 
+            self.btn_show_task_form = QPushButton("+ Create Task")
+            self.btn_show_task_form.setObjectName("PrimaryButton")
+            self.btn_show_task_form.setMinimumHeight(28)
+            self.btn_show_task_form.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.btn_show_task_form.hide()
+            kpi_layout.addWidget(self.btn_show_task_form)
+
+            # Delete button for manual tasks and projects
+            self.btn_delete_item = QPushButton("Delete Manual Item")
+            self.btn_delete_item.setObjectName("DeleteButton")
+            self.btn_delete_item.setMinimumHeight(28)
+            self.btn_delete_item.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.btn_delete_item.hide()
+            kpi_layout.addWidget(self.btn_delete_item)
+
+            self.kpi_stack.addWidget(self.inspector_widget)
+
+            # Stack 1: Sub-Task Form
+            self.task_form_widget = QWidget()
+            tf_layout = QVBoxLayout(self.task_form_widget)
+            tf_layout.setContentsMargins(20, 20, 20, 20)
+            tf_layout.setSpacing(15)
+
+            tf_header = QLabel("Create Sub-Task")
+            tf_header.setObjectName("Header")
+            tf_layout.addWidget(tf_header)
+
+            tf_form = QFormLayout()
+            tf_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+            tf_form.setVerticalSpacing(15)
+
+            self.tf_name = QLineEdit()
+            self.tf_name.setPlaceholderText("Task name...")
+            self.tf_assignee = QComboBox()
+            self.tf_assignee.addItem("Unassigned")
+
+            self.tf_start_date = QDateEdit()
+            self.tf_start_date.setCalendarPopup(True)
+            self.tf_start_date.setDate(QDate.currentDate())
+            self.tf_start_date.setDisplayFormat("M/d/yyyy")
+
+            self.tf_est_days = QLineEdit("1")
+
+            tf_form.addRow("Task Name:", self.tf_name)
+            tf_form.addRow("Assign To:", self.tf_assignee)
+            tf_form.addRow("Start Date:", self.tf_start_date)
+            tf_form.addRow("Est. Days:", self.tf_est_days)
+
+            tf_layout.addLayout(tf_form)
+
+            tf_btns = QHBoxLayout()
+            self.btn_cancel_task = QPushButton("Cancel")
+            self.btn_cancel_task.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.btn_save_task = QPushButton("Create")
+            self.btn_save_task.setObjectName("PrimaryButton")
+            self.btn_save_task.setCursor(Qt.CursorShape.PointingHandCursor)
+
+            tf_btns.addStretch()
+            tf_btns.addWidget(self.btn_cancel_task)
+            tf_btns.addWidget(self.btn_save_task)
+
+            tf_layout.addLayout(tf_btns)
+            tf_layout.addStretch()
+
+            self.kpi_stack.addWidget(self.task_form_widget)
+
             gantt_body_layout.addWidget(self.unified_gantt_card, 1)
             gantt_body_layout.addWidget(self.kpi_panel)
 
             gantt_main_layout.addLayout(gantt_body_layout, 1)
 
-            # Connect bidirectional update signals
+            # Connects UI interaction signals.
+            self.btn_cancel_task.clicked.connect(lambda: self.kpi_stack.setCurrentIndex(0))
+            self.btn_show_task_form.clicked.connect(lambda: self.kpi_stack.setCurrentIndex(1))
+
             self.inp_est_days.editingFinished.connect(self._on_est_days_changed)
             self.inp_assignee.activated.connect(self._on_assignee_changed)
+            self.inp_status.activated.connect(self._on_status_changed)
+
+            # Connect the delete button
+            self.btn_delete_item.clicked.connect(self._on_delete_clicked)
+
         except Exception as e:
             logger.error(f"Error setting up Gantt Screen UI: {e}")
+
+    def _on_delete_clicked(self) -> None:
+        """Emits the delete signal for the currently inspected item."""
+        try:
+            if hasattr(self, '_current_inspected_id') and self._current_inspected_id:
+                self.delete_item_signal.emit(self._current_inspected_id, self._current_inspected_is_parent)
+        except Exception as e:
+            logger.error(f"Error handling delete click: {e}")
 
     def _on_est_days_changed(self) -> None:
         """Dispatches bulk duration updates derived from KPI text input."""
@@ -405,9 +512,42 @@ class GanttScreenWidget(QWidget):
         except Exception as e:
             logger.error(f"Error emitting bulk assignee update: {e}")
 
+    def _on_status_changed(self, index: int) -> None:
+        """Dispatches bulk status updates derived from KPI combo box selection."""
+        try:
+            val = self.inp_status.itemText(index)
+
+            if val == "Multiple":
+                return
+
+            if val == "Active":
+                val = ""  # Emptied override strings allow the backend logic to default back to the raw status
+            elif val == "Complete":
+                val = "COMPLETE"
+            elif val == "On Hold":
+                val = "ON HOLD"
+            elif val == "In Queue":
+                val = "IN QUEUE"
+            elif val == "Started":
+                val = "STARTED"
+
+            items = [item for item in self.gantt_scene.selectedItems() if isinstance(item, GanttBlock)]
+            target_ids = []
+            for item in items:
+                tid = str(item.block_data.get('PROJECT_ID', '')) if item.is_parent else str(
+                    item.block_data.get('SMART_ID', ''))
+                if tid and tid.lower() != 'nan':
+                    target_ids.append(tid)
+
+            if target_ids:
+                self.bulk_kpi_update_signal.emit(target_ids, 'STATUS', val)
+        except Exception as e:
+            logger.error(f"Error emitting bulk status update: {e}")
+
     def populate_kpi_inspector(self, data_list: List[Dict[str, Any]]) -> None:
         """
         Populates the KPI panel, rendering single details or multi-select averages and masks.
+        Dynamically updates line type labels for inspection.
 
         Args:
             data_list (List[Dict[str, Any]]): The list of data dictionaries representing the current selection.
@@ -418,8 +558,10 @@ class GanttScreenWidget(QWidget):
                 return
 
             self.kpi_panel.show()
+            self.kpi_stack.setCurrentIndex(0)
             self.inp_assignee.blockSignals(True)
             self.inp_est_days.blockSignals(True)
+            self.inp_status.blockSignals(True)
 
             if len(data_list) == 1:
                 data = data_list[0]
@@ -428,10 +570,28 @@ class GanttScreenWidget(QWidget):
                 is_parent = data.get('IS_PARENT', False)
                 prefix = "Order: " if is_parent else "Line: "
 
+                tid = str(data.get('PROJECT_ID', '')) if is_parent else str(data.get('SMART_ID', ''))
+                self._current_inspected_id = tid
+                self._current_inspected_is_parent = is_parent
+
+                # Toggle visibility of the delete button depending on manual prefixes
+                if (is_parent and tid.startswith("SW-")) or (not is_parent and tid.startswith("SIDEWORK-")):
+                    self.btn_delete_item.setVisible(True)
+                else:
+                    self.btn_delete_item.setVisible(False)
+
+                self.btn_show_task_form.setVisible(is_parent)
+
                 self.kpi_title.setText(f"{prefix}{str(data.get('PROJECT NAME', 'Unknown'))[:15]}...")
                 self.kpi_order.setText(str(data.get('PROJECT_ID', '--')))
                 self.kpi_quote.setText(str(data.get('QUOTE NO', '--')))
                 self.kpi_req.setText(str(data.get('REQUIREMENT', '--')))
+
+                line_type = str(data.get('TYPE', '--')).strip()
+                if not line_type or line_type.upper() == 'NAN':
+                    line_type = "--"
+                self.kpi_type.setText(line_type)
+                self.kpi_type.setStyleSheet("color: #4DB8FF; font-weight: bold;")
 
                 assignee = str(data.get('ASSIGNED TO', '')).strip().upper()
                 if not assignee or assignee == 'NAN':
@@ -444,17 +604,46 @@ class GanttScreenWidget(QWidget):
                     "Parent durations are calculated automatically." if is_parent else "Type a number of days to override the duration."
                 )
 
+                raw_status = str(data.get('STATUS', '')).strip().upper()
+                if raw_status == 'COMPLETE':
+                    status_to_show = "Complete"
+                elif raw_status in HOLD_STATUS_VARIANTS:
+                    status_to_show = "On Hold"
+                elif raw_status in CANCELED_STATUS_VARIANTS:
+                    status_to_show = "Active"
+                elif raw_status == 'IN QUEUE':
+                    status_to_show = "In Queue"
+                elif raw_status == 'STARTED':
+                    status_to_show = "Started"
+                else:
+                    status_to_show = "Active"
+
                 self.kpi_eng_due.setText(str(data.get('ENG DUE DATE', '--')))
                 self.kpi_esd.setText(str(data.get('ESD', '--')))
                 self.kpi_eng_var.setText(str(data.get('EST ENG VARIANCE', '--')))
                 self.kpi_esd_var.setText(str(data.get('EST ESD VARIANCE', '--')))
 
             else:
+                self._current_inspected_id = ""
+                self._current_inspected_is_parent = False
+                self.btn_delete_item.setVisible(False)
+
+                self.btn_show_task_form.setVisible(False)
                 self.inp_smart_id.setText("MULTIPLE")
                 self.kpi_title.setText(f"Multiple Lines Selected [{len(data_list)}]")
                 self.kpi_order.setText("Multiple")
                 self.kpi_quote.setText("Multiple")
                 self.kpi_req.setText("Multiple")
+
+                types = set(str(d.get('TYPE', '')).strip().upper() for d in data_list)
+                types.discard('')
+                types.discard('NAN')
+                if len(types) == 1:
+                    t_val = list(types)[0]
+                    self.kpi_type.setText(t_val)
+                else:
+                    self.kpi_type.setText("Multiple")
+                self.kpi_type.setStyleSheet("color: #4DB8FF; font-weight: bold;")
 
                 child_items = [d for d in data_list if not d.get('IS_PARENT', False)]
                 if child_items:
@@ -479,6 +668,24 @@ class GanttScreenWidget(QWidget):
                 else:
                     assignee = "UNASSIGNED"
 
+                statuses = set(str(d.get('STATUS', '')).strip().upper() for d in data_list)
+                if len(statuses) == 1:
+                    raw_status = list(statuses)[0]
+                    if raw_status == 'COMPLETE':
+                        status_to_show = "Complete"
+                    elif raw_status in HOLD_STATUS_VARIANTS:
+                        status_to_show = "On Hold"
+                    elif raw_status in CANCELED_STATUS_VARIANTS:
+                        status_to_show = "Active"
+                    elif raw_status == 'IN QUEUE':
+                        status_to_show = "In Queue"
+                    elif raw_status == 'STARTED':
+                        status_to_show = "Started"
+                    else:
+                        status_to_show = "Active"
+                else:
+                    status_to_show = "Multiple"
+
                 self.kpi_eng_due.setText("Multiple")
                 self.kpi_esd.setText("Multiple")
                 self.kpi_eng_var.setText("--")
@@ -495,8 +702,24 @@ class GanttScreenWidget(QWidget):
             else:
                 self.inp_assignee.setCurrentIndex(0)
 
-            self.inp_assignee.setEnabled(True)
+            if status_to_show == "Multiple":
+                if self.inp_status.findText("Multiple") == -1:
+                    self.inp_status.addItem("Multiple")
+            else:
+                idx = self.inp_status.findText("Multiple")
+                if idx != -1:
+                    self.inp_status.removeItem(idx)
 
+            match_status_idx = self.inp_status.findText(status_to_show)
+            if match_status_idx >= 0:
+                self.inp_status.setCurrentIndex(match_status_idx)
+            else:
+                self.inp_status.setCurrentIndex(0)
+
+            self.inp_assignee.setEnabled(True)
+            self.inp_status.setEnabled(True)
+
+            self.inp_status.blockSignals(False)
             self.inp_est_days.blockSignals(False)
             self.inp_assignee.blockSignals(False)
 
@@ -506,7 +729,8 @@ class GanttScreenWidget(QWidget):
     def populate_left_table(self, visual_rows: List[Dict[str, Any]], expanded_projects: set) -> None:
         """
         Populates the fixed-width table on the left side of the splitter.
-        Evaluates the production requirement logic using a centralized regex pattern.
+        Renders status in Column 4 for both parent projects and child lines,
+        highlights On Hold lines in amber, and retains uniform typography colors.
 
         Args:
             visual_rows (List[Dict[str, Any]]): A list of dictionaries representing row data.
@@ -529,10 +753,11 @@ class GanttScreenWidget(QWidget):
             table.setColumnWidth(1, 110)
             table.setColumnWidth(2, 260)
             table.setColumnWidth(3, 85)
-            table.setColumnWidth(4, 75)
+            table.setColumnWidth(4, 85)
 
             font_parent = QFont("Segoe UI", 9, QFont.Weight.Bold)
             font_child = QFont("Segoe UI", 9)
+            font_child_bold = QFont("Segoe UI", 9, QFont.Weight.Bold)
 
             for row_idx, row in enumerate(visual_rows):
                 table.setRowHeight(row_idx, self.row_height)
@@ -543,23 +768,41 @@ class GanttScreenWidget(QWidget):
                     req_text = str(row.get('REQUIREMENT', ''))
                     project_text = str(row.get('PROJECT NAME', ''))
 
-                    # Generate the geometric icon
+                    has_part_mc = row.get('HAS_PART_MC', False)
+                    if has_part_mc and not project_text.startswith("[PART-MC]"):
+                        project_text = f"[PART-MC] {project_text}"
+
                     is_expanded = row.get('PROJECT_ID') in expanded_projects
 
-                    # Ensure Re-work is evaluated identically to Production lines
+                    # Ensures Re-work is evaluated identically to Production lines.
                     is_prod = bool(re.search(AppConstants.PROD_REQ_PATTERN, req_text, re.IGNORECASE))
                     icon_color = "#E0E0E0" if is_prod else "#888888"
 
                     icon = self.create_triangle_icon(is_expanded, icon_color)
 
                     item_req = QTableWidgetItem(icon, req_text)
+                    item_project = QTableWidgetItem(project_text)
+
+                    raw_parent_status = str(row.get('STATUS', '')).strip().upper()
+                    item_status = QTableWidgetItem(raw_parent_status)
+
+                    if raw_parent_status in HOLD_STATUS_VARIANTS:
+                        item_status.setText("ON HOLD")
+                        item_status.setForeground(QBrush(QColor("#FFA726")))
+                    elif raw_parent_status in CANCELED_STATUS_VARIANTS:
+                        item_status.setText("CANCELED")
+                        item_status.setForeground(QBrush(QColor("#E57373")))
+                    elif raw_parent_status == 'COMPLETE':
+                        item_status.setForeground(QBrush(QColor("#888888")))
+                    else:
+                        item_status.setForeground(QBrush(QColor("#F0F0F0")))
 
                     items = [
                         item_req,
                         QTableWidgetItem(str(row.get('QUOTE NO', ''))),
-                        QTableWidgetItem(project_text),
+                        item_project,
                         QTableWidgetItem(str(row.get('ESD', ''))),
-                        QTableWidgetItem(str(row.get('STATUS', '')))
+                        item_status
                     ]
 
                     items[0].setToolTip(req_text)
@@ -569,24 +812,59 @@ class GanttScreenWidget(QWidget):
                         item.setFont(font_parent)
                         table.setItem(row_idx, col, item)
                 else:
-                    part_no = str(row.get('LUMINARIE SPECIFICATION',
-                                          row.get('CONFIGURED STRING',
-                                                  row.get('PART NUMBER',
-                                                          row.get('CATALOG CODE',
-                                                                  row.get('CATALOG',
-                                                                          row.get('FAMILY', ''))))))).strip()
+                    task_name = str(row.get('TASK_NAME', '')).strip()
+                    if task_name and task_name.lower() != 'nan':
+                        part_no = task_name
+                    else:
+                        part_no = str(row.get('LUMINARIE SPECIFICATION',
+                                              row.get('CONFIGURED STRING',
+                                                      row.get('PART NUMBER',
+                                                              row.get('CATALOG CODE',
+                                                                      row.get('CATALOG',
+                                                                              row.get('FAMILY', ''))))))).strip()
 
                     if not part_no or part_no.lower() == 'nan':
                         part_no = "Unknown Specification"
 
-                    child_text = f"      {part_no}"
+                    is_part_mc = bool(row.get('IS_PART_MC', False)) or (str(row.get('TYPE', '')).strip().upper() == 'PART-MC')
 
-                    item = QTableWidgetItem(child_text)
-                    item.setFont(font_child)
-                    item.setToolTip(part_no)
+                    if is_part_mc:
+                        child_text = f"      [PART-MC]  {part_no}"
+                    else:
+                        child_text = f"      {part_no}"
 
-                    table.setItem(row_idx, 0, item)
-                    table.setSpan(row_idx, 0, 1, 5)
+                    item_child = QTableWidgetItem(child_text)
+                    item_child.setFont(font_child)
+                    item_child.setToolTip(part_no)
+
+                    table.setItem(row_idx, 0, item_child)
+                    table.setSpan(row_idx, 0, 1, 4)
+
+                    # Populate Column 4 with child status
+                    child_status = str(row.get('STATUS', '')).strip().upper()
+                    if not child_status or child_status == 'NAN':
+                        child_status = "ACTIVE"
+
+                    item_child_status = QTableWidgetItem(child_status)
+
+                    if child_status in HOLD_STATUS_VARIANTS:
+                        item_child_status.setText("ON HOLD")
+                        item_child_status.setForeground(QBrush(QColor("#FFA726")))
+                        item_child_status.setFont(font_child_bold)
+                    elif child_status in CANCELED_STATUS_VARIANTS:
+                        item_child_status.setText("CANCELED")
+                        item_child_status.setForeground(QBrush(QColor("#E57373")))
+                        item_child_status.setFont(font_child)
+                    elif child_status == 'COMPLETE':
+                        item_child_status.setForeground(QBrush(QColor("#666666")))
+                        item_child_status.setFont(font_child)
+                    else:
+                        item_child_status.setForeground(QBrush(QColor("#AAAAAA")))
+                        item_child_status.setFont(font_child)
+
+                    item_child_status.setToolTip(child_status)
+                    table.setItem(row_idx, 4, item_child_status)
+
         except Exception as e:
             logger.error(f"Error populating left table: {e}")
 
